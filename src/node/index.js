@@ -23,7 +23,7 @@ async function main() {
       nodeIntegration: true,
     },
   })
-  mainWin.loadFile('control.html')
+  await mainWin.loadFile('control.html')
   mainWin.webContents.on('will-navigate', (ev, url) => {
     ev.preventDefault()
     shell.openExternal(url)
