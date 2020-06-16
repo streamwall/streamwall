@@ -1,8 +1,7 @@
 import { app, BrowserWindow, BrowserView, ipcMain, shell } from 'electron'
 import { interpret } from 'xstate'
-import fetch from 'node-fetch'
-import csv from 'csvtojson'
 
+import { pollPublicData } from './data'
 import viewStateMachine from './viewStateMachine'
 import { boxesFromSpaceURLMap } from './geometry'
 
@@ -12,19 +11,9 @@ import {
   GRID_COUNT,
   SPACE_WIDTH,
   SPACE_HEIGHT,
-  DATA_URL,
-  REFRESH_INTERVAL,
 } from '../constants'
 
-async function fetchData() {
-  // TODO: stable idxs
-  const resp = await fetch(DATA_URL)
-  const text = await resp.text()
-  const data = await csv().fromString(text)
-  return data.filter((d) => d.Link && d.Status === 'Live')
-}
-
-function main() {
+async function main() {
   const mainWin = new BrowserWindow({
     x: 0,
     y: 0,
@@ -162,13 +151,10 @@ function main() {
     overlayView.webContents.openDevTools()
   })
 
-  async function refreshData() {
-    const data = await fetchData()
+  for await (const data of pollPublicData()) {
     mainWin.webContents.send('stream-data', data)
     overlayView.webContents.send('stream-data', data)
   }
-  setInterval(refreshData, REFRESH_INTERVAL)
-  refreshData()
 }
 
 if (require.main === module) {
