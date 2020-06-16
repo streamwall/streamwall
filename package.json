@@ -4,7 +4,7 @@
   "description": "View streams in a grid",
   "main": "src/index.js",
   "scripts": {
-    "start": "webpack && electron dist",
+    "start": "webpack --display=errors-only && electron dist",
     "test": "jest"
   },
   "author": "Max Goodhart <c@chromakode.com>",
