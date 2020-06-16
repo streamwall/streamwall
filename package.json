@@ -12,13 +12,15 @@
   "dependencies": {
     "csvtojson": "^2.0.10",
     "electron": "^9.0.4",
+    "google-spreadsheet": "^3.0.11",
     "lodash": "^4.17.15",
     "mousetrap": "^1.6.5",
     "node-fetch": "^2.6.0",
     "preact": "^10.4.4",
     "styled-components": "^5.1.1",
     "svg-loaders-react": "^2.2.1",
-    "xstate": "^4.10.0"
+    "xstate": "^4.10.0",
+    "yargs": "^15.3.1"
   },
   "devDependencies": {
     "@babel/core": "^7.10.2",

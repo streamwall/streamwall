@@ -1,7 +1,9 @@
+import fs from 'fs'
+import yargs from 'yargs'
 import { app, BrowserWindow, BrowserView, ipcMain, shell } from 'electron'
 import { interpret } from 'xstate'
 
-import { pollPublicData } from './data'
+import { pollPublicData, pollSpreadsheetData } from './data'
 import viewStateMachine from './viewStateMachine'
 import { boxesFromSpaceURLMap } from './geometry'
 
@@ -14,6 +16,23 @@ import {
 } from '../constants'
 
 async function main() {
+  const argv = yargs
+    .config('config', (configPath) => {
+      return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+    })
+    .group(['gs-creds', 'gs-id', 'gs-tab'], 'Spreadsheet Configuration')
+    .option('gs-creds', {
+      describe: 'credentials file for Google Spreadsheet access',
+      implies: ['gs-id', 'gs-tab'],
+    })
+    .option('gs-id', {
+      describe: 'Google Spreadsheet id',
+    })
+    .option('gs-tab', {
+      describe: 'Google Spreadsheet tab name',
+    })
+    .help().argv
+
   const mainWin = new BrowserWindow({
     x: 0,
     y: 0,
@@ -151,12 +170,25 @@ async function main() {
     overlayView.webContents.openDevTools()
   })
 
-  for await (const data of pollPublicData()) {
+  let dataGen
+  if (argv.gsCreds) {
+    dataGen = pollSpreadsheetData(argv.gsCreds, argv.gsId, argv.gsTab)
+  } else {
+    dataGen = pollPublicData()
+  }
+
+  for await (const data of dataGen) {
     mainWin.webContents.send('stream-data', data)
     overlayView.webContents.send('stream-data', data)
   }
 }
 
 if (require.main === module) {
-  app.whenReady().then(main)
+  app
+    .whenReady()
+    .then(main)
+    .catch((err) => {
+      console.error(err.toString())
+      process.exit(1)
+    })
 }
