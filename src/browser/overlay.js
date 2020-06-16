@@ -111,6 +111,7 @@ const SpaceBorder = styled.div.attrs((props) => ({
     isListening ? '0 0 10px red inset' : 'none'};
   box-sizing: border-box;
   pointer-events: none;
+  user-select: none;
 `
 
 const StreamTitle = styled.div`
