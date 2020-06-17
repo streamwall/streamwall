@@ -19,19 +19,19 @@ function App() {
   }, [])
 
   const handleSetSpace = useCallback(
-    (idx, value) => {
+    (idx, id) => {
       const newSpaceIdxMap = new Map(spaceIdxMap)
-      if (value !== undefined) {
-        newSpaceIdxMap.set(idx, value)
+      if (id !== undefined) {
+        newSpaceIdxMap.set(idx, id)
       } else {
         newSpaceIdxMap.delete(idx)
       }
       setSpaceIdxMap(newSpaceIdxMap)
 
       const newSpaceURLMap = new Map(
-        Array.from(newSpaceIdxMap, ([spaceIdx, dataIdx]) => [
+        Array.from(newSpaceIdxMap, ([spaceIdx, streamId]) => [
           spaceIdx,
-          streamData[dataIdx].Link,
+          streamData.find((d) => d._id === streamId)?.Link,
         ]),
       )
       ipcRenderer.send('set-videos', newSpaceURLMap)
@@ -71,17 +71,17 @@ function App() {
       </div>
       <div>
         {streamData
-          ? streamData.map((row, idx) => <StreamLine idx={idx} row={row} />)
+          ? streamData.map((row) => <StreamLine id={row._id} row={row} />)
           : 'loading...'}
       </div>
     </div>
   )
 }
 
-function StreamLine({ idx, row: { Source, Title, Link, Notes } }) {
+function StreamLine({ id, row: { Source, Title, Link, Notes } }) {
   return (
     <StyledStreamLine>
-      <StyledIdx>{idx}</StyledIdx>
+      <StyledId>{id}</StyledId>
       <div>
         <strong>{Source}</strong> <a href={Link}>{Title || Link}</a> {Notes}
       </div>
@@ -99,11 +99,7 @@ function GridInput({
   const handleChange = useCallback(
     (ev) => {
       const { name, value } = ev.target
-      const newValue = value ? Number(value) : NaN
-      onChangeSpace(
-        Number(name),
-        Number.isFinite(newValue) ? newValue : undefined,
-      )
+      onChangeSpace(Number(name), value)
     },
     [onChangeSpace],
   )
@@ -185,14 +181,14 @@ const StyledGridInput = styled.input`
   }
 `
 
-const StyledIdx = styled.div`
+const StyledId = styled.div`
   flex-shrink: 0;
   margin-right: 5px;
   background: #333;
   color: white;
   padding: 3px;
   border-radius: 5px;
-  width: 2em;
+  width: 3em;
   text-align: center;
 `
 

@@ -3,7 +3,7 @@ import yargs from 'yargs'
 import { app, BrowserWindow, BrowserView, ipcMain, shell } from 'electron'
 import { interpret } from 'xstate'
 
-import { pollPublicData, pollSpreadsheetData } from './data'
+import { pollPublicData, pollSpreadsheetData, processData } from './data'
 import viewStateMachine from './viewStateMachine'
 import { boxesFromSpaceURLMap } from './geometry'
 
@@ -177,7 +177,7 @@ async function main() {
     dataGen = pollPublicData()
   }
 
-  for await (const data of dataGen) {
+  for await (const data of processData(dataGen)) {
     mainWin.webContents.send('stream-data', data)
     overlayView.webContents.send('stream-data', data)
   }

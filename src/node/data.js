@@ -45,3 +45,29 @@ export async function* pollSpreadsheetData(creds, sheetId, tabName) {
     await sleep(refreshInterval)
   }
 }
+
+export async function* processData(dataGen) {
+  // Give each stream a unique and recognizable short id.
+  const idMap = new Map()
+  for await (const data of dataGen) {
+    for (const stream of data) {
+      const { Link, Source } = stream
+      if (!idMap.has(Link)) {
+        let counter = 0
+        let newId
+        const normalizedSource = Source.toLowerCase()
+          .replace(/[^\w]/g, '')
+          .replace(/^the|^https?(www)?/, '')
+        do {
+          const sourcePart = normalizedSource.substr(0, 3).toLowerCase()
+          const counterPart = counter === 0 ? '' : counter
+          newId = `${sourcePart}${counterPart}`
+          counter++
+        } while (idMap.has(newId))
+        idMap.set(Link, newId)
+      }
+      stream._id = idMap.get(Link)
+    }
+    yield data
+  }
+}
