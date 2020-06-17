@@ -33,7 +33,7 @@ function Overlay({ spaces, streamData }) {
           <SpaceBorder bounds={bounds} isListening={isListening}>
             {data && (
               <>
-                <StreamTitle>
+                <StreamTitle isListening={isListening}>
                   <StreamIcon url={url} />
                   {data.Source} &ndash; {data.City} {data.State}
                 </StreamTitle>
@@ -125,7 +125,8 @@ const StreamTitle = styled.div`
   color: white;
   text-shadow: 0 0 4px black;
   letter-spacing: -0.025em;
-  background: rgba(0, 0, 0, 0.5);
+  background: ${({ isListening }) =>
+    isListening ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)'};
   border-radius: 4px;
   backdrop-filter: blur(10px);
 
