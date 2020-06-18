@@ -6,15 +6,15 @@ import styled from 'styled-components'
 import Mousetrap from 'mousetrap'
 import { TailSpin } from 'svg-loaders-react'
 
-import './index.css'
+import '../index.css'
 import { WIDTH, HEIGHT } from '../constants'
 
-import InstagramIcon from './static/instagram.svg'
-import FacebookIcon from './static/facebook.svg'
-import PeriscopeIcon from './static/periscope.svg'
-import TwitchIcon from './static/twitch.svg'
-import YouTubeIcon from './static/youtube.svg'
-import SoundIcon from './static/volume-up-solid.svg'
+import InstagramIcon from '../static/instagram.svg'
+import FacebookIcon from '../static/facebook.svg'
+import PeriscopeIcon from '../static/periscope.svg'
+import TwitchIcon from '../static/twitch.svg'
+import YouTubeIcon from '../static/youtube.svg'
+import SoundIcon from '../static/volume-up-solid.svg'
 
 Mousetrap.bind('ctrl+shift+i', () => {
   ipcRenderer.send('devtools-overlay')
@@ -25,12 +25,12 @@ function Overlay({ spaces, streamData }) {
   return (
     <div>
       {activeSpaces.map((spaceState) => {
-        const { url, bounds } = spaceState.context
+        const { url, pos } = spaceState.context
         const data = streamData.find((d) => url === d.Link)
         const isListening = spaceState.matches('displaying.running.listening')
         const isLoading = spaceState.matches('displaying.loading')
         return (
-          <SpaceBorder bounds={bounds} isListening={isListening}>
+          <SpaceBorder pos={pos} isListening={isListening}>
             {data && (
               <>
                 <StreamTitle isListening={isListening}>
@@ -53,10 +53,10 @@ function App() {
   const [streamData, setStreamData] = useState([])
 
   useEffect(() => {
-    const spaceStateMap = new Map()
-    ipcRenderer.on('space-state', (ev, idx, { state, context }) => {
-      spaceStateMap.set(idx, State.from(state, context))
-      setSpaces([...spaceStateMap.values()])
+    ipcRenderer.on('view-states', (ev, viewStates) => {
+      setSpaces(
+        viewStates.map(({ state, context }) => State.from(state, context)),
+      )
     })
     ipcRenderer.on('stream-data', (ev, data) => {
       setStreamData(data)
@@ -94,19 +94,19 @@ const SpaceBorder = styled.div.attrs((props) => ({
   borderWidth: 2,
 }))`
   position: fixed;
-  left: ${({ bounds }) => bounds.x}px;
-  top: ${({ bounds }) => bounds.y}px;
-  width: ${({ bounds }) => bounds.width}px;
-  height: ${({ bounds }) => bounds.height}px;
+  left: ${({ pos }) => pos.x}px;
+  top: ${({ pos }) => pos.y}px;
+  width: ${({ pos }) => pos.width}px;
+  height: ${({ pos }) => pos.height}px;
   border: 0 solid black;
-  border-left-width: ${({ bounds, borderWidth }) =>
-    bounds.x === 0 ? 0 : borderWidth}px;
-  border-right-width: ${({ bounds, borderWidth }) =>
-    bounds.x + bounds.width === WIDTH ? 0 : borderWidth}px;
-  border-top-width: ${({ bounds, borderWidth }) =>
-    bounds.y === 0 ? 0 : borderWidth}px;
-  border-bottom-width: ${({ bounds, borderWidth }) =>
-    bounds.y + bounds.height === HEIGHT ? 0 : borderWidth}px;
+  border-left-width: ${({ pos, borderWidth }) =>
+    pos.x === 0 ? 0 : borderWidth}px;
+  border-right-width: ${({ pos, borderWidth }) =>
+    pos.x + pos.width === WIDTH ? 0 : borderWidth}px;
+  border-top-width: ${({ pos, borderWidth }) =>
+    pos.y === 0 ? 0 : borderWidth}px;
+  border-bottom-width: ${({ pos, borderWidth }) =>
+    pos.y + pos.height === HEIGHT ? 0 : borderWidth}px;
   box-shadow: ${({ isListening }) =>
     isListening ? '0 0 10px red inset' : 'none'};
   box-sizing: border-box;

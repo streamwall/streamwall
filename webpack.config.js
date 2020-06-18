@@ -1,3 +1,4 @@
+const path = require('path')
 const CopyPlugin = require('copy-webpack-plugin')
 
 const baseConfig = {
@@ -32,6 +33,13 @@ const baseConfig = {
       },
     ],
   },
+  resolve: {
+    extensions: ['.jsx', '.js'],
+    alias: {
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+    },
+  },
 }
 
 const nodeConfig = {
@@ -40,6 +48,9 @@ const nodeConfig = {
   entry: {
     index: './src/node/index.js',
   },
+  externals: {
+    consolidate: 'commonjs consolidate',
+  },
 }
 
 const browserConfig = {
@@ -47,24 +58,30 @@ const browserConfig = {
   devtool: 'cheap-source-map',
   target: 'electron-renderer',
   entry: {
-    control: './src/browser/control.js',
     overlay: './src/browser/overlay.js',
-  },
-  resolve: {
-    extensions: ['.jsx', '.js'],
-    alias: {
-      react: 'preact/compat',
-      'react-dom': 'preact/compat',
-    },
   },
   plugins: [
     new CopyPlugin({
-      patterns: [
-        { from: 'src/**/*.html', to: '[name].html' },
-        { from: 'src/**/*.ttf', to: '[name].ttf' },
-      ],
+      patterns: [{ from: 'src/browser/overlay.html', to: '[name].html' }],
     }),
   ],
 }
 
-module.exports = [nodeConfig, browserConfig]
+const webConfig = {
+  ...baseConfig,
+  devtool: 'cheap-source-map',
+  target: 'web',
+  entry: {
+    control: './src/web/control.js',
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist/web'),
+  },
+  plugins: [
+    new CopyPlugin({
+      patterns: [{ from: 'src/web/*.ejs', to: '[name].ejs' }],
+    }),
+  ],
+}
+
+module.exports = [nodeConfig, browserConfig, webConfig]
