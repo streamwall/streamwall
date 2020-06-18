@@ -1,4 +1,4 @@
-export function boxesFromSpaceURLMap(width, height, stateURLMap) {
+export function boxesFromViewURLMap(width, height, stateURLMap) {
   const boxes = []
   const visited = new Set()
 

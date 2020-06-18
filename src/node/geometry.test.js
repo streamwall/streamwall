@@ -1,4 +1,4 @@
-import { boxesFromSpaceURLMap } from './geometry'
+import { boxesFromViewURLMap } from './geometry'
 
 const box1 = `
   ab
@@ -82,10 +82,10 @@ describe.each([
       { url: 'a', x: 1, y: 2, w: 1, h: 1, spaces: [7] },
     ],
   ],
-])('boxesFromSpaceURLMap(%i, %i, %j)', (width, height, data, expected) => {
+])('boxesFromViewURLMap(%i, %i, %j)', (width, height, data, expected) => {
   test(`returns expected ${expected.length} boxes`, () => {
     const stateURLMap = new Map(data.map((v, idx) => [idx, v]))
-    const result = boxesFromSpaceURLMap(width, height, stateURLMap)
+    const result = boxesFromViewURLMap(width, height, stateURLMap)
     expect(result).toStrictEqual(expected)
   })
 })

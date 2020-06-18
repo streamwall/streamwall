@@ -5,7 +5,7 @@ import { interpret } from 'xstate'
 
 import { pollPublicData, pollSpreadsheetData, processData } from './data'
 import viewStateMachine from './viewStateMachine'
-import { boxesFromSpaceURLMap } from './geometry'
+import { boxesFromViewURLMap } from './geometry'
 
 import {
   WIDTH,
@@ -124,8 +124,8 @@ async function main() {
     views.push(service)
   }
 
-  ipcMain.on('set-videos', async (ev, spaceURLMap) => {
-    const boxes = boxesFromSpaceURLMap(GRID_COUNT, GRID_COUNT, spaceURLMap)
+  ipcMain.on('set-videos', async (ev, viewURLMap) => {
+    const boxes = boxesFromViewURLMap(GRID_COUNT, GRID_COUNT, viewURLMap)
 
     const unusedViews = new Set(views)
     for (const box of boxes) {
