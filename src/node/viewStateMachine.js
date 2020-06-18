@@ -18,8 +18,9 @@ const viewStateMachine = Machine(
       empty: {
         entry: [
           assign({
-            pos: { url: null },
+            pos: {},
             info: {},
+            url: null,
           }),
           'hideView',
         ],
