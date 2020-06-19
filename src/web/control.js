@@ -9,6 +9,7 @@ import '../index.css'
 import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
+import LifeRingIcon from '../static/life-ring-regular.svg'
 
 function emptyStateIdxMap() {
   return new Map(
@@ -113,6 +114,15 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
+  const handleBrowse = useCallback((url) => {
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'browse',
+        url,
+      }),
+    )
+  }, [])
+
   return (
     <div>
       <h1>Stream Wall</h1>
@@ -125,10 +135,13 @@ function App({ wsEndpoint }) {
             <StyledGridLine>
               {range(0, 3).map((x) => {
                 const idx = 3 * y + x
-                const { streamId, isListening, state } = stateIdxMap.get(idx)
+                const { streamId, isListening, url, state } = stateIdxMap.get(
+                  idx,
+                )
                 return (
                   <GridInput
                     idx={idx}
+                    url={url}
                     onChangeSpace={handleSetView}
                     spaceValue={streamId}
                     isError={state.matches('error')}
@@ -136,6 +149,7 @@ function App({ wsEndpoint }) {
                     isListening={isListening}
                     onSetListening={handleSetListening}
                     onReloadView={handleReloadView}
+                    onBrowse={handleBrowse}
                   />
                 )
               })}
@@ -165,6 +179,7 @@ function StreamLine({ id, row: { Source, Title, Link, Notes } }) {
 
 function GridInput({
   idx,
+  url,
   onChangeSpace,
   spaceValue,
   isDisplaying,
@@ -172,6 +187,7 @@ function GridInput({
   isListening,
   onSetListening,
   onReloadView,
+  onBrowse,
 }) {
   const [editingValue, setEditingValue] = useState()
   const handleFocus = useCallback((ev) => {
@@ -196,18 +212,24 @@ function GridInput({
     idx,
     onReloadView,
   ])
+  const handleBrowseClick = useCallback(() => onBrowse(url), [url, onBrowse])
   const handleClick = useCallback((ev) => {
     ev.target.select()
   })
   return (
     <StyledGridContainer>
-      {isDisplaying && (
-        <StyledGridButtons side="left">
+      <StyledGridButtons side="left">
+        {isDisplaying && (
           <StyledButton onClick={handleReloadClick}>
             <ReloadIcon />
           </StyledButton>
-        </StyledGridButtons>
-      )}
+        )}
+        {isError && (
+          <StyledButton onClick={handleBrowseClick}>
+            <LifeRingIcon />
+          </StyledButton>
+        )}
+      </StyledGridButtons>
       <StyledGridButtons side="right">
         <ListeningButton
           isListening={isListening}

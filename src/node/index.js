@@ -1,6 +1,6 @@
 import fs from 'fs'
 import yargs from 'yargs'
-import { app, shell } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 
 import { pollPublicData, pollSpreadsheetData, processData } from './data'
 import StreamWindow from './StreamWindow'
@@ -52,6 +52,8 @@ async function main() {
   const streamWindow = new StreamWindow()
   streamWindow.init()
 
+  let browseWindow = null
+
   const clientState = {}
   const getInitialState = () => clientState
   let broadcastState = () => {}
@@ -62,6 +64,11 @@ async function main() {
       streamWindow.setListeningView(msg.viewIdx)
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
+    } else if (msg.type === 'browse') {
+      if (!browseWindow || browseWindow.isDestroyed()) {
+        browseWindow = new BrowserWindow()
+      }
+      browseWindow.loadURL(msg.url)
     }
   }
 
