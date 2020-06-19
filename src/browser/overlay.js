@@ -32,12 +32,10 @@ function Overlay({ spaces, streamData }) {
         return (
           <SpaceBorder pos={pos} isListening={isListening}>
             {data && (
-              <>
-                <StreamTitle isListening={isListening}>
-                  <StreamIcon url={url} />
-                  {data.Source} &ndash; {data.City} {data.State}
-                </StreamTitle>
-              </>
+              <StreamTitle isListening={isListening}>
+                <StreamIcon url={url} />
+                {data.Source} &ndash; {data.City} {data.State}
+              </StreamTitle>
             )}
             {isLoading && <LoadingSpinner />}
             {isListening && <ListeningIndicator />}
