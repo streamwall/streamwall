@@ -75,7 +75,9 @@ export default class StreamWindow extends EventEmitter {
 
     const views = []
     for (let idx = 0; idx <= 9; idx++) {
-      const view = new BrowserView()
+      const view = new BrowserView({
+        webPreferences: { partition: 'persist:session' },
+      })
       view.setBackgroundColor('#000')
 
       const machine = viewStateMachine

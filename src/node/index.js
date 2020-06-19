@@ -66,7 +66,9 @@ async function main() {
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse') {
       if (!browseWindow || browseWindow.isDestroyed()) {
-        browseWindow = new BrowserWindow()
+        browseWindow = new BrowserWindow({
+          webPreferences: { partition: 'persist:session' },
+        })
       }
       browseWindow.loadURL(msg.url)
     }
