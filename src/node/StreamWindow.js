@@ -175,6 +175,17 @@ export default class StreamWindow extends EventEmitter {
     }
   }
 
+  reloadView(viewIdx) {
+    const view = this.views.find(
+      (v) =>
+        v.state.matches('displaying') &&
+        v.state.context.pos.spaces.includes(viewIdx),
+    )
+    if (view) {
+      view.send('RELOAD')
+    }
+  }
+
   send(...args) {
     this.overlayView.webContents.send(...args)
   }

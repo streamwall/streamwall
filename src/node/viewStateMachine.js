@@ -16,14 +16,11 @@ const viewStateMachine = Machine(
     },
     states: {
       empty: {
-        entry: [
-          assign({
-            pos: {},
-            info: {},
-            url: null,
-          }),
-          'hideView',
-        ],
+        entry: assign({
+          pos: {},
+          info: {},
+          url: null,
+        }),
         invoke: {
           src: 'clearView',
           onError: {
@@ -45,6 +42,7 @@ const viewStateMachine = Machine(
             }),
             cond: 'urlUnchanged',
           },
+          RELOAD: '.loading',
         },
         states: {
           loading: {
@@ -80,6 +78,7 @@ const viewStateMachine = Machine(
           running: {
             initial: 'muted',
             entry: 'positionView',
+            exit: 'hideView',
             on: {
               DISPLAY: {
                 actions: [

@@ -2,11 +2,13 @@ import range from 'lodash/range'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { h, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
-import styled from 'styled-components'
+import { State } from 'xstate'
+import styled, { css } from 'styled-components'
 
 import '../index.css'
 import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
+import ReloadIcon from '../static/redo-alt-solid.svg'
 
 function emptyStateIdxMap() {
   return new Map(
@@ -15,7 +17,7 @@ function emptyStateIdxMap() {
       {
         streamId: null,
         url: null,
-        state: {},
+        state: State.from({}),
         isListening: false,
       },
     ]),
@@ -47,13 +49,13 @@ function App({ wsEndpoint }) {
             continue
           }
           const streamId = streams.find((d) => d.Link === url)?._id
-          const isListening =
-            viewState.state.displaying?.running === 'listening'
+          const state = State.from(viewState.state)
+          const isListening = state.matches('displaying.running.listening')
           for (const space of pos.spaces) {
             Object.assign(newStateIdxMap.get(space), {
               streamId,
               url,
-              state: viewState.state,
+              state,
               isListening,
             })
           }
@@ -102,6 +104,15 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
+  const handleReloadView = useCallback((idx) => {
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'reload-view',
+        viewIdx: idx,
+      }),
+    )
+  }, [])
+
   return (
     <div>
       <h1>Stream Wall</h1>
@@ -120,9 +131,11 @@ function App({ wsEndpoint }) {
                     idx={idx}
                     onChangeSpace={handleSetView}
                     spaceValue={streamId}
-                    isError={state === 'error'}
+                    isError={state.matches('error')}
+                    isDisplaying={state.matches('displaying')}
                     isListening={isListening}
                     onSetListening={handleSetListening}
+                    onReloadView={handleReloadView}
                   />
                 )
               })}
@@ -154,9 +167,11 @@ function GridInput({
   idx,
   onChangeSpace,
   spaceValue,
+  isDisplaying,
   isError,
   isListening,
   onSetListening,
+  onReloadView,
 }) {
   const [editingValue, setEditingValue] = useState()
   const handleFocus = useCallback((ev) => {
@@ -177,16 +192,29 @@ function GridInput({
     () => onSetListening(idx, !isListening),
     [idx, onSetListening, isListening],
   )
+  const handleReloadClick = useCallback(() => onReloadView(idx), [
+    idx,
+    onReloadView,
+  ])
   const handleClick = useCallback((ev) => {
     ev.target.select()
   })
   return (
     <StyledGridContainer>
-      <ListeningButton
-        isListening={isListening}
-        onClick={handleListeningClick}
-        tabIndex={1}
-      />
+      {isDisplaying && (
+        <StyledGridButtons side="left">
+          <StyledButton onClick={handleReloadClick}>
+            <ReloadIcon />
+          </StyledButton>
+        </StyledGridButtons>
+      )}
+      <StyledGridButtons side="right">
+        <ListeningButton
+          isListening={isListening}
+          onClick={handleListeningClick}
+          tabIndex={1}
+        />
+      </StyledGridButtons>
       <StyledGridInput
         name={idx}
         value={editingValue || spaceValue || ''}
@@ -216,12 +244,12 @@ const StyledGridLine = styled.div`
   display: flex;
 `
 
-const StyledListeningButton = styled.button`
+const StyledButton = styled.button`
   display: flex;
   align-items: center;
   border: 2px solid gray;
-  border-color: ${({ isListening }) => (isListening ? 'red' : 'gray')};
-  background: ${({ isListening }) => (isListening ? '#c77' : '#ccc')};
+  border-color: gray;
+  background: #ccc;
   border-radius: 5px;
 
   &:focus {
@@ -235,13 +263,27 @@ const StyledListeningButton = styled.button`
   }
 `
 
+const StyledListeningButton = styled(StyledButton)`
+  ${({ isListening }) =>
+    isListening &&
+    `
+      border-color: red;
+      background: #c77;
+    `};
+`
+
 const StyledGridContainer = styled.div`
   position: relative;
+`
 
-  ${StyledListeningButton} {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
+const StyledGridButtons = styled.div`
+  display: flex;
+  position: absolute;
+  bottom: 0;
+  ${({ side }) => (side === 'left' ? 'left: 0' : 'right: 0')};
+
+  ${StyledButton} {
+    margin: 5px;
   }
 `
 

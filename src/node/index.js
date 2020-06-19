@@ -60,6 +60,8 @@ async function main() {
       streamWindow.setViews(new Map(msg.views))
     } else if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
+    } else if (msg.type === 'reload-view') {
+      streamWindow.reloadView(msg.viewIdx)
     }
   }
 
