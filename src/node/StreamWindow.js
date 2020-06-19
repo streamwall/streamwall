@@ -114,36 +114,40 @@ export default class StreamWindow extends EventEmitter {
   setViews(viewURLMap) {
     const { views } = this
     const boxes = boxesFromViewURLMap(GRID_COUNT, GRID_COUNT, viewURLMap)
+    const remainingBoxes = new Set(boxes.filter(({ url }) => url))
 
     const unusedViews = new Set(views)
-    for (const box of boxes) {
-      const { url, x, y, w, h, spaces } = box
+    const viewsToDisplay = []
 
-      if (!url) {
-        continue
-      }
-
-      const unusedViewsArray = views.filter((s) => unusedViews.has(s))
-      const matchingURLViews = unusedViewsArray.filter(
-        (s) => s.state.context.url === url,
-      )
-
+    const matchers = [
       // First try to find a loaded view of the same URL...
-      let space = matchingURLViews.find((s) =>
-        s.state.matches('displaying.running'),
-      )
-      if (!space) {
-        // Then try view with the same URL that is still loading...
-        space = matchingURLViews[0]
-      }
-      if (!space) {
-        // If none could be found, launch a new view.
-        space = unusedViewsArray[0]
-      }
-      if (!space) {
+      (v, url) =>
+        unusedViews.has(v) &&
+        v.state.context.url === url &&
+        v.state.matches('displaying.running'),
+      // Then try view with the same URL that is still loading...
+      (v, url) => unusedViews.has(v) && v.state.context.url === url,
+      // If none could be found, try an unused view.
+      (v) => unusedViews.has(v),
+      () => {
         throw new Error('could not find a usable view')
-      }
+      },
+    ]
 
+    for (const matcher of matchers) {
+      for (const box of remainingBoxes) {
+        const { url } = box
+        const view = views.find((v) => matcher(v, url))
+        if (view) {
+          viewsToDisplay.push({ box, view })
+          unusedViews.delete(view)
+          remainingBoxes.delete(box)
+        }
+      }
+    }
+
+    for (const { box, view } of viewsToDisplay) {
+      const { url, x, y, w, h, spaces } = box
       const pos = {
         x: SPACE_WIDTH * x,
         y: SPACE_HEIGHT * y,
@@ -151,12 +155,11 @@ export default class StreamWindow extends EventEmitter {
         height: SPACE_HEIGHT * h,
         spaces,
       }
-      space.send({ type: 'DISPLAY', pos, url })
-      unusedViews.delete(space)
+      view.send({ type: 'DISPLAY', pos, url })
     }
 
-    for (const space of unusedViews) {
-      space.send('CLEAR')
+    for (const view of unusedViews) {
+      view.send('CLEAR')
     }
   }
 
