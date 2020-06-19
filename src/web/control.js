@@ -160,6 +160,7 @@ function GridInput({
       <ListeningButton
         isListening={isListening}
         onClick={handleListeningClick}
+        tabIndex={1}
       />
       <StyledGridInput
         name={idx}
