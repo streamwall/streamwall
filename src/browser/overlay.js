@@ -34,7 +34,9 @@ function Overlay({ spaces, streamData }) {
             {data && (
               <StreamTitle isListening={isListening}>
                 <StreamIcon url={url} />
-                {data.Source} &ndash; {data.City} {data.State}
+                <span>
+                  {data.Source} &ndash; {data.City} {data.State}
+                </span>
               </StreamTitle>
             )}
             {isLoading && <LoadingSpinner />}
@@ -91,6 +93,8 @@ function StreamIcon({ url, ...props }) {
 const SpaceBorder = styled.div.attrs((props) => ({
   borderWidth: 2,
 }))`
+  display: flex;
+  align-items: flex-start;
   position: fixed;
   left: ${({ pos }) => pos.x}px;
   top: ${({ pos }) => pos.y}px;
@@ -127,6 +131,13 @@ const StreamTitle = styled.div`
     isListening ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)'};
   border-radius: 4px;
   backdrop-filter: blur(10px);
+  overflow: hidden;
+
+  span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
 
   svg {
     width: 1.25em;
