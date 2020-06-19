@@ -114,12 +114,13 @@ function App({ wsEndpoint }) {
             <StyledGridLine>
               {range(0, 3).map((x) => {
                 const idx = 3 * y + x
-                const { streamId, isListening } = stateIdxMap.get(idx)
+                const { streamId, isListening, state } = stateIdxMap.get(idx)
                 return (
                   <GridInput
                     idx={idx}
                     onChangeSpace={handleSetView}
                     spaceValue={streamId}
+                    isError={state === 'error'}
                     isListening={isListening}
                     onSetListening={handleSetListening}
                   />
@@ -153,6 +154,7 @@ function GridInput({
   idx,
   onChangeSpace,
   spaceValue,
+  isError,
   isListening,
   onSetListening,
 }) {
@@ -188,6 +190,7 @@ function GridInput({
       <StyledGridInput
         name={idx}
         value={editingValue || spaceValue || ''}
+        isError={isError}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onClick={handleClick}
@@ -246,7 +249,7 @@ const StyledGridInput = styled.input`
   width: 150px;
   height: 50px;
   padding: 20px;
-  border: 2px solid black;
+  border: 2px solid ${({ isError }) => (isError ? 'red' : 'black')};
   font-size: 20px;
   text-align: center;
 
