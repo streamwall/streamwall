@@ -62,8 +62,6 @@ function App({ wsEndpoint }) {
       } else {
         newSpaceIdxMap.delete(idx)
       }
-      setSpaceIdxMap(newSpaceIdxMap)
-
       const views = Array.from(newSpaceIdxMap, ([spaceIdx, streamId]) => [
         spaceIdx,
         streamData.find((d) => d._id === streamId)?.Link,
