@@ -5,14 +5,28 @@ import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import styled from 'styled-components'
 
 import '../index.css'
+import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
+
+function emptyStateIdxMap() {
+  return new Map(
+    range(GRID_COUNT * GRID_COUNT).map((idx) => [
+      idx,
+      {
+        streamId: null,
+        url: null,
+        state: null,
+        isListening: false,
+      },
+    ]),
+  )
+}
 
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
   const [streamData, setStreamData] = useState()
-  const [viewIdxMap, setViewIdxMap] = useState(new Map())
-  const [listeningIdxSet, setListeningIdxSet] = useState(new Set())
+  const [stateIdxMap, setStateIdxMap] = useState(emptyStateIdxMap())
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -26,10 +40,7 @@ function App({ wsEndpoint }) {
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
         const { streams, views } = msg.state
-        setStreamData(streams)
-
-        const newSpaceIdxMap = new Map()
-        const newListeningIdxSet = new Set()
+        const newStateIdxMap = emptyStateIdxMap()
         for (const viewState of views) {
           const { pos, url } = viewState.context
           if (!url) {
@@ -39,14 +50,16 @@ function App({ wsEndpoint }) {
           const isListening =
             viewState.state.displaying?.running === 'listening'
           for (const space of pos.spaces) {
-            newSpaceIdxMap.set(space, streamId)
-            if (isListening) {
-              newListeningIdxSet.add(space)
-            }
+            Object.assign(newStateIdxMap.get(space), {
+              streamId,
+              url,
+              state: viewState.state,
+              isListening,
+            })
           }
         }
-        setViewIdxMap(newSpaceIdxMap)
-        setListeningIdxSet(newListeningIdxSet)
+        setStateIdxMap(newStateIdxMap)
+        setStreamData(streams)
       } else {
         console.warn('unexpected ws message', msg)
       }
@@ -54,21 +67,30 @@ function App({ wsEndpoint }) {
     wsRef.current = ws
   }, [])
 
-  const handleSetSpace = useCallback(
-    (idx, id) => {
-      const newSpaceIdxMap = new Map(viewIdxMap)
-      if (id !== undefined) {
-        newSpaceIdxMap.set(idx, id)
+  const handleSetView = useCallback(
+    (idx, streamId) => {
+      const newSpaceIdxMap = new Map(stateIdxMap)
+      const url = streamData.find((d) => d._id === streamId)?.Link
+      if (url) {
+        newSpaceIdxMap.set(idx, {
+          ...newSpaceIdxMap.get(idx),
+          streamId,
+          url,
+        })
       } else {
-        newSpaceIdxMap.delete(idx)
+        newSpaceIdxMap.set(idx, {
+          ...newSpaceIdxMap.get(idx),
+          streamId: null,
+          url: null,
+        })
       }
-      const views = Array.from(newSpaceIdxMap, ([spaceIdx, streamId]) => [
-        spaceIdx,
-        streamData.find((d) => d._id === streamId)?.Link,
-      ]).filter(([s, i]) => i)
+      const views = Array.from(newSpaceIdxMap, ([space, { url }]) => [
+        space,
+        url,
+      ])
       wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
     },
-    [streamData, viewIdxMap],
+    [streamData, stateIdxMap],
   )
 
   const handleSetListening = useCallback((idx, listening) => {
@@ -92,12 +114,13 @@ function App({ wsEndpoint }) {
             <StyledGridLine>
               {range(0, 3).map((x) => {
                 const idx = 3 * y + x
+                const { streamId, isListening } = stateIdxMap.get(idx)
                 return (
                   <GridInput
                     idx={idx}
-                    onChangeSpace={handleSetSpace}
-                    spaceValue={viewIdxMap.get(idx)}
-                    isListening={listeningIdxSet.has(idx)}
+                    onChangeSpace={handleSetView}
+                    spaceValue={streamId}
+                    isListening={isListening}
                     onSetListening={handleSetListening}
                   />
                 )
