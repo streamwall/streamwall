@@ -123,15 +123,27 @@ export default class StreamWindow extends EventEmitter {
         continue
       }
 
-      // TODO: prefer fully loaded views
-      let space = views.find(
-        (s) => unusedViews.has(s) && s.state.context.url === url,
+      const unusedViewsArray = views.filter((s) => unusedViews.has(s))
+      const matchingURLViews = unusedViewsArray.filter(
+        (s) => s.state.context.url === url,
+      )
+
+      // First try to find a loaded view of the same URL...
+      let space = matchingURLViews.find((s) =>
+        s.state.matches('displaying.running'),
       )
       if (!space) {
-        space = views.find(
-          (s) => unusedViews.has(s) && !s.state.matches('displaying'),
-        )
+        // Then try view with the same URL that is still loading...
+        space = matchingURLViews[0]
       }
+      if (!space) {
+        // If none could be found, launch a new view.
+        space = unusedViewsArray[0]
+      }
+      if (!space) {
+        throw new Error('could not find a usable view')
+      }
+
       const pos = {
         x: SPACE_WIDTH * x,
         y: SPACE_HEIGHT * y,
