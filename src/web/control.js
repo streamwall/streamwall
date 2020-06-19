@@ -15,7 +15,7 @@ function emptyStateIdxMap() {
       {
         streamId: null,
         url: null,
-        state: null,
+        state: {},
         isListening: false,
       },
     ]),
