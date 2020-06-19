@@ -11,7 +11,7 @@ function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
   const [streamData, setStreamData] = useState()
-  const [spaceIdxMap, setSpaceIdxMap] = useState(new Map())
+  const [viewIdxMap, setViewIdxMap] = useState(new Map())
   const [listeningIdxSet, setListeningIdxSet] = useState(new Set())
 
   useEffect(() => {
@@ -45,7 +45,7 @@ function App({ wsEndpoint }) {
             }
           }
         }
-        setSpaceIdxMap(newSpaceIdxMap)
+        setViewIdxMap(newSpaceIdxMap)
         setListeningIdxSet(newListeningIdxSet)
       } else {
         console.warn('unexpected ws message', msg)
@@ -56,7 +56,7 @@ function App({ wsEndpoint }) {
 
   const handleSetSpace = useCallback(
     (idx, id) => {
-      const newSpaceIdxMap = new Map(spaceIdxMap)
+      const newSpaceIdxMap = new Map(viewIdxMap)
       if (id !== undefined) {
         newSpaceIdxMap.set(idx, id)
       } else {
@@ -68,7 +68,7 @@ function App({ wsEndpoint }) {
       ]).filter(([s, i]) => i)
       wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
     },
-    [streamData, spaceIdxMap],
+    [streamData, viewIdxMap],
   )
 
   const handleSetListening = useCallback((idx, listening) => {
@@ -96,7 +96,7 @@ function App({ wsEndpoint }) {
                   <GridInput
                     idx={idx}
                     onChangeSpace={handleSetSpace}
-                    spaceValue={spaceIdxMap.get(idx)}
+                    spaceValue={viewIdxMap.get(idx)}
                     isListening={listeningIdxSet.has(idx)}
                     onSetListening={handleSetListening}
                   />
