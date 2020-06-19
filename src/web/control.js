@@ -88,29 +88,31 @@ function App({ wsEndpoint }) {
       <div>
         connection status: {isConnected ? 'connected' : 'connecting...'}
       </div>
-      <div>
-        {range(0, 3).map((y) => (
-          <StyledGridLine>
-            {range(0, 3).map((x) => {
-              const idx = 3 * y + x
-              return (
-                <GridInput
-                  idx={idx}
-                  onChangeSpace={handleSetSpace}
-                  spaceValue={spaceIdxMap.get(idx)}
-                  isListening={listeningIdxSet.has(idx)}
-                  onSetListening={handleSetListening}
-                />
-              )
-            })}
-          </StyledGridLine>
-        ))}
-      </div>
-      <div>
-        {streamData
-          ? streamData.map((row) => <StreamLine id={row._id} row={row} />)
-          : 'loading...'}
-      </div>
+      <StyledDataContainer isConnected={isConnected}>
+        <div>
+          {range(0, 3).map((y) => (
+            <StyledGridLine>
+              {range(0, 3).map((x) => {
+                const idx = 3 * y + x
+                return (
+                  <GridInput
+                    idx={idx}
+                    onChangeSpace={handleSetSpace}
+                    spaceValue={spaceIdxMap.get(idx)}
+                    isListening={listeningIdxSet.has(idx)}
+                    onSetListening={handleSetListening}
+                  />
+                )
+              })}
+            </StyledGridLine>
+          ))}
+        </div>
+        <div>
+          {streamData
+            ? streamData.map((row) => <StreamLine id={row._id} row={row} />)
+            : 'loading...'}
+        </div>
+      </StyledDataContainer>
     </div>
   )
 }
@@ -181,6 +183,10 @@ function ListeningButton(props) {
     </StyledListeningButton>
   )
 }
+
+const StyledDataContainer = styled.div`
+  opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
+`
 
 const StyledGridLine = styled.div`
   display: flex;
