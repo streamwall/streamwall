@@ -1,5 +1,12 @@
 import { Machine, assign } from 'xstate'
 
+const savePosIfSameURL = {
+  actions: assign({
+    pos: (context, event) => event.pos,
+  }),
+  cond: 'urlUnchanged',
+}
+
 const viewStateMachine = Machine(
   {
     id: 'view',
@@ -36,12 +43,7 @@ const viewStateMachine = Machine(
           url: (context, event) => event.url,
         }),
         on: {
-          DISPLAY: {
-            actions: assign({
-              pos: (context, event) => event.pos,
-            }),
-            cond: 'urlUnchanged',
-          },
+          DISPLAY: savePosIfSameURL,
           RELOAD: '.loading',
         },
         states: {
@@ -105,6 +107,9 @@ const viewStateMachine = Machine(
       },
       error: {
         entry: 'logError',
+        on: {
+          DISPLAY: savePosIfSameURL,
+        },
       },
     },
   },
