@@ -74,7 +74,7 @@ async function main() {
     } else if (msg.type === 'browse') {
       if (!browseWindow || browseWindow.isDestroyed()) {
         browseWindow = new BrowserWindow({
-          webPreferences: { partition: 'persist:session' },
+          webPreferences: { partition: 'persist:session', sandbox: true },
         })
       }
       browseWindow.loadURL(msg.url)
