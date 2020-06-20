@@ -187,7 +187,7 @@ const viewStateMachine = Machine(
             video.autoPlay = true
             video.play()
             setInterval(() => video.play(), 1000)
-            const info = {title: document.title}
+            const info = { title: document.title }
             return info
           }
           waitForVideo()
