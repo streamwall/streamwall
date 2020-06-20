@@ -1,3 +1,4 @@
+import intersection from 'lodash/intersection'
 import EventEmitter from 'events'
 import { BrowserView, BrowserWindow, ipcMain } from 'electron'
 import { interpret } from 'xstate'
@@ -17,9 +18,10 @@ export default class StreamWindow extends EventEmitter {
   constructor() {
     super()
     this.win = null
+    this.offscreenWin = null
     this.overlayView = null
     this.views = []
-    this.viewStates = new Map()
+    this.viewActions = null
   }
 
   init() {
@@ -41,6 +43,14 @@ export default class StreamWindow extends EventEmitter {
     })
     this.win = win
 
+    const offscreenWin = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        offscreen: true,
+      },
+    })
+    this.offscreenWin = offscreenWin
+
     const overlayView = new BrowserView({
       webPreferences: {
         nodeIntegration: true,
@@ -56,10 +66,12 @@ export default class StreamWindow extends EventEmitter {
     overlayView.webContents.loadFile('overlay.html')
     this.overlayView = overlayView
 
-    const actions = {
-      hideView: (context, event) => {
+    this.viewActions = {
+      offscreenView: (context, event) => {
         const { view } = context
-        win.removeBrowserView(view)
+        // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
+        offscreenWin.addBrowserView(view)
+        view.setBounds({ x: 0, y: 0, width: SPACE_WIDTH, height: SPACE_HEIGHT })
       },
       positionView: (context, event) => {
         const { pos, view } = context
@@ -73,81 +85,92 @@ export default class StreamWindow extends EventEmitter {
       },
     }
 
-    const views = []
-    for (let idx = 0; idx <= 9; idx++) {
-      const view = new BrowserView({
-        webPreferences: { partition: 'persist:session', sandbox: true },
-      })
-      view.setBackgroundColor('#000')
-
-      const machine = viewStateMachine
-        .withContext({
-          ...viewStateMachine.context,
-          view,
-          parentWin: win,
-          overlayView,
-        })
-        .withConfig({ actions })
-      const service = interpret(machine).start()
-      service.onTransition((state) => this.handleViewTransition(idx, state))
-
-      views.push(service)
-    }
-    this.views = views
-
     ipcMain.on('devtools-overlay', () => {
       overlayView.webContents.openDevTools()
     })
   }
 
-  handleViewTransition(idx, state) {
-    const viewState = {
-      state: state.value,
-      context: {
-        url: state.context.url,
-        info: state.context.info,
-        pos: state.context.pos,
-      },
-    }
-    this.viewStates.set(idx, viewState)
-    this.emit('state', [...this.viewStates.values()])
+  createView() {
+    const { win, overlayView, viewActions } = this
+    const view = new BrowserView({
+      webPreferences: { partition: 'persist:session', sandbox: true },
+    })
+    view.setBackgroundColor('#000')
+
+    const machine = viewStateMachine
+      .withContext({
+        ...viewStateMachine.context,
+        view,
+        parentWin: win,
+        overlayView,
+      })
+      .withConfig({ actions: viewActions })
+    const service = interpret(machine).start()
+    service.onTransition(this.emitState.bind(this))
+
+    return service
+  }
+
+  emitState() {
+    this.emit(
+      'state',
+      this.views.map(({ state }) => ({
+        state: state.value,
+        context: {
+          url: state.context.url,
+          info: state.context.info,
+          pos: state.context.pos,
+        },
+      })),
+    )
   }
 
   setViews(viewURLMap) {
-    const { views } = this
+    const { win, views } = this
     const boxes = boxesFromViewURLMap(GRID_COUNT, GRID_COUNT, viewURLMap)
     const remainingBoxes = new Set(boxes.filter(({ url }) => url))
 
     const unusedViews = new Set(views)
     const viewsToDisplay = []
 
+    // We try to find the best match for moving / reusing existing views to match the new positions.
     const matchers = [
-      // First try to find a loaded view of the same URL...
-      (v, url) =>
-        unusedViews.has(v) &&
+      // First try to find a loaded view of the same URL in the same space...
+      (v, url, spaces) =>
         v.state.context.url === url &&
-        v.state.matches('displaying.running'),
+        v.state.matches('displaying.running') &&
+        intersection(v.state.context.pos.spaces, spaces).length > 0,
+      // Then try to find a loaded view of the same URL...
+      (v, url) =>
+        v.state.context.url === url && v.state.matches('displaying.running'),
       // Then try view with the same URL that is still loading...
-      (v, url) => unusedViews.has(v) && v.state.context.url === url,
-      // If none could be found, try an unused view.
-      (v) => unusedViews.has(v),
-      () => {
-        throw new Error('could not find a usable view')
-      },
+      (v, url) => v.state.context.url === url,
     ]
 
     for (const matcher of matchers) {
       for (const box of remainingBoxes) {
-        const { url } = box
-        const view = views.find((v) => matcher(v, url))
-        if (view) {
-          viewsToDisplay.push({ box, view })
-          unusedViews.delete(view)
+        const { url, spaces } = box
+        let foundView
+        for (const view of unusedViews) {
+          if (matcher(view, url, spaces)) {
+            foundView = view
+            break
+          }
+        }
+        if (foundView) {
+          viewsToDisplay.push({ box, view: foundView })
+          unusedViews.delete(foundView)
           remainingBoxes.delete(box)
         }
       }
     }
 
+    for (const box of remainingBoxes) {
+      const view = this.createView()
+      viewsToDisplay.push({ box, view })
+    }
+
+    const newViews = []
     for (const { box, view } of viewsToDisplay) {
       const { url, x, y, w, h, spaces } = box
       const pos = {
@@ -158,11 +181,15 @@ export default class StreamWindow extends EventEmitter {
         spaces,
       }
       view.send({ type: 'DISPLAY', pos, url })
+      newViews.push(view)
     }
-
     for (const view of unusedViews) {
-      view.send('CLEAR')
+      const browserView = view.state.context.view
+      win.removeBrowserView(browserView)
+      browserView.destroy()
     }
+    this.views = newViews
+    this.emitState()
   }
 
   setListeningView(viewIdx) {

@@ -11,23 +11,10 @@ const viewStateMachine = Machine(
       info: {},
     },
     on: {
-      CLEAR: 'empty',
       DISPLAY: 'displaying',
     },
     states: {
-      empty: {
-        entry: assign({
-          pos: {},
-          info: {},
-          url: null,
-        }),
-        invoke: {
-          src: 'clearView',
-          onError: {
-            target: '#view.displaying.error',
-          },
-        },
-      },
+      empty: {},
       displaying: {
         id: 'displaying',
         initial: 'loading',
@@ -47,6 +34,7 @@ const viewStateMachine = Machine(
         states: {
           loading: {
             initial: 'page',
+            entry: 'offscreenView',
             states: {
               page: {
                 invoke: {
@@ -78,7 +66,6 @@ const viewStateMachine = Machine(
           running: {
             initial: 'muted',
             entry: 'positionView',
-            exit: 'hideView',
             on: {
               DISPLAY: {
                 actions: [
@@ -126,9 +113,6 @@ const viewStateMachine = Machine(
       },
     },
     services: {
-      clearView: async (context, event) => {
-        await context.view.webContents.loadURL('about:blank')
-      },
       loadURL: async (context, event) => {
         const { url, view } = context
         const wc = view.webContents
