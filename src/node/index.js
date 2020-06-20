@@ -2,7 +2,7 @@ import fs from 'fs'
 import yargs from 'yargs'
 import { app, shell, BrowserWindow } from 'electron'
 
-import { pollPublicData, pollSpreadsheetData, processData } from './data'
+import { pollPublicData, pollSpreadsheetData, StreamIDGenerator } from './data'
 import StreamWindow from './StreamWindow'
 import initWebServer from './server'
 
@@ -49,12 +49,14 @@ async function main() {
     })
     .help().argv
 
+  const idGen = new StreamIDGenerator()
+
   const streamWindow = new StreamWindow()
   streamWindow.init()
 
   let browseWindow = null
 
-  const clientState = {}
+  const clientState = { streams: [], customStreams: [], views: [] }
   const getInitialState = () => clientState
   let broadcastState = () => {}
   const onMessage = (msg) => {
@@ -62,6 +64,11 @@ async function main() {
       streamWindow.setViews(new Map(msg.views))
     } else if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
+    } else if (msg.type === 'set-custom-streams') {
+      const customIDGen = new StreamIDGenerator(idGen)
+      clientState.customStreams = customIDGen.process(msg.streams)
+      streamWindow.send('state', clientState)
+      broadcastState(clientState)
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse') {
@@ -90,8 +97,8 @@ async function main() {
   }
 
   streamWindow.on('state', (viewStates) => {
-    streamWindow.send('view-states', viewStates)
     clientState.views = viewStates
+    streamWindow.send('state', clientState)
     broadcastState(clientState)
   })
 
@@ -102,9 +109,10 @@ async function main() {
     dataGen = pollPublicData()
   }
 
-  for await (const streams of processData(dataGen)) {
-    streamWindow.send('stream-data', streams)
+  for await (const rawStreams of dataGen) {
+    const streams = idGen.process(rawStreams)
     clientState.streams = streams
+    streamWindow.send('state', clientState)
     broadcastState(clientState)
   }
 }

@@ -46,28 +46,34 @@ export async function* pollSpreadsheetData(creds, sheetId, tabName) {
   }
 }
 
-export async function* processData(dataGen) {
-  // Give each stream a unique and recognizable short id.
-  const idMap = new Map()
-  for await (const data of dataGen) {
-    for (const stream of data) {
-      const { Link, Source } = stream
+export class StreamIDGenerator {
+  constructor(parent) {
+    this.idMap = new Map(parent ? parent.idMap : null)
+    this.idSet = new Set(this.idMap.values())
+  }
+
+  process(streams) {
+    const { idMap, idSet } = this
+    for (const stream of streams) {
+      const { Link, Source, Label } = stream
       if (!idMap.has(Link)) {
         let counter = 0
         let newId
-        const normalizedSource = Source.toLowerCase()
+        const normalizedText = (Source || Label || Link)
+          .toLowerCase()
           .replace(/[^\w]/g, '')
           .replace(/^the|^https?(www)?/, '')
         do {
-          const sourcePart = normalizedSource.substr(0, 3).toLowerCase()
-          const counterPart = counter === 0 ? '' : counter
-          newId = `${sourcePart}${counterPart}`
+          const textPart = normalizedText.substr(0, 3).toLowerCase()
+          const counterPart = counter === 0 && textPart ? '' : counter
+          newId = `${textPart}${counterPart}`
           counter++
-        } while (idMap.has(newId))
+        } while (idSet.has(newId))
         idMap.set(Link, newId)
+        idSet.add(newId)
       }
       stream._id = idMap.get(Link)
     }
-    yield data
+    return streams
   }
 }

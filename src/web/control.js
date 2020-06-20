@@ -1,6 +1,6 @@
 import range from 'lodash/range'
 import ReconnectingWebSocket from 'reconnecting-websocket'
-import { h, render } from 'preact'
+import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { State } from 'xstate'
 import styled, { css } from 'styled-components'
@@ -28,7 +28,8 @@ function emptyStateIdxMap() {
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
-  const [streamData, setStreamData] = useState()
+  const [streams, setStreams] = useState([])
+  const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(emptyStateIdxMap())
 
   useEffect(() => {
@@ -42,14 +43,19 @@ function App({ wsEndpoint }) {
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
-        const { streams, views } = msg.state
+        const {
+          streams: newStreams,
+          views,
+          customStreams: newCustomStreams,
+        } = msg.state
         const newStateIdxMap = emptyStateIdxMap()
+        const allStreams = [...newStreams, ...newCustomStreams]
         for (const viewState of views) {
           const { pos, url } = viewState.context
           if (!url) {
             continue
           }
-          const streamId = streams.find((d) => d.Link === url)?._id
+          const streamId = allStreams.find((d) => d.Link === url)?._id
           const state = State.from(viewState.state)
           const isListening = state.matches('displaying.running.listening')
           for (const space of pos.spaces) {
@@ -62,7 +68,8 @@ function App({ wsEndpoint }) {
           }
         }
         setStateIdxMap(newStateIdxMap)
-        setStreamData(streams)
+        setStreams(newStreams)
+        setCustomStreams(newCustomStreams)
       } else {
         console.warn('unexpected ws message', msg)
       }
@@ -73,7 +80,8 @@ function App({ wsEndpoint }) {
   const handleSetView = useCallback(
     (idx, streamId) => {
       const newSpaceIdxMap = new Map(stateIdxMap)
-      const url = streamData.find((d) => d._id === streamId)?.Link
+      const url = [...streams, ...customStreams].find((d) => d._id === streamId)
+        ?.Link
       if (url) {
         newSpaceIdxMap.set(idx, {
           ...newSpaceIdxMap.get(idx),
@@ -93,7 +101,7 @@ function App({ wsEndpoint }) {
       ])
       wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
     },
-    [streamData, stateIdxMap],
+    [streams, customStreams, stateIdxMap],
   )
 
   const handleSetListening = useCallback((idx, listening) => {
@@ -122,6 +130,18 @@ function App({ wsEndpoint }) {
       }),
     )
   }, [])
+
+  const handleChangeCustomStream = useCallback((idx, customStream) => {
+    let newCustomStreams = [...customStreams]
+    newCustomStreams[idx] = customStream
+    newCustomStreams = newCustomStreams.filter((s) => s.Link)
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'set-custom-streams',
+        streams: newCustomStreams,
+      }),
+    )
+  })
 
   return (
     <div>
@@ -157,21 +177,47 @@ function App({ wsEndpoint }) {
           ))}
         </div>
         <div>
-          {streamData
-            ? streamData.map((row) => <StreamLine id={row._id} row={row} />)
+          {isConnected
+            ? [...streams, ...customStreams.values()].map((row) => (
+                <StreamLine id={row._id} row={row} />
+              ))
             : 'loading...'}
+        </div>
+        <h2>Custom Streams</h2>
+        <div>
+          {/*
+            Include an empty object at the end to create an extra input for a new custom stream.
+            We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
+           */}
+          {[...customStreams, { Link: '', Label: '' }].map(
+            ({ Link, Label }, idx) => (
+              <CustomStreamInput
+                key={idx}
+                idx={idx}
+                Link={Link}
+                Label={Label}
+                onChange={handleChangeCustomStream}
+              />
+            ),
+          )}
         </div>
       </StyledDataContainer>
     </div>
   )
 }
 
-function StreamLine({ id, row: { Source, Title, Link, Notes } }) {
+function StreamLine({ id, row: { Label, Source, Title, Link, Notes } }) {
   return (
     <StyledStreamLine>
       <StyledId>{id}</StyledId>
       <div>
-        <strong>{Source}</strong> <a href={Link}>{Title || Link}</a> {Notes}
+        {Label ? (
+          Label
+        ) : (
+          <>
+            <strong>{Source}</strong> <a href={Link}>{Title || Link}</a> {Notes}
+          </>
+        )}
       </div>
     </StyledStreamLine>
   )
@@ -247,6 +293,35 @@ function GridInput({
         onChange={handleChange}
       />
     </StyledGridContainer>
+  )
+}
+
+function CustomStreamInput({ idx, onChange, ...props }) {
+  const handleChangeLink = useCallback(
+    (ev) => {
+      onChange(idx, { ...props, Link: ev.target.value })
+    },
+    [onChange],
+  )
+  const handleChangeLabel = useCallback(
+    (ev) => {
+      onChange(idx, { ...props, Label: ev.target.value })
+    },
+    [onChange],
+  )
+  return (
+    <div>
+      <input
+        onChange={handleChangeLink}
+        placeholder="https://..."
+        value={props.Link}
+      />
+      <input
+        onChange={handleChangeLabel}
+        placeholder="Label (optional)"
+        value={props.Label}
+      />
+    </div>
   )
 }
 

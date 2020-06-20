@@ -20,22 +20,30 @@ Mousetrap.bind('ctrl+shift+i', () => {
   ipcRenderer.send('devtools-overlay')
 })
 
-function Overlay({ spaces, streamData }) {
-  const activeSpaces = spaces.filter((s) => s.matches('displaying'))
+function Overlay({ views, streams, customStreams }) {
+  const activeViews = views
+    .map(({ state, context }) => State.from(state, context))
+    .filter((s) => s.matches('displaying'))
   return (
     <div>
-      {activeSpaces.map((spaceState) => {
-        const { url, pos } = spaceState.context
-        const data = streamData.find((d) => url === d.Link)
-        const isListening = spaceState.matches('displaying.running.listening')
-        const isLoading = spaceState.matches('displaying.loading')
+      {activeViews.map((viewState) => {
+        const { url, pos } = viewState.context
+        const data = [...streams, ...customStreams].find((d) => url === d.Link)
+        const isListening = viewState.matches('displaying.running.listening')
+        const isLoading = viewState.matches('displaying.loading')
         return (
           <SpaceBorder pos={pos} isListening={isListening}>
             {data && (
               <StreamTitle isListening={isListening}>
                 <StreamIcon url={url} />
                 <span>
-                  {data.Source} &ndash; {data.City} {data.State}
+                  {data.hasOwnProperty('Label') ? (
+                    data.Label
+                  ) : (
+                    <>
+                      {data.Source} &ndash; {data.City} {data.State}
+                    </>
+                  )}
                 </span>
               </StreamTitle>
             )}
@@ -49,21 +57,22 @@ function Overlay({ spaces, streamData }) {
 }
 
 function App() {
-  const [spaces, setSpaces] = useState([])
-  const [streamData, setStreamData] = useState([])
+  const [state, setState] = useState({
+    views: [],
+    streams: [],
+    customStreams: [],
+  })
 
   useEffect(() => {
-    ipcRenderer.on('view-states', (ev, viewStates) => {
-      setSpaces(
-        viewStates.map(({ state, context }) => State.from(state, context)),
-      )
-    })
-    ipcRenderer.on('stream-data', (ev, data) => {
-      setStreamData(data)
+    ipcRenderer.on('state', (ev, state) => {
+      setState(state)
     })
   }, [])
 
-  return <Overlay spaces={spaces} streamData={streamData} />
+  const { views, streams, customStreams } = state
+  return (
+    <Overlay views={views} streams={streams} customStreams={customStreams} />
+  )
 }
 
 function StreamIcon({ url, ...props }) {
