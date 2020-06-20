@@ -70,6 +70,7 @@ export default class StreamWindow extends EventEmitter {
       offscreenView: (context, event) => {
         const { view } = context
         // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
+        win.removeBrowserView(view)
         offscreenWin.addBrowserView(view)
         view.setBounds({ x: 0, y: 0, width: SPACE_WIDTH, height: SPACE_HEIGHT })
       },
