@@ -385,6 +385,7 @@ const StyledGridButtons = styled.div`
 
   ${StyledButton} {
     margin: 5px;
+    ${({ side }) => (side === 'left' ? 'margin-right: 0' : 'margin-left: 0')};
   }
 `
 
