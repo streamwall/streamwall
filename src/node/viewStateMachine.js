@@ -1,12 +1,5 @@
 import { Machine, assign } from 'xstate'
 
-const savePosIfSameURL = {
-  actions: assign({
-    pos: (context, event) => event.pos,
-  }),
-  cond: 'urlUnchanged',
-}
-
 const viewStateMachine = Machine(
   {
     id: 'view',
@@ -31,7 +24,7 @@ const viewStateMachine = Machine(
         invoke: {
           src: 'clearView',
           onError: {
-            target: '#view.error',
+            target: '#view.displaying.error',
           },
         },
       },
@@ -43,7 +36,12 @@ const viewStateMachine = Machine(
           url: (context, event) => event.url,
         }),
         on: {
-          DISPLAY: savePosIfSameURL,
+          DISPLAY: {
+            actions: assign({
+              pos: (context, event) => event.pos,
+            }),
+            cond: 'urlUnchanged',
+          },
           RELOAD: '.loading',
         },
         states: {
@@ -57,7 +55,7 @@ const viewStateMachine = Machine(
                     target: 'video',
                   },
                   onError: {
-                    target: '#view.error',
+                    target: '#view.displaying.error',
                   },
                 },
               },
@@ -71,7 +69,7 @@ const viewStateMachine = Machine(
                     }),
                   },
                   onError: {
-                    target: '#view.error',
+                    target: '#view.displaying.error',
                   },
                 },
               },
@@ -103,12 +101,9 @@ const viewStateMachine = Machine(
               },
             },
           },
-        },
-      },
-      error: {
-        entry: 'logError',
-        on: {
-          DISPLAY: savePosIfSameURL,
+          error: {
+            entry: 'logError',
+          },
         },
       },
     },

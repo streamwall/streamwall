@@ -23,7 +23,7 @@ Mousetrap.bind('ctrl+shift+i', () => {
 function Overlay({ views, streams, customStreams }) {
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
-    .filter((s) => s.matches('displaying'))
+    .filter((s) => s.matches('displaying') && !s.matches('displaying.error'))
   return (
     <div>
       {activeViews.map((viewState) => {

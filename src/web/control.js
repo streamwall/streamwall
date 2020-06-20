@@ -164,7 +164,7 @@ function App({ wsEndpoint }) {
                     url={url}
                     onChangeSpace={handleSetView}
                     spaceValue={streamId}
-                    isError={state.matches('error')}
+                    isError={state.matches('displaying.error')}
                     isDisplaying={state.matches('displaying')}
                     isListening={isListening}
                     onSetListening={handleSetListening}
