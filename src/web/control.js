@@ -268,18 +268,16 @@ function GridInput({
   })
   return (
     <StyledGridContainer>
-      <StyledGridButtons side="left">
-        {isDisplaying && (
+      {isDisplaying && (
+        <StyledGridButtons side="left">
           <StyledButton onClick={handleReloadClick}>
             <ReloadIcon />
           </StyledButton>
-        )}
-        {isError && (
           <StyledButton onClick={handleBrowseClick}>
             <LifeRingIcon />
           </StyledButton>
-        )}
-      </StyledGridButtons>
+        </StyledGridButtons>
+      )}
       <StyledGridButtons side="right">
         <ListeningButton
           isListening={isListening}
