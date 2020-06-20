@@ -153,12 +153,9 @@ const viewStateMachine = Machine(
         const info = await wc.executeJavaScript(`
           const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
           async function waitForVideo() {
-            // Give the client side a little time to load. In particular, YouTube seems to need a delay.
-            await sleep(1000)
-
             let tries = 0
             let video
-            while (!video && tries < 20) {
+            while ((!video || !video.src) && tries < 20) {
               video = document.querySelector('video')
               tries++
               await sleep(200)
