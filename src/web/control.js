@@ -215,7 +215,11 @@ function StreamLine({ id, row: { Label, Source, Title, Link, Notes } }) {
           Label
         ) : (
           <>
-            <strong>{Source}</strong> <a href={Link}>{Title || Link}</a> {Notes}
+            <strong>{Source}</strong>{' '}
+            <a href={Link} target="_blank">
+              {Title || Link}
+            </a>{' '}
+            {Notes}
           </>
         )}
       </div>
