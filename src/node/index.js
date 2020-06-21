@@ -42,7 +42,7 @@ async function main() {
     .option('password', {
       describe: 'Web control server password',
     })
-    .option('open-control', {
+    .option('open', {
       describe: 'After launching, open the control website in a browser',
       boolean: true,
       default: true,
@@ -91,7 +91,7 @@ async function main() {
       getInitialState,
       onMessage,
     }))
-    if (argv.openControl) {
+    if (argv.open) {
       shell.openExternal(argv.webserver)
     }
   }
