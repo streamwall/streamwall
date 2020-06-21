@@ -29,7 +29,7 @@ async function main() {
     )
     .option('webserver', {
       describe: 'Enable control webserver and specify the URL',
-      implies: ['cert-dir', 'email', 'username', 'password'],
+      implies: ['username', 'password'],
     })
     .option('hostname', {
       describe: 'Override hostname the control server listens on',
@@ -40,6 +40,7 @@ async function main() {
     })
     .option('cert-dir', {
       describe: 'Private directory to store SSL certificate in',
+      implies: ['email'],
     })
     .option('cert-production', {
       describe: 'Obtain a real SSL certificate using production servers',
