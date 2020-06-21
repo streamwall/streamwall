@@ -95,7 +95,12 @@ export default class StreamWindow extends EventEmitter {
   createView() {
     const { win, overlayView, viewActions } = this
     const view = new BrowserView({
-      webPreferences: { partition: 'persist:session', sandbox: true },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        partition: 'persist:session',
+        sandbox: true,
+      },
     })
     view.setBackgroundColor('#000')
 
