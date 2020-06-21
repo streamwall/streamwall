@@ -27,6 +27,7 @@ export default class StreamWindow extends EventEmitter {
 
   init() {
     const win = new BrowserWindow({
+      title: 'Streamwall',
       width: WIDTH,
       height: HEIGHT,
       backgroundColor: '#000',
