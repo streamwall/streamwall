@@ -119,6 +119,16 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
+  const handleClickId = useCallback((streamId) => {
+    const availableIdx = range(GRID_COUNT * GRID_COUNT).find(
+      (i) => !stateIdxMap.has(i),
+    )
+    if (availableIdx === undefined) {
+      return
+    }
+    handleSetView(availableIdx, streamId)
+  })
+
   const handleChangeCustomStream = useCallback((idx, customStream) => {
     let newCustomStreams = [...customStreams]
     newCustomStreams[idx] = customStream
@@ -170,7 +180,7 @@ function App({ wsEndpoint }) {
         <div>
           {isConnected
             ? [...streams, ...customStreams.values()].map((row) => (
-                <StreamLine id={row._id} row={row} />
+                <StreamLine id={row._id} row={row} onClickId={handleClickId} />
               ))
             : 'loading...'}
         </div>
@@ -198,10 +208,17 @@ function App({ wsEndpoint }) {
   )
 }
 
-function StreamLine({ id, row: { Label, Source, Title, Link, Notes } }) {
+function StreamLine({
+  id,
+  row: { Label, Source, Title, Link, Notes },
+  onClickId,
+}) {
+  const handleClickId = useCallback(() => {
+    onClickId(id)
+  })
   return (
     <StyledStreamLine>
-      <StyledId>{id}</StyledId>
+      <StyledId onClick={handleClickId}>{id}</StyledId>
       <div>
         {Label ? (
           Label
@@ -412,6 +429,7 @@ const StyledId = styled.div`
   border-radius: 5px;
   width: 3em;
   text-align: center;
+  cursor: pointer;
 `
 
 const StyledStreamLine = styled.div`
