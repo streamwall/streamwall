@@ -79,6 +79,7 @@ function initApp({ username, password, baseURL, getInitialState, onMessage }) {
 
 export default async function initWebServer({
   certDir,
+  certProduction,
   email,
   url: baseURL,
   hostname: overrideHostname,
@@ -110,7 +111,7 @@ export default async function initWebServer({
       dataDir: certDir,
       commonName: hostname,
       email,
-      production: process.env.NODE_DEV === 'production',
+      production: certProduction,
       serverHost: overrideHostname || hostname,
     })
     server = https.createServer({ key, cert }, app.callback())

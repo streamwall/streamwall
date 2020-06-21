@@ -41,6 +41,9 @@ async function main() {
     .option('cert-dir', {
       describe: 'Private directory to store SSL certificate in',
     })
+    .option('cert-production', {
+      describe: 'Obtain a real SSL certificate using production servers',
+    })
     .option('email', {
       describe: 'Email for owner of SSL certificate',
     })
@@ -105,6 +108,7 @@ async function main() {
   if (argv.webserver) {
     ;({ broadcastState } = await initWebServer({
       certDir: argv.certDir,
+      certProduction: argv.certProduction,
       email: argv.email,
       url: argv.webserver,
       hostname: argv.hostname,
