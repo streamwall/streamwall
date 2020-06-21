@@ -122,31 +122,40 @@ const viewStateMachine = Machine(
         if (content.kind === 'video') {
           wc.insertCSS(
             `
-          * {
-            display: none !important;
-            pointer-events: none;
-          }
-          html, body, video {
-            display: block !important;
-            background: black !important;
-          }
-          html, body {
-            overflow: hidden !important;
-            background: black !important;
-          }
-          video {
-            display: block !important;
-            position: fixed !important;
-            left: 0 !important;
-            right: 0 !important;
-            top: 0 !important;
-            bottom: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover !important;
-            z-index: 999999 !important;
-          }
-        `,
+            * {
+              display: none !important;
+              pointer-events: none;
+            }
+            html, body, video {
+              display: block !important;
+              background: black !important;
+            }
+            html, body {
+              overflow: hidden !important;
+              background: black !important;
+            }
+            video {
+              display: block !important;
+              position: fixed !important;
+              left: 0 !important;
+              right: 0 !important;
+              top: 0 !important;
+              bottom: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+              object-fit: cover !important;
+              z-index: 999999 !important;
+            }
+            `,
+            { cssOrigin: 'user' },
+          )
+        } else if (content.kind === 'web') {
+          wc.insertCSS(
+            `
+            html, body {
+              overflow: hidden !important;
+            }
+            `,
             { cssOrigin: 'user' },
           )
         }
