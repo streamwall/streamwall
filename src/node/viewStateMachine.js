@@ -1,6 +1,8 @@
 import isEqual from 'lodash/isEqual'
 import { Machine, assign } from 'xstate'
 
+import { ensureValidURL } from '../util'
+
 const viewStateMachine = Machine(
   {
     id: 'view',
@@ -116,6 +118,7 @@ const viewStateMachine = Machine(
     services: {
       loadPage: async (context, event) => {
         const { content, view } = context
+        ensureValidURL(content.url)
         const wc = view.webContents
         wc.audioMuted = true
         await wc.loadURL(content.url)

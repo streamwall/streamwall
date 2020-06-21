@@ -2,6 +2,7 @@ import fs from 'fs'
 import yargs from 'yargs'
 import { app, shell, session, BrowserWindow } from 'electron'
 
+import { ensureValidURL } from '../util'
 import { pollPublicData, pollSpreadsheetData, StreamIDGenerator } from './data'
 import StreamWindow from './StreamWindow'
 import initWebServer from './server'
@@ -79,6 +80,7 @@ async function main() {
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse') {
+      ensureValidURL(msg.url)
       if (!browseWindow || browseWindow.isDestroyed()) {
         browseWindow = new BrowserWindow({
           webPreferences: {
