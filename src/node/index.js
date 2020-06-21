@@ -1,6 +1,6 @@
 import fs from 'fs'
 import yargs from 'yargs'
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, session, BrowserWindow } from 'electron'
 
 import { pollPublicData, pollSpreadsheetData, StreamIDGenerator } from './data'
 import StreamWindow from './StreamWindow'
@@ -48,6 +48,13 @@ async function main() {
       default: true,
     })
     .help().argv
+
+  // Reject all permission requests from web content.
+  session
+    .fromPartition('persist:session')
+    .setPermissionRequestHandler((webContents, permission, callback) => {
+      callback(false)
+    })
 
   const idGen = new StreamIDGenerator()
 
