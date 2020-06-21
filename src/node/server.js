@@ -90,7 +90,7 @@ export default async function initWebServer({
 }) {
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
-    port = protocol === 'https' ? 443 : 80
+    port = protocol === 'https:' ? 443 : 80
   }
   if (overridePort) {
     port = overridePort
