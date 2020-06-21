@@ -92,9 +92,6 @@ export default async function initWebServer({
   if (!port) {
     port = protocol === 'https' ? 443 : 80
   }
-  if (overrideHostname) {
-    hostname = overrideHostname
-  }
   if (overridePort) {
     port = overridePort
   }
@@ -114,7 +111,7 @@ export default async function initWebServer({
       commonName: hostname,
       email,
       production: process.env.NODE_DEV === 'production',
-      serverHost: hostname,
+      serverHost: overrideHostname || hostname,
     })
     server = https.createServer({ key, cert }, app.callback())
   } else {
@@ -122,7 +119,7 @@ export default async function initWebServer({
   }
 
   const listen = promisify(server.listen).bind(server)
-  await listen(port, hostname)
+  await listen(port, overrideHostname || hostname)
 
   return { broadcastState }
 }
