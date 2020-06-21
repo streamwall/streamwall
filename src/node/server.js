@@ -81,6 +81,8 @@ export default async function initWebServer({
   certDir,
   email,
   url: baseURL,
+  hostname: overrideHostname,
+  port: overridePort,
   username,
   password,
   getInitialState,
@@ -89,6 +91,12 @@ export default async function initWebServer({
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
     port = protocol === 'https' ? 443 : 80
+  }
+  if (overrideHostname) {
+    hostname = overrideHostname
+  }
+  if (overridePort) {
+    port = overridePort
   }
 
   const { app, broadcastState } = initApp({

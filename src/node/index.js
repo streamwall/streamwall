@@ -31,6 +31,13 @@ async function main() {
       describe: 'Enable control webserver and specify the URL',
       implies: ['cert-dir', 'email', 'username', 'password'],
     })
+    .option('hostname', {
+      describe: 'Override hostname the control server listens on',
+    })
+    .option('port', {
+      describe: 'Override port the control server listens on',
+      number: true,
+    })
     .option('cert-dir', {
       describe: 'Private directory to store SSL certificate in',
     })
@@ -100,6 +107,8 @@ async function main() {
       certDir: argv.certDir,
       email: argv.email,
       url: argv.webserver,
+      hostname: argv.hostname,
+      port: argv.port,
       username: argv.username,
       password: argv.password,
       getInitialState,
