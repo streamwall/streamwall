@@ -168,6 +168,10 @@ const viewStateMachine = Machine(
             video.autoPlay = true
             video.play()
             setInterval(() => video.play(), 1000)
+
+            // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
+            Object.defineProperty(video, 'muted', {writable: false, value: false})
+
             const info = { title: document.title }
             return info
           }
