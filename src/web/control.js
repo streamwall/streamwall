@@ -11,26 +11,12 @@ import SoundIcon from '../static/volume-up-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 
-function emptyStateIdxMap() {
-  return new Map(
-    range(GRID_COUNT * GRID_COUNT).map((idx) => [
-      idx,
-      {
-        streamId: null,
-        url: null,
-        state: State.from({}),
-        isListening: false,
-      },
-    ]),
-  )
-}
-
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
-  const [stateIdxMap, setStateIdxMap] = useState(emptyStateIdxMap())
+  const [stateIdxMap, setStateIdxMap] = useState(new Map())
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -48,20 +34,21 @@ function App({ wsEndpoint }) {
           views,
           customStreams: newCustomStreams,
         } = msg.state
-        const newStateIdxMap = emptyStateIdxMap()
+        const newStateIdxMap = new Map()
         const allStreams = [...newStreams, ...newCustomStreams]
         for (const viewState of views) {
-          const { pos, url } = viewState.context
-          if (!url) {
-            continue
-          }
-          const streamId = allStreams.find((d) => d.Link === url)?._id
+          const { pos, content } = viewState.context
+          const stream = allStreams.find((d) => d.Link === content.url)
+          const streamId = stream?._id
           const state = State.from(viewState.state)
           const isListening = state.matches('displaying.running.listening')
           for (const space of pos.spaces) {
+            if (!newStateIdxMap.has(space)) {
+              newStateIdxMap.set(space, {})
+            }
             Object.assign(newStateIdxMap.get(space), {
               streamId,
-              url,
+              content,
               state,
               isListening,
             })
@@ -80,24 +67,25 @@ function App({ wsEndpoint }) {
   const handleSetView = useCallback(
     (idx, streamId) => {
       const newSpaceIdxMap = new Map(stateIdxMap)
-      const url = [...streams, ...customStreams].find((d) => d._id === streamId)
-        ?.Link
-      if (url) {
+      const stream = [...streams, ...customStreams].find(
+        (d) => d._id === streamId,
+      )
+      if (stream) {
+        const content = {
+          url: stream?.Link,
+          kind: stream?.Kind || 'video',
+        }
         newSpaceIdxMap.set(idx, {
           ...newSpaceIdxMap.get(idx),
           streamId,
-          url,
+          content,
         })
       } else {
-        newSpaceIdxMap.set(idx, {
-          ...newSpaceIdxMap.get(idx),
-          streamId: null,
-          url: null,
-        })
+        newSpaceIdxMap.delete(idx)
       }
-      const views = Array.from(newSpaceIdxMap, ([space, { url }]) => [
+      const views = Array.from(newSpaceIdxMap, ([space, { content }]) => [
         space,
-        url,
+        content,
       ])
       wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
     },
@@ -155,18 +143,21 @@ function App({ wsEndpoint }) {
             <StyledGridLine>
               {range(0, 3).map((x) => {
                 const idx = 3 * y + x
-                const { streamId, isListening, url, state } = stateIdxMap.get(
-                  idx,
-                )
+                const {
+                  streamId = '',
+                  isListening = false,
+                  content = { url: '' },
+                  state,
+                } = stateIdxMap.get(idx) || {}
                 return (
                   <GridInput
                     idx={idx}
-                    url={url}
-                    onChangeSpace={handleSetView}
+                    url={content.url}
                     spaceValue={streamId}
-                    isError={state.matches('displaying.error')}
-                    isDisplaying={state.matches('displaying')}
+                    isError={state && state.matches('displaying.error')}
+                    isDisplaying={state && state.matches('displaying')}
                     isListening={isListening}
+                    onChangeSpace={handleSetView}
                     onSetListening={handleSetListening}
                     onReloadView={handleReloadView}
                     onBrowse={handleBrowse}
@@ -189,13 +180,14 @@ function App({ wsEndpoint }) {
             Include an empty object at the end to create an extra input for a new custom stream.
             We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
            */}
-          {[...customStreams, { Link: '', Label: '' }].map(
-            ({ Link, Label }, idx) => (
+          {[...customStreams, { Link: '', Label: '', Kind: 'video' }].map(
+            ({ Link, Label, Kind }, idx) => (
               <CustomStreamInput
                 key={idx}
                 idx={idx}
                 Link={Link}
                 Label={Label}
+                Kind={Kind}
                 onChange={handleChangeCustomStream}
               />
             ),
@@ -311,6 +303,12 @@ function CustomStreamInput({ idx, onChange, ...props }) {
     },
     [onChange],
   )
+  const handleChangeKind = useCallback(
+    (ev) => {
+      onChange(idx, { ...props, Kind: ev.target.value })
+    },
+    [onChange],
+  )
   return (
     <div>
       <input
@@ -323,6 +321,10 @@ function CustomStreamInput({ idx, onChange, ...props }) {
         placeholder="Label (optional)"
         value={props.Label}
       />
+      <select onChange={handleChangeKind} value={props.Kind}>
+        <option value="video">video</option>
+        <option value="web">web</option>
+      </select>
     </div>
   )
 }

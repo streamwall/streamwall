@@ -1,10 +1,11 @@
+import isEqual from 'lodash/isEqual'
 import intersection from 'lodash/intersection'
 import EventEmitter from 'events'
 import { BrowserView, BrowserWindow, ipcMain } from 'electron'
 import { interpret } from 'xstate'
 
 import viewStateMachine from './viewStateMachine'
-import { boxesFromViewURLMap } from './geometry'
+import { boxesFromViewContentMap } from './geometry'
 
 import {
   WIDTH,
@@ -118,7 +119,7 @@ export default class StreamWindow extends EventEmitter {
       this.views.map(({ state }) => ({
         state: state.value,
         context: {
-          url: state.context.url,
+          content: state.context.content,
           info: state.context.info,
           pos: state.context.pos,
         },
@@ -126,34 +127,38 @@ export default class StreamWindow extends EventEmitter {
     )
   }
 
-  setViews(viewURLMap) {
+  setViews(viewContentMap) {
     const { win, views } = this
-    const boxes = boxesFromViewURLMap(GRID_COUNT, GRID_COUNT, viewURLMap)
-    const remainingBoxes = new Set(boxes.filter(({ url }) => url))
-
+    const boxes = boxesFromViewContentMap(
+      GRID_COUNT,
+      GRID_COUNT,
+      viewContentMap,
+    )
+    const remainingBoxes = new Set(boxes)
     const unusedViews = new Set(views)
     const viewsToDisplay = []
 
     // We try to find the best match for moving / reusing existing views to match the new positions.
     const matchers = [
       // First try to find a loaded view of the same URL in the same space...
-      (v, url, spaces) =>
-        v.state.context.url === url &&
+      (v, content, spaces) =>
+        isEqual(v.state.context.content, content) &&
         v.state.matches('displaying.running') &&
         intersection(v.state.context.pos.spaces, spaces).length > 0,
       // Then try to find a loaded view of the same URL...
-      (v, url) =>
-        v.state.context.url === url && v.state.matches('displaying.running'),
+      (v, content) =>
+        isEqual(v.state.context.content, content) &&
+        v.state.matches('displaying.running'),
       // Then try view with the same URL that is still loading...
-      (v, url) => v.state.context.url === url,
+      (v, content) => isEqual(v.state.context.content, content),
     ]
 
     for (const matcher of matchers) {
       for (const box of remainingBoxes) {
-        const { url, spaces } = box
+        const { content, spaces } = box
         let foundView
         for (const view of unusedViews) {
-          if (matcher(view, url, spaces)) {
+          if (matcher(view, content, spaces)) {
             foundView = view
             break
           }
@@ -173,7 +178,7 @@ export default class StreamWindow extends EventEmitter {
 
     const newViews = []
     for (const { box, view } of viewsToDisplay) {
-      const { url, x, y, w, h, spaces } = box
+      const { content, x, y, w, h, spaces } = box
       const pos = {
         x: SPACE_WIDTH * x,
         y: SPACE_HEIGHT * y,
@@ -181,7 +186,7 @@ export default class StreamWindow extends EventEmitter {
         height: SPACE_HEIGHT * h,
         spaces,
       }
-      view.send({ type: 'DISPLAY', pos, url })
+      view.send({ type: 'DISPLAY', pos, content })
       newViews.push(view)
     }
     for (const view of unusedViews) {

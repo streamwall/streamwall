@@ -1,3 +1,4 @@
+import isEqual from 'lodash/isEqual'
 import { Machine, assign } from 'xstate'
 
 const viewStateMachine = Machine(
@@ -7,7 +8,7 @@ const viewStateMachine = Machine(
     context: {
       view: null,
       pos: null,
-      url: null,
+      content: null,
       info: {},
     },
     on: {
@@ -20,14 +21,14 @@ const viewStateMachine = Machine(
         initial: 'loading',
         entry: assign({
           pos: (context, event) => event.pos,
-          url: (context, event) => event.url,
+          content: (context, event) => event.content,
         }),
         on: {
           DISPLAY: {
             actions: assign({
               pos: (context, event) => event.pos,
             }),
-            cond: 'urlUnchanged',
+            cond: 'contentUnchanged',
           },
           RELOAD: '.loading',
         },
@@ -38,7 +39,7 @@ const viewStateMachine = Machine(
             states: {
               page: {
                 invoke: {
-                  src: 'loadURL',
+                  src: 'loadPage',
                   onDone: {
                     target: 'video',
                   },
@@ -74,7 +75,7 @@ const viewStateMachine = Machine(
                   }),
                   'positionView',
                 ],
-                cond: 'urlUnchanged',
+                cond: 'contentUnchanged',
               },
               MUTE: '.muted',
               UNMUTE: '.listening',
@@ -108,18 +109,19 @@ const viewStateMachine = Machine(
       },
     },
     guards: {
-      urlUnchanged: (context, event) => {
-        return context.url === event.url
+      contentUnchanged: (context, event) => {
+        return isEqual(context.content, event.content)
       },
     },
     services: {
-      loadURL: async (context, event) => {
-        const { url, view } = context
+      loadPage: async (context, event) => {
+        const { content, view } = context
         const wc = view.webContents
         wc.audioMuted = true
-        await wc.loadURL(url)
-        wc.insertCSS(
-          `
+        await wc.loadURL(content.url)
+        if (content.kind === 'video') {
+          wc.insertCSS(
+            `
           * {
             display: none !important;
             pointer-events: none;
@@ -145,11 +147,16 @@ const viewStateMachine = Machine(
             z-index: 999999 !important;
           }
         `,
-          { cssOrigin: 'user' },
-        )
+            { cssOrigin: 'user' },
+          )
+        }
       },
       startVideo: async (context, event) => {
-        const wc = context.view.webContents
+        const { content, view } = context
+        if (content.kind !== 'video') {
+          return
+        }
+        const wc = view.webContents
         const info = await wc.executeJavaScript(`
           const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
           async function waitForVideo() {
