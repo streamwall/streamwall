@@ -1,44 +1,39 @@
 import { boxesFromViewURLMap } from './geometry'
 
-const box1 = `
+function example([text]) {
+  return text
+    .replace(/\s/g, '')
+    .split('')
+    .map((c) => (c === '.' ? undefined : c))
+}
+
+const box1 = example`
   ab
   ab
 `
-  .replace(/\s/g, '')
-  .split('')
 
-const box2 = `
+const box2 = example`
   aa
   bb
 `
-  .replace(/\s/g, '')
-  .split('')
 
-const box3 = `
+const box3 = example`
   aac
   aaa
   dae
 `
-  .replace(/\s/g, '')
-  .split('')
 
-const box4 = `
+const box4 = example`
   ...
   .aa
   .aa
 `
-  .replace(/\s/g, '')
-  .split('')
-  .map((c) => (c === '.' ? undefined : c))
 
-const box5 = `
+const box5 = example`
   ..a
   ..a
   .aa
 `
-  .replace(/\s/g, '')
-  .split('')
-  .map((c) => (c === '.' ? undefined : c))
 
 describe.each([
   [
