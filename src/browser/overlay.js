@@ -182,7 +182,7 @@ const ListeningIndicator = styled(SoundIcon)`
   opacity: 0.9;
 
   path {
-    fill: red;
+    fill: white;
   }
 `
 
