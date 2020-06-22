@@ -33,6 +33,9 @@ const viewStateMachine = Machine(
             cond: 'contentUnchanged',
           },
           RELOAD: '.loading',
+          DEVTOOLS: {
+            actions: 'openDevTools',
+          },
         },
         states: {
           loading: {
@@ -81,9 +84,6 @@ const viewStateMachine = Machine(
               },
               MUTE: '.muted',
               UNMUTE: '.listening',
-              DEVTOOLS: {
-                actions: 'openDevTools',
-              },
             },
             states: {
               muted: {
