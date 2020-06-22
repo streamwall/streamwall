@@ -216,7 +216,7 @@ export default class StreamWindow extends EventEmitter {
     }
   }
 
-  findViewByIdx(viewIdx, predicate) {
+  findViewByIdx(viewIdx) {
     return this.views.find(
       (v) =>
         v.state.context.pos && v.state.context.pos.spaces.includes(viewIdx),
