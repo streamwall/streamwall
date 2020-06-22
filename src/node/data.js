@@ -14,9 +14,14 @@ export async function* pollPublicData() {
   const publicDataURL = 'https://woke.net/csv'
   const refreshInterval = 5 * 60 * 1000
   while (true) {
-    const resp = await fetch(publicDataURL)
-    const text = await resp.text()
-    const data = await csv().fromString(text)
+    let data
+    try {
+      const resp = await fetch(publicDataURL)
+      const text = await resp.text()
+      data = await csv().fromString(text)
+    } catch (err) {
+      console.warn('error loading stream data', err)
+    }
     yield filterLive(data)
     await sleep(refreshInterval)
   }
