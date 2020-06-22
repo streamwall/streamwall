@@ -3,6 +3,38 @@ import { Machine, assign } from 'xstate'
 
 import { ensureValidURL } from '../util'
 
+const VIDEO_OVERRIDE_STYLE = `
+  * {
+    pointer-events: none;
+    display: none !important;
+    position: static !important;
+    z-index: 0 !important;
+  }
+  html, body, video {
+    display: block !important;
+    background: black !important;
+  }
+  html, body {
+    overflow: hidden !important;
+    background: black !important;
+  }
+  video, iframe.__video__ {
+    display: block !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    z-index: 999999 !important;
+  }
+  .__video_parent__ {
+    display: block !important;
+  }
+`
+
 const viewStateMachine = Machine(
   {
     id: 'view',
@@ -132,35 +164,7 @@ const viewStateMachine = Machine(
         wc.audioMuted = true
         await wc.loadURL(content.url)
         if (content.kind === 'video') {
-          wc.insertCSS(
-            `
-            * {
-              display: none !important;
-              pointer-events: none;
-            }
-            html, body, video {
-              display: block !important;
-              background: black !important;
-            }
-            html, body {
-              overflow: hidden !important;
-              background: black !important;
-            }
-            video {
-              display: block !important;
-              position: fixed !important;
-              left: 0 !important;
-              right: 0 !important;
-              top: 0 !important;
-              bottom: 0 !important;
-              width: 100% !important;
-              height: 100% !important;
-              object-fit: cover !important;
-              z-index: 999999 !important;
-            }
-            `,
-            { cssOrigin: 'user' },
-          )
+          wc.insertCSS(VIDEO_OVERRIDE_STYLE, { cssOrigin: 'user' })
         } else if (content.kind === 'web') {
           wc.insertCSS(
             `
@@ -180,18 +184,59 @@ const viewStateMachine = Machine(
         const wc = view.webContents
         const info = await wc.executeJavaScript(`
           const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
+
           async function waitForVideo() {
             let tries = 0
             let video
-            while ((!video || !video.src) && tries < 20) {
+            while ((!video || !video.src) && tries < 10) {
               video = document.querySelector('video')
               tries++
               await sleep(200)
             }
+            if (video) {
+              return {video}
+            }
+
+            tries = 0
+            let iframe
+            while ((!video || !video.src) && tries < 10) {
+              for (iframe of document.querySelectorAll('iframe')) {
+                if (!iframe.contentDocument) {
+                  continue
+                }
+                video = iframe.contentDocument.querySelector('video')
+                if (video) {
+                  break
+                }
+              }
+              tries++
+              await sleep(200)
+            }
+            if (video) {
+              return { video, iframe }
+            }
+            return {}
+          }
+
+          async function findVideo() {
+            const { video, iframe } = await waitForVideo()
             if (!video) {
               throw new Error('could not find video')
             }
-            document.body.appendChild(video)
+            if (iframe) {
+              const style = iframe.contentDocument.createElement('style')
+              style.innerHTML = \`${VIDEO_OVERRIDE_STYLE}\`
+              iframe.contentDocument.head.appendChild(style)
+              iframe.className = '__video__'
+              let parentEl = iframe.parentElement
+              while (parentEl) {
+                parentEl.className = '__video_parent__'
+                parentEl = parentEl.parentElement
+              }
+              iframe.contentDocument.body.appendChild(video)
+            } else {
+              document.body.appendChild(video)
+            }
             video.muted = false
             video.autoPlay = true
             video.play()
@@ -215,7 +260,7 @@ const viewStateMachine = Machine(
             }
             return info
           }
-          waitForVideo()
+          findVideo()
         `)
         return info
       },
