@@ -192,6 +192,18 @@ const viewStateMachine = Machine(
             Object.defineProperty(video, 'muted', {writable: false, value: false})
 
             const info = { title: document.title }
+            let divBase = document.querySelector('div.BaseVideo') // This will filter for only periscope videos
+            if (divBase && divBase.style && divBase.style.transform) {
+              // periscope videos can be rotated using transform matrix. They need to be rotated correctly.
+              const tr = divBase.style.transform
+              if (tr.endsWith("matrix(0, 1, -1, 0, 0, 0)")) {
+                video.style.transform = 'rotate(90deg)'
+              } else if (tr.endsWith("matrix(-1, 0, 0, -1, 0)")) {
+                video.style.transform = 'rotate(180deg)'
+              } else if (tr.endsWith("matrix(0, -1, 1, 0, 0, 0)")) {
+                video.style.transform = 'rotate(-90deg)'
+              }
+            }
             return info
           }
           waitForVideo()
