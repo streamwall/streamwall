@@ -83,6 +83,8 @@ async function main() {
       streamWindow.setViews(new Map(msg.views))
     } else if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
+    } else if (msg.type === 'set-view-blurred') {
+      streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
     } else if (msg.type === 'set-custom-streams') {
       const customIDGen = new StreamIDGenerator(idGen)
       clientState.customStreams = customIDGen.process(msg.streams)

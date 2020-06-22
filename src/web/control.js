@@ -8,6 +8,7 @@ import styled, { css } from 'styled-components'
 import '../index.css'
 import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
+import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
@@ -42,7 +43,10 @@ function App({ wsEndpoint }) {
           const stream = allStreams.find((d) => d.Link === content.url)
           const streamId = stream?._id
           const state = State.from(viewState.state)
-          const isListening = state.matches('displaying.running.listening')
+          const isListening = state.matches(
+            'displaying.running.audio.listening',
+          )
+          const isBlurred = state.matches('displaying.running.video.blurred')
           for (const space of pos.spaces) {
             if (!newStateIdxMap.has(space)) {
               newStateIdxMap.set(space, {})
@@ -52,6 +56,7 @@ function App({ wsEndpoint }) {
               content,
               state,
               isListening,
+              isBlurred,
             })
           }
         }
@@ -98,6 +103,16 @@ function App({ wsEndpoint }) {
       JSON.stringify({
         type: 'set-listening-view',
         viewIdx: listening ? idx : null,
+      }),
+    )
+  }, [])
+
+  const handleSetBlurred = useCallback((idx, blurred) => {
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'set-view-blurred',
+        viewIdx: idx,
+        blurred: blurred,
       }),
     )
   }, [])
@@ -166,6 +181,7 @@ function App({ wsEndpoint }) {
                 const {
                   streamId = '',
                   isListening = false,
+                  isBlurred = false,
                   content = { url: '' },
                   state,
                 } = stateIdxMap.get(idx) || {}
@@ -177,8 +193,10 @@ function App({ wsEndpoint }) {
                     isError={state && state.matches('displaying.error')}
                     isDisplaying={state && state.matches('displaying')}
                     isListening={isListening}
+                    isBlurred={isBlurred}
                     onChangeSpace={handleSetView}
                     onSetListening={handleSetListening}
+                    onSetBlurred={handleSetBlurred}
                     onReloadView={handleReloadView}
                     onBrowse={handleBrowse}
                     onDevTools={handleDevTools}
@@ -255,7 +273,9 @@ function GridInput({
   isDisplaying,
   isError,
   isListening,
+  isBlurred,
   onSetListening,
+  onSetBlurred,
   onReloadView,
   onBrowse,
   onDevTools,
@@ -279,6 +299,11 @@ function GridInput({
     () => onSetListening(idx, !isListening),
     [idx, onSetListening, isListening],
   )
+  const handleBlurClick = useCallback(() => onSetBlurred(idx, !isBlurred), [
+    idx,
+    onSetBlurred,
+    isBlurred,
+  ])
   const handleReloadClick = useCallback(() => onReloadView(idx), [
     idx,
     onReloadView,
@@ -295,23 +320,32 @@ function GridInput({
     <StyledGridContainer>
       {isDisplaying && (
         <StyledGridButtons side="left">
-          <StyledButton onClick={handleReloadClick}>
+          <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
             <ReloadIcon />
-          </StyledButton>
-          <StyledButton onClick={handleBrowseClick}>
+          </StyledSmallButton>
+          <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
             <WindowIcon />
-          </StyledButton>
-          <StyledButton onClick={handleDevToolsClick}>
+          </StyledSmallButton>
+          <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
             <LifeRingIcon />
-          </StyledButton>
+          </StyledSmallButton>
         </StyledGridButtons>
       )}
       <StyledGridButtons side="right">
-        <ListeningButton
-          isListening={isListening}
+        <StyledToggleButton
+          isActive={isBlurred}
+          onClick={handleBlurClick}
+          tabIndex={1}
+        >
+          <NoVideoIcon />
+        </StyledToggleButton>
+        <StyledToggleButton
+          isActive={isListening}
           onClick={handleListeningClick}
           tabIndex={1}
-        />
+        >
+          <SoundIcon />
+        </StyledToggleButton>
       </StyledGridButtons>
       <StyledGridInput
         name={idx}
@@ -365,14 +399,6 @@ function CustomStreamInput({ idx, onChange, ...props }) {
   )
 }
 
-function ListeningButton(props) {
-  return (
-    <StyledListeningButton {...props}>
-      <SoundIcon />
-    </StyledListeningButton>
-  )
-}
-
 const StyledDataContainer = styled.div`
   opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
 `
@@ -400,9 +426,16 @@ const StyledButton = styled.button`
   }
 `
 
-const StyledListeningButton = styled(StyledButton)`
-  ${({ isListening }) =>
-    isListening &&
+const StyledSmallButton = styled(StyledButton)`
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`
+
+const StyledToggleButton = styled(StyledButton)`
+  ${({ isActive }) =>
+    isActive &&
     `
       border-color: red;
       background: #c77;
@@ -426,7 +459,7 @@ const StyledGridButtons = styled.div`
 `
 
 const StyledGridInput = styled.input`
-  width: 150px;
+  width: 160px;
   height: 50px;
   padding: 20px;
   border: 2px solid ${({ isError }) => (isError ? 'red' : 'black')};

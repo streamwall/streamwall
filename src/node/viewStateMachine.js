@@ -102,7 +102,7 @@ const viewStateMachine = Machine(
             },
           },
           running: {
-            initial: 'muted',
+            type: 'parallel',
             entry: 'positionView',
             on: {
               DISPLAY: {
@@ -114,15 +114,33 @@ const viewStateMachine = Machine(
                 ],
                 cond: 'contentUnchanged',
               },
-              MUTE: '.muted',
-              UNMUTE: '.listening',
             },
             states: {
-              muted: {
-                entry: 'muteAudio',
+              audio: {
+                initial: 'muted',
+                on: {
+                  MUTE: '.muted',
+                  UNMUTE: '.listening',
+                },
+                states: {
+                  muted: {
+                    entry: 'muteAudio',
+                  },
+                  listening: {
+                    entry: 'unmuteAudio',
+                  },
+                },
               },
-              listening: {
-                entry: 'unmuteAudio',
+              video: {
+                initial: 'normal',
+                on: {
+                  BLUR: '.blurred',
+                  UNBLUR: '.normal',
+                },
+                states: {
+                  normal: {},
+                  blurred: {},
+                },
               },
             },
           },

@@ -31,10 +31,14 @@ function Overlay({ views, streams, customStreams }) {
         const data = [...streams, ...customStreams].find(
           (d) => content.url === d.Link,
         )
-        const isListening = viewState.matches('displaying.running.listening')
+        const isListening = viewState.matches(
+          'displaying.running.audio.listening',
+        )
+        const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
         return (
           <SpaceBorder pos={pos} isListening={isListening}>
+            <BlurCover isBlurred={isBlurred} />
             {data && (
               <StreamTitle isListening={isListening}>
                 <StreamIcon url={content.url} />
@@ -184,6 +188,15 @@ const ListeningIndicator = styled(SoundIcon)`
   path {
     fill: white;
   }
+`
+
+const BlurCover = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  backdrop-filter: ${({ isBlurred }) => (isBlurred ? 'blur(30px)' : 'blur(0)')};
 `
 
 render(<App />, document.body)

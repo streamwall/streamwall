@@ -223,16 +223,23 @@ export default class StreamWindow extends EventEmitter {
     )
   }
 
-  reloadView(viewIdx) {
+  sendViewEvent(viewIdx, event) {
     const view = this.findViewByIdx(viewIdx)
     if (view) {
-      view.send('RELOAD')
+      view.send(event)
     }
   }
 
+  setViewBlurred(viewIdx, blurred) {
+    this.sendViewEvent(viewIdx, blurred ? 'BLUR' : 'UNBLUR')
+  }
+
+  reloadView(viewIdx) {
+    this.sendViewEvent(viewIdx, 'RELOAD')
+  }
+
   openDevTools(viewIdx, inWebContents) {
-    const view = this.findViewByIdx(viewIdx)
-    view.send({ type: 'DEVTOOLS', inWebContents })
+    this.sendViewEvent(viewIdx, { type: 'DEVTOOLS', inWebContents })
   }
 
   send(...args) {
