@@ -17,7 +17,6 @@ Under the hood, think of Streamwall as a specialized web browser for mosaicing v
 `git clone https://github.com/chromakode/streamwall.git && cd streamwall && npm install && npm start`
 
 
-
 ## Credits
 
 SVG Icons are from Font Awesome by Dave Gandy - http://fontawesome.io
