@@ -81,6 +81,9 @@ const viewStateMachine = Machine(
               },
               MUTE: '.muted',
               UNMUTE: '.listening',
+              DEVTOOLS: {
+                actions: 'openDevTools',
+              },
             },
             states: {
               muted: {
@@ -108,6 +111,12 @@ const viewStateMachine = Machine(
       },
       unmuteAudio: (context, event) => {
         context.view.webContents.audioMuted = false
+      },
+      openDevTools: (context, event) => {
+        const { view } = context
+        const { inWebContents } = event
+        view.webContents.setDevToolsWebContents(inWebContents)
+        view.webContents.openDevTools({ mode: 'detach' })
       },
     },
     guards: {

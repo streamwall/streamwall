@@ -216,14 +216,23 @@ export default class StreamWindow extends EventEmitter {
     }
   }
 
-  reloadView(viewIdx) {
-    const view = this.views.find(
+  findViewByIdx(viewIdx, predicate) {
+    return this.views.find(
       (v) =>
         v.state.context.pos && v.state.context.pos.spaces.includes(viewIdx),
     )
+  }
+
+  reloadView(viewIdx) {
+    const view = this.findViewByIdx(viewIdx)
     if (view) {
       view.send('RELOAD')
     }
+  }
+
+  openDevTools(viewIdx, inWebContents) {
+    const view = this.findViewByIdx(viewIdx)
+    view.send({ type: 'DEVTOOLS', inWebContents })
   }
 
   send(...args) {

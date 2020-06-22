@@ -10,6 +10,7 @@ import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
+import WindowIcon from '../static/window-maximize-regular.svg'
 
 function App({ wsEndpoint }) {
   const wsRef = useRef()
@@ -119,6 +120,15 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
+  const handleDevTools = useCallback((idx) => {
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'dev-tools',
+        viewIdx: idx,
+      }),
+    )
+  }, [])
+
   const handleClickId = useCallback((streamId) => {
     const availableIdx = range(GRID_COUNT * GRID_COUNT).find(
       (i) => !stateIdxMap.has(i),
@@ -171,6 +181,7 @@ function App({ wsEndpoint }) {
                     onSetListening={handleSetListening}
                     onReloadView={handleReloadView}
                     onBrowse={handleBrowse}
+                    onDevTools={handleDevTools}
                   />
                 )
               })}
@@ -247,6 +258,7 @@ function GridInput({
   onSetListening,
   onReloadView,
   onBrowse,
+  onDevTools,
 }) {
   const [editingValue, setEditingValue] = useState()
   const handleFocus = useCallback((ev) => {
@@ -272,6 +284,10 @@ function GridInput({
     onReloadView,
   ])
   const handleBrowseClick = useCallback(() => onBrowse(url), [url, onBrowse])
+  const handleDevToolsClick = useCallback(() => onDevTools(idx), [
+    idx,
+    onDevTools,
+  ])
   const handleClick = useCallback((ev) => {
     ev.target.select()
   })
@@ -283,6 +299,9 @@ function GridInput({
             <ReloadIcon />
           </StyledButton>
           <StyledButton onClick={handleBrowseClick}>
+            <WindowIcon />
+          </StyledButton>
+          <StyledButton onClick={handleDevToolsClick}>
             <LifeRingIcon />
           </StyledButton>
         </StyledGridButtons>

@@ -90,8 +90,16 @@ async function main() {
       broadcastState(clientState)
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
-    } else if (msg.type === 'browse') {
-      ensureValidURL(msg.url)
+    } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
+      if (
+        msg.type === 'dev-tools' &&
+        browseWindow &&
+        !browseWindow.isDestroyed()
+      ) {
+        // DevTools needs a fresh webContents to work. Close any existing window.
+        browseWindow.destroy()
+        browseWindow = null
+      }
       if (!browseWindow || browseWindow.isDestroyed()) {
         browseWindow = new BrowserWindow({
           webPreferences: {
@@ -102,7 +110,12 @@ async function main() {
           },
         })
       }
-      browseWindow.loadURL(msg.url)
+      if (msg.type === 'browse') {
+        ensureValidURL(msg.url)
+        browseWindow.loadURL(msg.url)
+      } else if (msg.type === 'dev-tools') {
+        streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
+      }
     }
   }
 
