@@ -198,7 +198,7 @@ const viewStateMachine = Machine(
             setInterval(() => video.play(), 1000)
 
             // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
-            Object.defineProperty(video, 'muted', {writable: false, value: false})
+            Object.defineProperty(video, 'muted', {writable: true, value: false})
 
             const info = { title: document.title }
             let divBase = document.querySelector('div.BaseVideo') // This will filter for only periscope videos
