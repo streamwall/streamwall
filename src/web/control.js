@@ -4,6 +4,7 @@ import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { State } from 'xstate'
 import styled, { css } from 'styled-components'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 import '../index.css'
 import { GRID_COUNT } from '../constants'
@@ -165,6 +166,27 @@ function App({ wsEndpoint }) {
       }),
     )
   })
+
+  // Set up keyboard shortcuts.
+  // Note: if GRID_COUNT > 3, there will not be keys for view indices > 9.
+  for (const idx of range(GRID_COUNT * GRID_COUNT)) {
+    useHotkeys(
+      `alt+${idx + 1}`,
+      () => {
+        const isListening = stateIdxMap.get(idx)?.isListening ?? false
+        handleSetListening(idx, !isListening)
+      },
+      [stateIdxMap],
+    )
+    useHotkeys(
+      `alt+shift+${idx + 1}`,
+      () => {
+        const isBlurred = stateIdxMap.get(idx)?.isBlurred ?? false
+        handleSetBlurred(idx, !isBlurred)
+      },
+      [stateIdxMap],
+    )
+  }
 
   return (
     <div>

@@ -3,7 +3,7 @@ import { h, Fragment, render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { State } from 'xstate'
 import styled from 'styled-components'
-import Mousetrap from 'mousetrap'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { TailSpin } from 'svg-loaders-react'
 
 import '../index.css'
@@ -15,10 +15,6 @@ import PeriscopeIcon from '../static/periscope.svg'
 import TwitchIcon from '../static/twitch.svg'
 import YouTubeIcon from '../static/youtube.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
-
-Mousetrap.bind('ctrl+shift+i', () => {
-  ipcRenderer.send('devtools-overlay')
-})
 
 function Overlay({ views, streams, customStreams }) {
   const activeViews = views
@@ -74,6 +70,10 @@ function App() {
       setState(state)
     })
   }, [])
+
+  useHotkeys('ctrl+shift+i', () => {
+    ipcRenderer.send('devtools-overlay')
+  })
 
   const { views, streams, customStreams } = state
   return (
