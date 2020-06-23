@@ -3,7 +3,7 @@ import yargs from 'yargs'
 import { app, shell, session, BrowserWindow } from 'electron'
 
 import { ensureValidURL } from '../util'
-import { pollPublicData, pollSpreadsheetData, StreamIDGenerator } from './data'
+import { pollPublicData, StreamIDGenerator } from './data'
 import StreamWindow from './StreamWindow'
 import initWebServer from './server'
 
@@ -11,17 +11,6 @@ async function main() {
   const argv = yargs
     .config('config', (configPath) => {
       return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-    })
-    .group(['gs-creds', 'gs-id', 'gs-tab'], 'Spreadsheet Configuration')
-    .option('gs-creds', {
-      describe: 'credentials file for Google Spreadsheet access',
-      implies: ['gs-id', 'gs-tab'],
-    })
-    .option('gs-id', {
-      describe: 'Google Spreadsheet id',
-    })
-    .option('gs-tab', {
-      describe: 'Google Spreadsheet tab name',
     })
     .group(
       ['webserver', 'cert-dir', 'cert-email', 'hostname', 'port'],
@@ -151,14 +140,7 @@ async function main() {
     broadcastState(clientState)
   })
 
-  let dataGen
-  if (argv.gsCreds) {
-    dataGen = pollSpreadsheetData(argv.gsCreds, argv.gsId, argv.gsTab)
-  } else {
-    dataGen = pollPublicData()
-  }
-
-  for await (const rawStreams of dataGen) {
+  for await (const rawStreams of pollPublicData()) {
     const streams = idGen.process(rawStreams)
     clientState.streams = streams
     streamWindow.send('state', clientState)

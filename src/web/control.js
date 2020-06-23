@@ -41,7 +41,7 @@ function App({ wsEndpoint }) {
         const allStreams = [...newStreams, ...newCustomStreams]
         for (const viewState of views) {
           const { pos, content } = viewState.context
-          const stream = allStreams.find((d) => d.Link === content.url)
+          const stream = allStreams.find((d) => d.link === content.url)
           const streamId = stream?._id
           const state = State.from(viewState.state)
           const isListening = state.matches(
@@ -79,8 +79,8 @@ function App({ wsEndpoint }) {
       )
       if (stream) {
         const content = {
-          url: stream?.Link,
-          kind: stream?.Kind || 'video',
+          url: stream?.link,
+          kind: stream?.kind || 'video',
         }
         newSpaceIdxMap.set(idx, {
           ...newSpaceIdxMap.get(idx),
@@ -158,7 +158,7 @@ function App({ wsEndpoint }) {
   const handleChangeCustomStream = useCallback((idx, customStream) => {
     let newCustomStreams = [...customStreams]
     newCustomStreams[idx] = customStream
-    newCustomStreams = newCustomStreams.filter((s) => s.Link)
+    newCustomStreams = newCustomStreams.filter((s) => s.kind)
     wsRef.current.send(
       JSON.stringify({
         type: 'set-custom-streams',
@@ -241,14 +241,14 @@ function App({ wsEndpoint }) {
             Include an empty object at the end to create an extra input for a new custom stream.
             We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
            */}
-          {[...customStreams, { Link: '', Label: '', Kind: 'video' }].map(
-            ({ Link, Label, Kind }, idx) => (
+          {[...customStreams, { kind: '', label: '', kind: 'video' }].map(
+            ({ link, label, kind }, idx) => (
               <CustomStreamInput
                 key={idx}
                 idx={idx}
-                Link={Link}
-                Label={Label}
-                Kind={Kind}
+                link={link}
+                label={label}
+                kind={kind}
                 onChange={handleChangeCustomStream}
               />
             ),
@@ -261,7 +261,7 @@ function App({ wsEndpoint }) {
 
 function StreamLine({
   id,
-  row: { Label, Source, Title, Link, Notes },
+  row: { label, source, title, link, notes },
   onClickId,
 }) {
   const handleClickId = useCallback(() => {
@@ -271,15 +271,15 @@ function StreamLine({
     <StyledStreamLine>
       <StyledId onClick={handleClickId}>{id}</StyledId>
       <div>
-        {Label ? (
-          Label
+        {label ? (
+          label
         ) : (
           <>
-            <strong>{Source}</strong>{' '}
-            <a href={Link} target="_blank">
-              {Title || Link}
+            <strong>{source}</strong>{' '}
+            <a href={link} target="_blank">
+              {title || link}
             </a>{' '}
-            {Notes}
+            {notes}
           </>
         )}
       </div>
@@ -385,19 +385,19 @@ function GridInput({
 function CustomStreamInput({ idx, onChange, ...props }) {
   const handleChangeLink = useCallback(
     (ev) => {
-      onChange(idx, { ...props, Link: ev.target.value })
+      onChange(idx, { ...props, link: ev.target.value })
     },
     [onChange],
   )
   const handleChangeLabel = useCallback(
     (ev) => {
-      onChange(idx, { ...props, Label: ev.target.value })
+      onChange(idx, { ...props, label: ev.target.value })
     },
     [onChange],
   )
   const handleChangeKind = useCallback(
     (ev) => {
-      onChange(idx, { ...props, Kind: ev.target.value })
+      onChange(idx, { ...props, kind: ev.target.value })
     },
     [onChange],
   )
@@ -406,14 +406,14 @@ function CustomStreamInput({ idx, onChange, ...props }) {
       <input
         onChange={handleChangeLink}
         placeholder="https://..."
-        value={props.Link}
+        value={props.link}
       />
       <input
         onChange={handleChangeLabel}
         placeholder="Label (optional)"
-        value={props.Label}
+        value={props.label}
       />
-      <select onChange={handleChangeKind} value={props.Kind}>
+      <select onChange={handleChangeKind} value={props.kind}>
         <option value="video">video</option>
         <option value="web">web</option>
       </select>

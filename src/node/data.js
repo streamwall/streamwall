@@ -1,52 +1,24 @@
-import zip from 'lodash/zip'
 import { promisify } from 'util'
 import fetch from 'node-fetch'
-import csv from 'csvtojson'
-import { GoogleSpreadsheet } from 'google-spreadsheet'
 
 const sleep = promisify(setTimeout)
 
 function filterLive(data) {
-  return data.filter((d) => d.Link && d.Status === 'Live')
+  return data.filter((d) => d.status === 'Live')
 }
 
 export async function* pollPublicData() {
-  const publicDataURL = 'https://woke.net/csv'
-  const refreshInterval = 5 * 60 * 1000
+  const publicDataURL = 'https://woke.net/api/streams.json'
+  const refreshInterval = 5 * 1000
   while (true) {
     let data
     try {
       const resp = await fetch(publicDataURL)
-      const text = await resp.text()
-      data = await csv().fromString(text)
+      data = await resp.json()
     } catch (err) {
       console.warn('error loading stream data', err)
     }
     yield filterLive(data)
-    await sleep(refreshInterval)
-  }
-}
-
-export async function* pollSpreadsheetData(creds, sheetId, tabName) {
-  const refreshInterval = 10 * 1000
-
-  const doc = new GoogleSpreadsheet(sheetId)
-  await doc.useServiceAccountAuth(creds)
-  await doc.loadInfo()
-  const sheet = Object.values(doc.sheetsById).find((s) => s.title === tabName)
-  await sheet.loadHeaderRow()
-
-  while (true) {
-    let rows
-    try {
-      rows = await sheet.getRows()
-      const data = rows.map((row) =>
-        Object.fromEntries(zip(row._sheet.headerValues, row._rawData)),
-      )
-      yield filterLive(data)
-    } catch (err) {
-      console.warn('error fetching rows', err)
-    }
     await sleep(refreshInterval)
   }
 }
@@ -60,11 +32,11 @@ export class StreamIDGenerator {
   process(streams) {
     const { idMap, idSet } = this
     for (const stream of streams) {
-      const { Link, Source, Label } = stream
-      if (!idMap.has(Link)) {
+      const { link, source, label } = stream
+      if (!idMap.has(link)) {
         let counter = 0
         let newId
-        const normalizedText = (Source || Label || Link)
+        const normalizedText = (source || label || link)
           .toLowerCase()
           .replace(/[^\w]/g, '')
           .replace(/^the|^https?(www)?/, '')
@@ -74,10 +46,10 @@ export class StreamIDGenerator {
           newId = `${textPart}${counterPart}`
           counter++
         } while (idSet.has(newId))
-        idMap.set(Link, newId)
+        idMap.set(link, newId)
         idSet.add(newId)
       }
-      stream._id = idMap.get(Link)
+      stream._id = idMap.get(link)
     }
     return streams
   }

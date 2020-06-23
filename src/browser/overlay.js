@@ -25,7 +25,7 @@ function Overlay({ views, streams, customStreams }) {
       {activeViews.map((viewState) => {
         const { content, pos } = viewState.context
         const data = [...streams, ...customStreams].find(
-          (d) => content.url === d.Link,
+          (d) => content.url === d.link,
         )
         const isListening = viewState.matches(
           'displaying.running.audio.listening',
@@ -39,11 +39,11 @@ function Overlay({ views, streams, customStreams }) {
               <StreamTitle isListening={isListening}>
                 <StreamIcon url={content.url} />
                 <span>
-                  {data.hasOwnProperty('Label') ? (
-                    data.Label
+                  {data.hasOwnProperty('label') ? (
+                    data.label
                   ) : (
                     <>
-                      {data.Source} &ndash; {data.City} {data.State}
+                      {data.source} &ndash; {data.city} {data.state}
                     </>
                   )}
                 </span>
