@@ -4,7 +4,17 @@ import fetch from 'node-fetch'
 const sleep = promisify(setTimeout)
 
 function filterLive(data) {
-  return data.filter((d) => d.status === 'Live')
+  return data.filter(({ status }) => status === 'Live' || status === 'Unknown')
+}
+
+function compareStrings(a, b) {
+  if (a < b) {
+    return -1
+  } else if (b < a) {
+    return 1
+  } else {
+    return 0
+  }
 }
 
 export async function* pollPublicData() {
@@ -51,6 +61,7 @@ export class StreamIDGenerator {
       }
       stream._id = idMap.get(link)
     }
+    streams.sort((a, b) => compareStrings(a._id, b._id))
     return streams
   }
 }
