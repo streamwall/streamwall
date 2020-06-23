@@ -190,7 +190,7 @@ function App({ wsEndpoint }) {
 
   return (
     <div>
-      <h1>Stream Wall</h1>
+      <h1>Streamwall ({location.host})</h1>
       <div>
         connection status: {isConnected ? 'connected' : 'connecting...'}
       </div>
