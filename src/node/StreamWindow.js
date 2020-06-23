@@ -16,8 +16,9 @@ import {
 } from '../constants'
 
 export default class StreamWindow extends EventEmitter {
-  constructor() {
+  constructor({ backgroundColor = '#000' }) {
     super()
+    this.backgroundColor = backgroundColor
     this.win = null
     this.offscreenWin = null
     this.overlayView = null
@@ -30,7 +31,7 @@ export default class StreamWindow extends EventEmitter {
       title: 'Streamwall',
       width: WIDTH,
       height: HEIGHT,
-      backgroundColor: '#000',
+      backgroundColor: this.backgroundColor,
       useContentSize: true,
       show: false,
     })
@@ -103,7 +104,7 @@ export default class StreamWindow extends EventEmitter {
         sandbox: true,
       },
     })
-    view.setBackgroundColor('#000')
+    view.setBackgroundColor(this.backgroundColor)
 
     const machine = viewStateMachine
       .withContext({

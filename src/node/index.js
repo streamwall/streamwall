@@ -59,6 +59,10 @@ async function main() {
       boolean: true,
       default: true,
     })
+    .option('background-color', {
+      describe: 'Background color of wall (useful for chroma-keying)',
+      default: '#000',
+    })
     .help().argv
 
   // Reject all permission requests from web content.
@@ -70,7 +74,9 @@ async function main() {
 
   const idGen = new StreamIDGenerator()
 
-  const streamWindow = new StreamWindow()
+  const streamWindow = new StreamWindow({
+    backgroundColor: argv.backgroundColor,
+  })
   streamWindow.init()
 
   let browseWindow = null

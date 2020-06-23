@@ -12,11 +12,11 @@ const VIDEO_OVERRIDE_STYLE = `
   }
   html, body, video {
     display: block !important;
-    background: black !important;
+    background: transparent !important;
   }
   html, body {
     overflow: hidden !important;
-    background: black !important;
+    background: transparent !important;
   }
   video, iframe.__video__ {
     display: block !important;
