@@ -20,6 +20,7 @@ function compareStrings(a, b) {
 export async function* pollPublicData() {
   const publicDataURL = 'https://woke.net/api/streams.json'
   const refreshInterval = 5 * 1000
+  let lastData = []
   while (true) {
     let data = []
     try {
@@ -28,7 +29,15 @@ export async function* pollPublicData() {
     } catch (err) {
       console.warn('error loading stream data', err)
     }
-    yield filterLive(data)
+
+    // If the endpoint errors or returns an empty dataset, keep the cached data.
+    if (!data.length && lastData.length) {
+      console.warn('using cached stream data')
+    } else {
+      yield filterLive(data)
+      lastData = data
+    }
+
     await sleep(refreshInterval)
   }
 }
