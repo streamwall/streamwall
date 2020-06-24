@@ -21,7 +21,7 @@ export async function* pollPublicData() {
   const publicDataURL = 'https://woke.net/api/streams.json'
   const refreshInterval = 5 * 1000
   while (true) {
-    let data
+    let data = []
     try {
       const resp = await fetch(publicDataURL)
       data = await resp.json()
