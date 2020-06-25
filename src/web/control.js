@@ -1,4 +1,5 @@
 import range from 'lodash/range'
+import sortBy from 'lodash/sortBy'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
@@ -20,6 +21,7 @@ function App({ wsEndpoint }) {
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
+  const allStreams = sortBy([...streams, ...customStreams], ['_id'])
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -230,7 +232,7 @@ function App({ wsEndpoint }) {
         </div>
         <div>
           {isConnected
-            ? [...streams, ...customStreams.values()].map((row) => (
+            ? allStreams.map((row) => (
                 <StreamLine id={row._id} row={row} onClickId={handleClickId} />
               ))
             : 'loading...'}

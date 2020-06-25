@@ -7,16 +7,6 @@ function filterLive(data) {
   return data.filter(({ status }) => status === 'Live' || status === 'Unknown')
 }
 
-function compareStrings(a, b) {
-  if (a < b) {
-    return -1
-  } else if (b < a) {
-    return 1
-  } else {
-    return 0
-  }
-}
-
 export async function* pollPublicData() {
   const publicDataURL = 'https://woke.net/api/streams.json'
   const refreshInterval = 5 * 1000
@@ -70,7 +60,6 @@ export class StreamIDGenerator {
       }
       stream._id = idMap.get(link)
     }
-    streams.sort((a, b) => compareStrings(a._id, b._id))
     return streams
   }
 }
