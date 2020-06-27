@@ -152,8 +152,12 @@ const viewStateMachine = Machine(
                   CONTAIN: '.contain',
                 },
                 states: {
-                  cover: {},
-                  contain: {}
+                  cover: {
+                    entry: 'setScaleCover',
+                  },
+                  contain: {
+                    entry: 'setScaleContain',
+                  }
                 }
               },
             },
