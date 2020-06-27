@@ -33,6 +33,9 @@ const VIDEO_OVERRIDE_STYLE = `
   .__video_parent__ {
     display: block !important;
   }
+  body.__scale_contain__ video, body.__scale_contain__ iframe.__video__ {
+          object-fit: contain !important;
+  }
 `
 
 const viewStateMachine = Machine(
