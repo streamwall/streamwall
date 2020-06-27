@@ -175,6 +175,16 @@ const viewStateMachine = Machine(
       unmuteAudio: (context, event) => {
         context.view.webContents.audioMuted = false
       },
+      setScaleContain: (context, event) => {
+        context.view.webContents.executeJavascript(`
+          document.body.classList.add('__scale_contain__')
+        `)
+      },
+      setScaleCover: (context, event) => {
+        context.view.webContents.executeJavascript(`
+          document.body.classList.remove('__scale_contain__')
+        `)
+      },
       openDevTools: (context, event) => {
         const { view } = context
         const { inWebContents } = event
