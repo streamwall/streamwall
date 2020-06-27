@@ -142,6 +142,16 @@ const viewStateMachine = Machine(
                   blurred: {},
                 },
               },
+              scale: {
+                initial: 'cover',
+                on: {
+                  COVER: '.cover',
+                  CONTAIN: '.contain',
+                },
+                states: {
+                  scaled: {}
+                }
+              },
             },
           },
           error: {
