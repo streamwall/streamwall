@@ -51,6 +51,7 @@ function initApp({ username, password, baseURL, getInitialState, onMessage }) {
             data = JSON.parse(dataText)
           } catch (err) {
             console.warn('received unexpected ws data:', dataText)
+            return
           }
 
           try {
