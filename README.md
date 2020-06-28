@@ -29,6 +29,15 @@ Under the hood, think of Streamwall as a specialized web browser for mosaicing v
 3. Use the browser window to load or control streams. The initial list will be populated from https://woke.net/#streams
 4. If you enter the same stream code in multiple cells, it will merge them together for a larger stream.
 
+## Hotkeys
+
+The following hotkeys are available with the "control" webpage focused:
+
+- **alt+[1...9]**: Listen to the numbered stream
+- **alt+shift+[1...9]**: Toggle blur on the numbered stream
+- **alt+c**: Activate [Streamdelay](https://github.com/chromakode/streamdelay) censor mode
+- **alt+shift+c**: Deactivate [Streamdelay](https://github.com/chromakode/streamdelay) censor mode
+
 ## Troubleshooting
 
 ### Unexpected token errors during `npm install`
