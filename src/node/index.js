@@ -5,6 +5,7 @@ import { app, shell, session, BrowserWindow } from 'electron'
 import { ensureValidURL } from '../util'
 import { pollPublicData, StreamIDGenerator } from './data'
 import StreamWindow from './StreamWindow'
+import StreamdelayClient from './StreamdelayClient'
 import initWebServer from './server'
 
 async function main() {
@@ -52,6 +53,13 @@ async function main() {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
     })
+    .option('streamdelay-endpoint', {
+      describe: 'URL of Streamdelay endpoint',
+      default: 'http://localhost:8404',
+    })
+    .option('streamdelay-key', {
+      describe: 'Streamdelay API key',
+    })
     .help().argv
 
   // Reject all permission requests from web content.
@@ -69,8 +77,14 @@ async function main() {
   streamWindow.init()
 
   let browseWindow = null
+  let streamdelayClient = null
 
-  const clientState = { streams: [], customStreams: [], views: [] }
+  const clientState = {
+    streams: [],
+    customStreams: [],
+    views: [],
+    streamdelay: false,
+  }
   const getInitialState = () => clientState
   let broadcastState = () => {}
   const onMessage = (msg) => {
@@ -113,6 +127,8 @@ async function main() {
       } else if (msg.type === 'dev-tools') {
         streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
       }
+    } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
+      streamdelayClient.setCensored(msg.isCensored)
     }
   }
 
@@ -132,6 +148,18 @@ async function main() {
     if (argv.open) {
       shell.openExternal(argv.webserver)
     }
+  }
+
+  if (argv.streamdelayKey) {
+    streamdelayClient = new StreamdelayClient({
+      endpoint: argv.streamdelayEndpoint,
+      key: argv.streamdelayKey,
+    })
+    streamdelayClient.on('state', (state) => {
+      clientState.streamdelay = state
+      broadcastState(clientState)
+    })
+    streamdelayClient.connect()
   }
 
   streamWindow.on('state', (viewStates) => {

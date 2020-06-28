@@ -28,6 +28,7 @@
     "reconnecting-websocket": "^4.4.0",
     "styled-components": "^5.1.1",
     "svg-loaders-react": "^2.2.1",
+    "ws": "^7.3.0",
     "xstate": "^4.10.0",
     "yargs": "^15.3.1"
   },

@@ -21,6 +21,7 @@ function App({ wsEndpoint }) {
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
+  const [delayState, setDelayState] = useState(false)
   const allStreams = sortBy([...streams, ...customStreams], ['_id'])
 
   useEffect(() => {
@@ -38,6 +39,7 @@ function App({ wsEndpoint }) {
           streams: newStreams,
           views,
           customStreams: newCustomStreams,
+          streamdelay,
         } = msg.state
         const newStateIdxMap = new Map()
         const allStreams = [...newStreams, ...newCustomStreams]
@@ -66,6 +68,12 @@ function App({ wsEndpoint }) {
         setStateIdxMap(newStateIdxMap)
         setStreams(newStreams)
         setCustomStreams(newCustomStreams)
+        setDelayState(
+          streamdelay && {
+            ...streamdelay,
+            state: State.from(streamdelay.state),
+          },
+        )
       } else {
         console.warn('unexpected ws message', msg)
       }
@@ -169,6 +177,15 @@ function App({ wsEndpoint }) {
     )
   })
 
+  const setStreamCensored = useCallback((isCensored) => {
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'set-stream-censored',
+        isCensored,
+      }),
+    )
+  }, [])
+
   // Set up keyboard shortcuts.
   // Note: if GRID_COUNT > 3, there will not be keys for view indices > 9.
   for (const idx of range(GRID_COUNT * GRID_COUNT)) {
@@ -189,6 +206,20 @@ function App({ wsEndpoint }) {
       [stateIdxMap],
     )
   }
+  useHotkeys(
+    `alt+c`,
+    () => {
+      setStreamCensored(true)
+    },
+    [setStreamCensored],
+  )
+  useHotkeys(
+    `alt+shift+c`,
+    () => {
+      setStreamCensored(false)
+    },
+    [setStreamCensored],
+  )
 
   return (
     <div>
@@ -196,6 +227,12 @@ function App({ wsEndpoint }) {
       <div>
         connection status: {isConnected ? 'connected' : 'connecting...'}
       </div>
+      {delayState !== false && (
+        <StreamDelayBox
+          delayState={delayState}
+          setStreamCensored={setStreamCensored}
+        />
+      )}
       <StyledDataContainer isConnected={isConnected}>
         <div>
           {range(0, 3).map((y) => (
@@ -257,6 +294,38 @@ function App({ wsEndpoint }) {
           )}
         </div>
       </StyledDataContainer>
+    </div>
+  )
+}
+
+function StreamDelayBox({ delayState, setStreamCensored }) {
+  const handleToggleStreamCensored = useCallback(() => {
+    setStreamCensored(!delayState.isCensored)
+  }, [delayState.isCensored, setStreamCensored])
+  let buttonText
+  if (delayState.state.matches('censorship.censored.deactivating')) {
+    buttonText = 'Deactivating...'
+  } else if (delayState.isCensored) {
+    buttonText = 'Uncensor stream'
+  } else {
+    buttonText = 'Censor stream'
+  }
+  return (
+    <div>
+      <StyledStreamDelayBox>
+        <strong>Streamdelay</strong>
+        <span>{delayState.isConnected ? 'connected' : 'connecting...'}</span>
+        {delayState.isConnected && (
+          <span>delay: {delayState.delaySeconds}s</span>
+        )}
+        <StyledToggleButton
+          isActive={delayState.isCensored}
+          onClick={handleToggleStreamCensored}
+          tabIndex={1}
+        >
+          {buttonText}
+        </StyledToggleButton>
+      </StyledStreamDelayBox>
     </div>
   )
 }
@@ -422,6 +491,17 @@ function CustomStreamInput({ idx, onChange, ...props }) {
     </div>
   )
 }
+
+const StyledStreamDelayBox = styled.div`
+  display: inline-flex;
+  margin: 5px 0;
+  padding: 10px;
+  background: #fdd;
+
+  & > * {
+    margin-right: 1em;
+  }
+`
 
 const StyledDataContainer = styled.div`
   opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
