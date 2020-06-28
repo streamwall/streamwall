@@ -235,10 +235,10 @@ function App({ wsEndpoint }) {
       )}
       <StyledDataContainer isConnected={isConnected}>
         <div>
-          {range(0, 3).map((y) => (
+          {range(0, GRID_COUNT).map((y) => (
             <StyledGridLine>
-              {range(0, 3).map((x) => {
-                const idx = 3 * y + x
+              {range(0, GRID_COUNT).map((x) => {
+                const idx = GRID_COUNT * y + x
                 const {
                   streamId = '',
                   isListening = false,
