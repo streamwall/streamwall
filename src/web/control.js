@@ -1,5 +1,6 @@
 import range from 'lodash/range'
 import sortBy from 'lodash/sortBy'
+import truncate from 'lodash/truncate'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
@@ -353,7 +354,7 @@ function StreamLine({
             <strong>{source}</strong>
             {location}
             <a href={link} target="_blank">
-              {title || link}
+              {truncate(title || link, { length: 55 })}
             </a>{' '}
             {notes}
           </>
