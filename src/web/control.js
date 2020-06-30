@@ -332,12 +332,16 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
 
 function StreamLine({
   id,
-  row: { label, source, title, link, notes },
+  row: { label, source, title, link, notes, state, city },
   onClickId,
 }) {
   const handleClickId = useCallback(() => {
     onClickId(id)
   })
+  let location
+  if (state && city) {
+    location = ` (${city} ${state}) `
+  }
   return (
     <StyledStreamLine>
       <StyledId onClick={handleClickId}>{id}</StyledId>
@@ -346,7 +350,8 @@ function StreamLine({
           label
         ) : (
           <>
-            <strong>{source}</strong>{' '}
+            <strong>{source}</strong>
+            {location}
             <a href={link} target="_blank">
               {title || link}
             </a>{' '}
