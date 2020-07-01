@@ -13,6 +13,15 @@ address = "http://localhost:80"
 password = "woke"
 username = "woke"
 
+[data]
+# By default, we use the woke.net streams data source.
+# You can add other URLs to fetch here:
+json-url = ["https://woke.net/api/streams.json"]
+
+# You can also specify .toml files on disk. Streamwall will reload the data whenever the file changes.
+# See example.streams.toml for a sample.
+#toml-file = ["./example.streams.toml"]
+
 [cert]
 # SSL certificates (optional)
 # If you specify an https:// URL for the "webserver" option, a certificate will be automatically generated and signed by Let's Encrypt.

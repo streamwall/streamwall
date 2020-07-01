@@ -25,7 +25,6 @@ function App({ wsEndpoint }) {
   const [delayState, setDelayState] = useState({
     isConnected: false,
   })
-  const allStreams = sortBy([...streams, ...customStreams], ['_id'])
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -38,17 +37,11 @@ function App({ wsEndpoint }) {
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
-        const {
-          streams: newStreams,
-          views,
-          customStreams: newCustomStreams,
-          streamdelay,
-        } = msg.state
+        const { streams: newStreams, views, streamdelay } = msg.state
         const newStateIdxMap = new Map()
-        const allStreams = [...newStreams, ...newCustomStreams]
         for (const viewState of views) {
           const { pos, content } = viewState.context
-          const stream = allStreams.find((d) => d.link === content.url)
+          const stream = newStreams.find((d) => d.link === content.url)
           const streamId = stream?._id
           const state = State.from(viewState.state)
           const isListening = state.matches(
@@ -69,8 +62,8 @@ function App({ wsEndpoint }) {
           }
         }
         setStateIdxMap(newStateIdxMap)
-        setStreams(newStreams)
-        setCustomStreams(newCustomStreams)
+        setStreams(sortBy(newStreams, ['_id']))
+        setCustomStreams(newStreams.filter((s) => s._dataSource === 'custom'))
         setDelayState(
           streamdelay.isConnected && {
             ...streamdelay,
@@ -87,9 +80,7 @@ function App({ wsEndpoint }) {
   const handleSetView = useCallback(
     (idx, streamId) => {
       const newSpaceIdxMap = new Map(stateIdxMap)
-      const stream = [...streams, ...customStreams].find(
-        (d) => d._id === streamId,
-      )
+      const stream = streams.find((d) => d._id === streamId)
       if (stream) {
         const content = {
           url: stream?.link,
@@ -109,7 +100,7 @@ function App({ wsEndpoint }) {
       ])
       wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
     },
-    [streams, customStreams, stateIdxMap],
+    [streams, stateIdxMap],
   )
 
   const handleSetListening = useCallback((idx, listening) => {
@@ -270,7 +261,7 @@ function App({ wsEndpoint }) {
         </div>
         <div>
           {isConnected
-            ? allStreams.map((row) => (
+            ? streams.map((row) => (
                 <StreamLine id={row._id} row={row} onClickId={handleClickId} />
               ))
             : 'loading...'}

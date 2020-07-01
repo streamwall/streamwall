@@ -1,10 +1,17 @@
 import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
+import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
 import { ensureValidURL } from '../util'
-import { pollPublicData, StreamIDGenerator } from './data'
+import {
+  pollDataURL,
+  watchDataFile,
+  StreamIDGenerator,
+  markDataSource,
+  combineDataSources,
+} from './data'
 import StreamWindow from './StreamWindow'
 import StreamdelayClient from './StreamdelayClient'
 import initWebServer from './server'
@@ -17,6 +24,18 @@ function parseArgs() {
     .option('background-color', {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
+    })
+    .group(['data.json-url', 'data.toml-file'], 'Datasources')
+    .option('data.json-url', {
+      describe: 'Fetch streams from the specified URL(s)',
+      array: true,
+      default: ['https://woke.net/api/streams.json'],
+    })
+    .option('data.toml-file', {
+      describe: 'Fetch streams from the specified file(s)',
+      normalize: true,
+      array: true,
+      default: [],
     })
     .group(
       [
@@ -92,6 +111,11 @@ async function main() {
     })
 
   const idGen = new StreamIDGenerator()
+  let updateCustomStreams
+  const customStreamData = new Repeater(async (push) => {
+    await push([])
+    updateCustomStreams = push
+  })
 
   const streamWindow = new StreamWindow({
     backgroundColor: argv.backgroundColor,
@@ -117,10 +141,7 @@ async function main() {
     } else if (msg.type === 'set-view-blurred') {
       streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
     } else if (msg.type === 'set-custom-streams') {
-      const customIDGen = new StreamIDGenerator(idGen)
-      clientState.customStreams = customIDGen.process(msg.streams)
-      streamWindow.send('state', clientState)
-      broadcastState(clientState)
+      updateCustomStreams(msg.streams)
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
@@ -190,7 +211,17 @@ async function main() {
     broadcastState(clientState)
   })
 
-  for await (const rawStreams of pollPublicData()) {
+  const dataSources = [
+    ...argv.data['json-url'].map((url) =>
+      markDataSource(pollDataURL(url), 'json-url'),
+    ),
+    ...argv.data['toml-file'].map((path) =>
+      markDataSource(watchDataFile(path), 'toml-file'),
+    ),
+    markDataSource(customStreamData, 'custom'),
+  ]
+
+  for await (const rawStreams of combineDataSources(dataSources)) {
     const streams = idGen.process(rawStreams)
     clientState.streams = streams
     streamWindow.send('state', clientState)
