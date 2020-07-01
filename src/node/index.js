@@ -1,5 +1,6 @@
 import fs from 'fs'
 import yargs from 'yargs'
+import TOML from '@iarna/toml'
 import { app, shell, session, BrowserWindow } from 'electron'
 
 import { ensureValidURL } from '../util'
@@ -8,59 +9,80 @@ import StreamWindow from './StreamWindow'
 import StreamdelayClient from './StreamdelayClient'
 import initWebServer from './server'
 
-async function main() {
-  const argv = yargs
+function parseArgs() {
+  return yargs
     .config('config', (configPath) => {
-      return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-    })
-    .group(
-      ['webserver', 'cert-dir', 'cert-email', 'hostname', 'port'],
-      'Web Server Configuration',
-    )
-    .option('webserver', {
-      describe: 'Enable control webserver and specify the URL',
-      implies: ['username', 'password'],
-    })
-    .option('hostname', {
-      describe: 'Override hostname the control server listens on',
-    })
-    .option('port', {
-      describe: 'Override port the control server listens on',
-      number: true,
-    })
-    .option('cert-dir', {
-      describe: 'Private directory to store SSL certificate in',
-      implies: ['email'],
-    })
-    .option('cert-production', {
-      describe: 'Obtain a real SSL certificate using production servers',
-    })
-    .option('email', {
-      describe: 'Email for owner of SSL certificate',
-    })
-    .option('username', {
-      describe: 'Web control server username',
-    })
-    .option('password', {
-      describe: 'Web control server password',
-    })
-    .option('open', {
-      describe: 'After launching, open the control website in a browser',
-      boolean: true,
-      default: true,
+      return TOML.parse(fs.readFileSync(configPath, 'utf-8'))
     })
     .option('background-color', {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
     })
-    .option('streamdelay-endpoint', {
+    .group(
+      [
+        'control.username',
+        'control.password',
+        'control.address',
+        'control.hostname',
+        'control.port',
+        'control.open',
+      ],
+      'Control Webserver',
+    )
+    .option('control.username', {
+      describe: 'Web control server username',
+    })
+    .option('control.password', {
+      describe: 'Web control server password',
+    })
+    .option('control.open', {
+      describe: 'After launching, open the control website in a browser',
+      boolean: true,
+      default: true,
+    })
+    .option('control.address', {
+      describe: 'Enable control webserver and specify the URL',
+      implies: ['control.username', 'control.password'],
+    })
+    .option('control.hostname', {
+      describe: 'Override hostname the control server listens on',
+    })
+    .option('control.port', {
+      describe: 'Override port the control server listens on',
+      number: true,
+    })
+    .group(
+      ['cert.dir', 'cert.production', 'cert.email'],
+      'Automatic SSL Certificate',
+    )
+    .option('cert.dir', {
+      describe: 'Private directory to store SSL certificate in',
+      implies: ['email'],
+      default: null,
+    })
+    .option('cert.production', {
+      describe: 'Obtain a real SSL certificate using production servers',
+    })
+    .option('cert.email', {
+      describe: 'Email for owner of SSL certificate',
+    })
+    .group(['streamdelay.endpoint', 'streamdelay.key'], 'Streamdelay')
+    .option('streamdelay.endpoint', {
       describe: 'URL of Streamdelay endpoint',
       default: 'http://localhost:8404',
     })
-    .option('streamdelay-key', {
+    .option('streamdelay.key', {
       describe: 'Streamdelay API key',
+      default: null,
     })
     .help().argv
+}
+
+async function main() {
+  const argv = parseArgs()
+  if (argv.help) {
+    return
+  }
 
   // Reject all permission requests from web content.
   session
@@ -132,28 +154,28 @@ async function main() {
     }
   }
 
-  if (argv.webserver) {
+  if (argv.control.address) {
     ;({ broadcastState } = await initWebServer({
-      certDir: argv.certDir,
-      certProduction: argv.certProduction,
-      email: argv.email,
-      url: argv.webserver,
-      hostname: argv.hostname,
-      port: argv.port,
-      username: argv.username,
-      password: argv.password,
+      certDir: argv.cert.dir,
+      certProduction: argv.cert.production,
+      email: argv.cert.email,
+      url: argv.control.address,
+      hostname: argv.control.hostname,
+      port: argv.control.port,
+      username: argv.control.username,
+      password: argv.control.password,
       getInitialState,
       onMessage,
     }))
-    if (argv.open) {
-      shell.openExternal(argv.webserver)
+    if (argv.control.open) {
+      shell.openExternal(argv.control.address)
     }
   }
 
-  if (argv.streamdelayKey) {
+  if (argv.streamdelay.key) {
     streamdelayClient = new StreamdelayClient({
-      endpoint: argv.streamdelayEndpoint,
-      key: argv.streamdelayKey,
+      endpoint: argv.streamdelay.endpoint,
+      key: argv.streamdelay.key,
     })
     streamdelayClient.on('state', (state) => {
       clientState.streamdelay = state

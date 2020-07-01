@@ -1,0 +1,32 @@
+# Set the background color (useful for chroma-keying)
+#background-color = "#0f0"
+
+[control]
+# Address to serve control server from
+address = "http://localhost:80"
+
+# Override hostname and port
+#hostname = "localhost"
+#port = 80
+
+# Username and password
+password = "woke"
+username = "woke"
+
+[cert]
+# SSL certificates (optional)
+# If you specify an https:// URL for the "webserver" option, a certificate will be automatically generated and signed by Let's Encrypt.
+# For this to work, Streamwall must be accessible from both ports 80 and 443.
+
+# Uncomment to obtain a real certificate (otherwise a testing cert will be generated)
+#production = true
+
+# Email address to use when registering SSL certificate with Let's Encrypt
+#email = "hi@streamwall.io"
+
+# Directory to store certificate
+#dir = "../streamwall-cert"
+
+[streamdelay]
+#endpoint = "http://localhost:8404"
+#key = "super-secret"

@@ -29,6 +29,22 @@ Under the hood, think of Streamwall as a specialized web browser for mosaicing v
 3. Use the browser window to load or control streams. The initial list will be populated from https://woke.net/#streams
 4. If you enter the same stream code in multiple cells, it will merge them together for a larger stream.
 
+## Configuration
+
+Streamwall has a growing number of configuration options. To get a summary run:
+
+```
+npm start -- --help
+```
+
+For long-term installations, it's recommended to put your options into a configuration file. To use a config file, run:
+
+```
+npm start -- --config="../streamwall.json"
+```
+
+See `config.example.toml` for an example.
+
 ## Hotkeys
 
 The following hotkeys are available with the "control" webpage focused:
