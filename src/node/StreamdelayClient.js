@@ -36,8 +36,13 @@ export default class StreamdelayClient extends EventEmitter {
   }
 
   emitState() {
+    const isConnected = this.ws.readyState === WebSocket.OPEN
+    if (isConnected && !this.status) {
+      // Wait until we've received the first status message
+      return
+    }
     this.emit('state', {
-      isConnected: this.ws.readyState === WebSocket.OPEN,
+      isConnected,
       ...this.status,
     })
   }

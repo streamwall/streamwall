@@ -22,7 +22,9 @@ function App({ wsEndpoint }) {
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
-  const [delayState, setDelayState] = useState(false)
+  const [delayState, setDelayState] = useState({
+    isConnected: false,
+  })
   const allStreams = sortBy([...streams, ...customStreams], ['_id'])
 
   useEffect(() => {
@@ -70,7 +72,7 @@ function App({ wsEndpoint }) {
         setStreams(newStreams)
         setCustomStreams(newCustomStreams)
         setDelayState(
-          streamdelay && {
+          streamdelay.isConnected && {
             ...streamdelay,
             state: State.from(streamdelay.state),
           },
@@ -228,12 +230,10 @@ function App({ wsEndpoint }) {
       <div>
         connection status: {isConnected ? 'connected' : 'connecting...'}
       </div>
-      {delayState !== false && (
-        <StreamDelayBox
-          delayState={delayState}
-          setStreamCensored={setStreamCensored}
-        />
-      )}
+      <StreamDelayBox
+        delayState={delayState}
+        setStreamCensored={setStreamCensored}
+      />
       <StyledDataContainer isConnected={isConnected}>
         <div>
           {range(0, GRID_COUNT).map((y) => (
@@ -304,12 +304,14 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
     setStreamCensored(!delayState.isCensored)
   }, [delayState.isCensored, setStreamCensored])
   let buttonText
-  if (delayState.state.matches('censorship.censored.deactivating')) {
-    buttonText = 'Deactivating...'
-  } else if (delayState.isCensored) {
-    buttonText = 'Uncensor stream'
-  } else {
-    buttonText = 'Censor stream'
+  if (delayState.isConnected) {
+    if (delayState.state.matches('censorship.censored.deactivating')) {
+      buttonText = 'Deactivating...'
+    } else if (delayState.isCensored) {
+      buttonText = 'Uncensor stream'
+    } else {
+      buttonText = 'Censor stream'
+    }
   }
   return (
     <div>
@@ -317,15 +319,17 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
         <strong>Streamdelay</strong>
         <span>{delayState.isConnected ? 'connected' : 'connecting...'}</span>
         {delayState.isConnected && (
-          <span>delay: {delayState.delaySeconds}s</span>
+          <>
+            <span>delay: {delayState.delaySeconds}s</span>
+            <StyledToggleButton
+              isActive={delayState.isCensored}
+              onClick={handleToggleStreamCensored}
+              tabIndex={1}
+            >
+              {buttonText}
+            </StyledToggleButton>
+          </>
         )}
-        <StyledToggleButton
-          isActive={delayState.isCensored}
-          onClick={handleToggleStreamCensored}
-          tabIndex={1}
-        >
-          {buttonText}
-        </StyledToggleButton>
       </StyledStreamDelayBox>
     </div>
   )

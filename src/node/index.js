@@ -105,7 +105,7 @@ async function main() {
     streams: [],
     customStreams: [],
     views: [],
-    streamdelay: false,
+    streamdelay: { isConnected: false },
   }
   const getInitialState = () => clientState
   let broadcastState = () => {}
