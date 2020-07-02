@@ -15,6 +15,7 @@ import websocket from 'koa-easy-ws'
 const webDistPath = path.join(app.getAppPath(), 'web')
 
 function initApp({ username, password, baseURL, getInitialState, onMessage }) {
+  const expectedOrigin = new URL(baseURL).origin
   const sockets = new Set()
 
   const app = new Koa()
@@ -38,6 +39,11 @@ function initApp({ username, password, baseURL, getInitialState, onMessage }) {
   app.use(
     route.get('/ws', async (ctx) => {
       if (ctx.ws) {
+        if (ctx.headers.origin !== expectedOrigin) {
+          ctx.status = 403
+          return
+        }
+
         const ws = await ctx.ws()
         sockets.add(ws)
 
