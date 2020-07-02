@@ -23,8 +23,8 @@ address = "http://localhost:80"
 #port = 80
 
 # Username and password
-password = "woke"
 username = "woke"
+password = "woke"
 
 [data]
 # By default, we use the woke.net streams data source.
