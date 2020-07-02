@@ -1,5 +1,18 @@
+[window]
+# Window dimensions
+#width = 1920
+#height = 1080
+
+# Position a frameless window (useful for capturing w/ fixed screen positions)
+#x = 0
+#y = 0
+#frameless = false
+
 # Set the background color (useful for chroma-keying)
 #background-color = "#0f0"
+
+[grid]
+#count = 3
 
 [control]
 # Address to serve control server from

@@ -7,18 +7,15 @@ import { interpret } from 'xstate'
 import viewStateMachine from './viewStateMachine'
 import { boxesFromViewContentMap } from './geometry'
 
-import {
-  WIDTH,
-  HEIGHT,
-  GRID_COUNT,
-  SPACE_WIDTH,
-  SPACE_HEIGHT,
-} from '../constants'
-
 export default class StreamWindow extends EventEmitter {
-  constructor({ backgroundColor = '#000' }) {
+  constructor(config) {
     super()
-    this.backgroundColor = backgroundColor
+
+    const { width, height, gridCount } = config
+    config.spaceWidth = Math.floor(width / gridCount)
+    config.spaceHeight = Math.floor(height / gridCount)
+    this.config = config
+
     this.win = null
     this.offscreenWin = null
     this.overlayView = null
@@ -27,11 +24,24 @@ export default class StreamWindow extends EventEmitter {
   }
 
   init() {
+    const {
+      width,
+      height,
+      x,
+      y,
+      frameless,
+      backgroundColor,
+      spaceWidth,
+      spaceHeight,
+    } = this.config
     const win = new BrowserWindow({
       title: 'Streamwall',
-      width: WIDTH,
-      height: HEIGHT,
-      backgroundColor: this.backgroundColor,
+      width,
+      height,
+      x,
+      y,
+      frame: !frameless,
+      backgroundColor,
       useContentSize: true,
       show: false,
     })
@@ -63,8 +73,8 @@ export default class StreamWindow extends EventEmitter {
     overlayView.setBounds({
       x: 0,
       y: 0,
-      width: WIDTH,
-      height: HEIGHT,
+      width,
+      height,
     })
     overlayView.webContents.loadFile('overlay.html')
     this.overlayView = overlayView
@@ -75,7 +85,7 @@ export default class StreamWindow extends EventEmitter {
         // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
         win.removeBrowserView(view)
         offscreenWin.addBrowserView(view)
-        view.setBounds({ x: 0, y: 0, width: SPACE_WIDTH, height: SPACE_HEIGHT })
+        view.setBounds({ x: 0, y: 0, width: spaceWidth, height: spaceHeight })
       },
       positionView: (context, event) => {
         const { pos, view } = context
@@ -96,6 +106,7 @@ export default class StreamWindow extends EventEmitter {
 
   createView() {
     const { win, overlayView, viewActions } = this
+    const { backgroundColor } = this.config
     const view = new BrowserView({
       webPreferences: {
         nodeIntegration: false,
@@ -104,7 +115,7 @@ export default class StreamWindow extends EventEmitter {
         sandbox: true,
       },
     })
-    view.setBackgroundColor(this.backgroundColor)
+    view.setBackgroundColor(backgroundColor)
 
     const machine = viewStateMachine
       .withContext({
@@ -135,12 +146,9 @@ export default class StreamWindow extends EventEmitter {
   }
 
   setViews(viewContentMap) {
+    const { gridCount, spaceWidth, spaceHeight } = this.config
     const { win, views } = this
-    const boxes = boxesFromViewContentMap(
-      GRID_COUNT,
-      GRID_COUNT,
-      viewContentMap,
-    )
+    const boxes = boxesFromViewContentMap(gridCount, gridCount, viewContentMap)
     const remainingBoxes = new Set(boxes)
     const unusedViews = new Set(views)
     const viewsToDisplay = []
@@ -187,10 +195,10 @@ export default class StreamWindow extends EventEmitter {
     for (const { box, view } of viewsToDisplay) {
       const { content, x, y, w, h, spaces } = box
       const pos = {
-        x: SPACE_WIDTH * x,
-        y: SPACE_HEIGHT * y,
-        width: SPACE_WIDTH * w,
-        height: SPACE_HEIGHT * h,
+        x: spaceWidth * x,
+        y: spaceHeight * y,
+        width: spaceWidth * w,
+        height: spaceHeight * h,
         spaces,
       }
       view.send({ type: 'DISPLAY', pos, content })

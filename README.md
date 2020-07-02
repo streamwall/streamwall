@@ -70,7 +70,11 @@ We've observed this occur in cases where file corruption is an issue. The fix ha
 
 ### The Streamwall Electron window only fits 2.5 tiles wide
 
-It's possible that your system resolution is causing a problem. If you only broadcast at 720p, you can update the height and width in `src/constants.js` to 1280 and 720 respectively. Save your changes and restart Streamwall
+Streamwall in its default settings needs enough screen space to display a 1920x1080 (1080p) window, with room for the titlebar. You can configure Streamwall to open a smaller window:
+
+```
+npm start -- --window.width=1024 --window.height=768
+```
 
 ## Credits
 

@@ -7,7 +7,6 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { TailSpin } from 'svg-loaders-react'
 
 import '../index.css'
-import { WIDTH, HEIGHT } from '../constants'
 
 import InstagramIcon from '../static/instagram.svg'
 import FacebookIcon from '../static/facebook.svg'
@@ -16,7 +15,8 @@ import TwitchIcon from '../static/twitch.svg'
 import YouTubeIcon from '../static/youtube.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
 
-function Overlay({ views, streams, customStreams }) {
+function Overlay({ config, views, streams, customStreams }) {
+  const { width, height } = config
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
     .filter((s) => s.matches('displaying') && !s.matches('displaying.error'))
@@ -33,7 +33,12 @@ function Overlay({ views, streams, customStreams }) {
         const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
         return (
-          <SpaceBorder pos={pos} isListening={isListening}>
+          <SpaceBorder
+            pos={pos}
+            windowWidth={width}
+            windowHeight={height}
+            isListening={isListening}
+          >
             <BlurCover isBlurred={isBlurred} />
             {data && (
               <StreamTitle isListening={isListening}>
@@ -60,6 +65,7 @@ function Overlay({ views, streams, customStreams }) {
 
 function App() {
   const [state, setState] = useState({
+    config: {},
     views: [],
     streams: [],
     customStreams: [],
@@ -75,9 +81,14 @@ function App() {
     ipcRenderer.send('devtools-overlay')
   })
 
-  const { views, streams, customStreams } = state
+  const { config, views, streams, customStreams } = state
   return (
-    <Overlay views={views} streams={streams} customStreams={customStreams} />
+    <Overlay
+      config={config}
+      views={views}
+      streams={streams}
+      customStreams={customStreams}
+    />
   )
 }
 
@@ -118,12 +129,12 @@ const SpaceBorder = styled.div.attrs((props) => ({
   border: 0 solid black;
   border-left-width: ${({ pos, borderWidth }) =>
     pos.x === 0 ? 0 : borderWidth}px;
-  border-right-width: ${({ pos, borderWidth }) =>
-    pos.x + pos.width === WIDTH ? 0 : borderWidth}px;
+  border-right-width: ${({ pos, borderWidth, windowWidth }) =>
+    pos.x + pos.width === windowWidth ? 0 : borderWidth}px;
   border-top-width: ${({ pos, borderWidth }) =>
     pos.y === 0 ? 0 : borderWidth}px;
-  border-bottom-width: ${({ pos, borderWidth }) =>
-    pos.y + pos.height === HEIGHT ? 0 : borderWidth}px;
+  border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
+    pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
   box-shadow: ${({ isListening }) =>
     isListening ? '0 0 10px red inset' : 'none'};
   box-sizing: border-box;

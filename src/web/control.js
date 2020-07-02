@@ -9,22 +9,47 @@ import styled, { css } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import '../index.css'
-import { GRID_COUNT } from '../constants'
 import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
 
+const hotkeyTriggers = [
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '0',
+  'q',
+  'w',
+  'e',
+  'r',
+  't',
+  'y',
+  'u',
+  'i',
+  'o',
+  'p',
+]
+
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
+  const [config, setConfig] = useState({})
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
   const [delayState, setDelayState] = useState({
     isConnected: false,
   })
+
+  const { gridCount } = config
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -37,7 +62,12 @@ function App({ wsEndpoint }) {
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
-        const { streams: newStreams, views, streamdelay } = msg.state
+        const {
+          config: newConfig,
+          streams: newStreams,
+          views,
+          streamdelay,
+        } = msg.state
         const newStateIdxMap = new Map()
         for (const viewState of views) {
           const { pos, content } = viewState.context
@@ -61,6 +91,7 @@ function App({ wsEndpoint }) {
             })
           }
         }
+        setConfig(newConfig)
         setStateIdxMap(newStateIdxMap)
         setStreams(sortBy(newStreams, ['_id']))
         setCustomStreams(newStreams.filter((s) => s._dataSource === 'custom'))
@@ -149,15 +180,18 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
-  const handleClickId = useCallback((streamId) => {
-    const availableIdx = range(GRID_COUNT * GRID_COUNT).find(
-      (i) => !stateIdxMap.has(i),
-    )
-    if (availableIdx === undefined) {
-      return
-    }
-    handleSetView(availableIdx, streamId)
-  })
+  const handleClickId = useCallback(
+    (streamId) => {
+      const availableIdx = range(gridCount * gridCount).find(
+        (i) => !stateIdxMap.has(i),
+      )
+      if (availableIdx === undefined) {
+        return
+      }
+      handleSetView(availableIdx, streamId)
+    },
+    [gridCount, stateIdxMap],
+  )
 
   const handleChangeCustomStream = useCallback((idx, customStream) => {
     let newCustomStreams = [...customStreams]
@@ -181,25 +215,26 @@ function App({ wsEndpoint }) {
   }, [])
 
   // Set up keyboard shortcuts.
-  // Note: if GRID_COUNT > 3, there will not be keys for view indices > 9.
-  for (const idx of range(GRID_COUNT * GRID_COUNT)) {
-    useHotkeys(
-      `alt+${idx + 1}`,
-      () => {
-        const isListening = stateIdxMap.get(idx)?.isListening ?? false
-        handleSetListening(idx, !isListening)
-      },
-      [stateIdxMap],
-    )
-    useHotkeys(
-      `alt+shift+${idx + 1}`,
-      () => {
-        const isBlurred = stateIdxMap.get(idx)?.isBlurred ?? false
-        handleSetBlurred(idx, !isBlurred)
-      },
-      [stateIdxMap],
-    )
-  }
+  useHotkeys(
+    hotkeyTriggers.map((k) => `alt+${k}`).join(','),
+    (ev, { key }) => {
+      ev.preventDefault()
+      const idx = hotkeyTriggers.indexOf(key[key.length - 1])
+      const isListening = stateIdxMap.get(idx)?.isListening ?? false
+      handleSetListening(idx, !isListening)
+    },
+    [stateIdxMap],
+  )
+  useHotkeys(
+    hotkeyTriggers.map((k) => `alt+shift+${k}`).join(','),
+    (ev, { key }) => {
+      ev.preventDefault()
+      const idx = hotkeyTriggers.indexOf(key[key.length - 1])
+      const isBlurred = stateIdxMap.get(idx)?.isBlurred ?? false
+      handleSetBlurred(idx, !isBlurred)
+    },
+    [stateIdxMap],
+  )
   useHotkeys(
     `alt+c`,
     () => {
@@ -227,10 +262,10 @@ function App({ wsEndpoint }) {
       />
       <StyledDataContainer isConnected={isConnected}>
         <div>
-          {range(0, GRID_COUNT).map((y) => (
+          {range(0, gridCount).map((y) => (
             <StyledGridLine>
-              {range(0, GRID_COUNT).map((x) => {
-                const idx = GRID_COUNT * y + x
+              {range(0, gridCount).map((x) => {
+                const idx = gridCount * y + x
                 const {
                   streamId = '',
                   isListening = false,

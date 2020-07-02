@@ -21,7 +21,41 @@ function parseArgs() {
     .config('config', (configPath) => {
       return TOML.parse(fs.readFileSync(configPath, 'utf-8'))
     })
-    .option('background-color', {
+    .group(['grid.count'], 'Grid dimensions')
+    .option('grid.count', {
+      number: true,
+      default: 3,
+    })
+    .group(
+      [
+        'window.width',
+        'window.height',
+        'window.x',
+        'window.y',
+        'window.frameless',
+        'window.background-color',
+      ],
+      'Window settings',
+    )
+    .option('window.x', {
+      number: true,
+    })
+    .option('window.y', {
+      number: true,
+    })
+    .option('window.width', {
+      number: true,
+      default: 1920,
+    })
+    .option('window.height', {
+      number: true,
+      default: 1080,
+    })
+    .option('window.frameless', {
+      boolean: true,
+      default: false,
+    })
+    .option('window.background-color', {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
     })
@@ -118,7 +152,13 @@ async function main() {
   })
 
   const streamWindow = new StreamWindow({
-    backgroundColor: argv.backgroundColor,
+    gridCount: argv.grid.count,
+    width: argv.window.width,
+    height: argv.window.height,
+    x: argv.window.x,
+    y: argv.window.y,
+    frameless: argv.window.frameless,
+    backgroundColor: argv.window['background-color'],
   })
   streamWindow.init()
 
@@ -126,6 +166,11 @@ async function main() {
   let streamdelayClient = null
 
   const clientState = {
+    config: {
+      width: argv.window.width,
+      height: argv.window.height,
+      gridCount: argv.grid.count,
+    },
     streams: [],
     customStreams: [],
     views: [],
