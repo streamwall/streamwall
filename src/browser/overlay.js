@@ -15,7 +15,7 @@ import TwitchIcon from '../static/twitch.svg'
 import YouTubeIcon from '../static/youtube.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
 
-function Overlay({ config, views, streams, customStreams }) {
+function Overlay({ config, views, streams }) {
   const { width, height } = config
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
@@ -24,9 +24,7 @@ function Overlay({ config, views, streams, customStreams }) {
     <div>
       {activeViews.map((viewState) => {
         const { content, pos } = viewState.context
-        const data = [...streams, ...customStreams].find(
-          (d) => content.url === d.link,
-        )
+        const data = streams.find((d) => content.url === d.link)
         const isListening = viewState.matches(
           'displaying.running.audio.listening',
         )
