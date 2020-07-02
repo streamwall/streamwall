@@ -196,7 +196,7 @@ function App({ wsEndpoint }) {
   const handleChangeCustomStream = useCallback((idx, customStream) => {
     let newCustomStreams = [...customStreams]
     newCustomStreams[idx] = customStream
-    newCustomStreams = newCustomStreams.filter((s) => s.kind)
+    newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
     wsRef.current.send(
       JSON.stringify({
         type: 'set-custom-streams',
