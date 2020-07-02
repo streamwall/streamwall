@@ -50,7 +50,7 @@ See `config.example.toml` for an example.
 Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `config.example.toml` for an example) or the command line:
 
 ```
-npm start -- --json-url="https://your-site/api/streams.json" --toml-file="./streams.toml"
+npm start -- --data.json-url="https://your-site/api/streams.json" --data.toml-file="./streams.toml"
 ```
 
 ## Hotkeys
