@@ -84,7 +84,12 @@ export class StreamIDGenerator {
       if (!localIdMap.has(link)) {
         let counter = 0
         let newId
-        const normalizedText = (source || label || link)
+        const idBase = source || label || link
+        if (!idBase) {
+          console.warn('skipping empty stream', stream)
+          continue
+        }
+        const normalizedText = idBase
           .toLowerCase()
           .replace(/[^\w]/g, '')
           .replace(/^the|^https?(www)?/, '')
