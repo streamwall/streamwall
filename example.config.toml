@@ -46,6 +46,7 @@ json-url = ["https://woke.net/api/streams.json"]
     [twitch.announce]
     #template = "SingsMic <%- stream.source %> <%- stream.city && stream.state ? `(${stream.city} ${stream.state})` : '' %> <%- stream.link %>"
     #interval = 60
+    #delay = 30
 
 [cert]
 # SSL certificates (optional)

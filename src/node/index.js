@@ -110,6 +110,11 @@ function parseArgs() {
       number: true,
       default: 60,
     })
+    .option('twitch.announce.delay', {
+      describe: 'Time to dwell on a stream before its details are announced',
+      number: true,
+      default: 30,
+    })
     .group(
       [
         'control.username',

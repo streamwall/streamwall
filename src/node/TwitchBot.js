@@ -20,6 +20,7 @@ export default class TwitchBot extends EventEmitter {
 
     this.streams = null
     this.listeningURL = null
+    this.dwellTimeout = null
     this.announceTimeouts = new Map()
 
     client.on('ready', () => {
@@ -70,10 +71,14 @@ export default class TwitchBot extends EventEmitter {
     this.onListeningURLChange(listeningURL)
   }
 
-  async onListeningURLChange(listeningURL) {
-    if (!this.announceTimeouts.has(listeningURL)) {
-      await this.announce()
-    }
+  onListeningURLChange(listeningURL) {
+    const { announce } = this.config
+    clearTimeout(this.dwellTimeout)
+    this.dwellTimeout = setTimeout(() => {
+      if (!this.announceTimeouts.has(listeningURL)) {
+        this.announce()
+      }
+    }, announce.delay * 1000)
   }
 
   async announce() {
