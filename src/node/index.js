@@ -1,6 +1,7 @@
 import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
+import Color from 'color'
 import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -13,6 +14,7 @@ import {
   combineDataSources,
 } from './data'
 import StreamWindow from './StreamWindow'
+import TwitchBot from './TwitchBot'
 import StreamdelayClient from './StreamdelayClient'
 import initWebServer from './server'
 
@@ -70,6 +72,45 @@ function parseArgs() {
       normalize: true,
       array: true,
       default: [],
+    })
+    .group(
+      [
+        'twitch.channel',
+        'twitch.username',
+        'twitch.password',
+        'twitch.color',
+        'twitch.announce.template',
+        'twitch.announce.interval-seconds',
+      ],
+      'Twitch Chat',
+    )
+    .option('twitch.channel', {
+      describe: 'Name of Twitch channel',
+      default: null,
+    })
+    .option('twitch.username', {
+      describe: 'Username of Twitch bot account',
+      default: null,
+    })
+    .option('twitch.password', {
+      describe: 'Password of Twitch bot account',
+      default: null,
+    })
+    .option('twitch.color', {
+      describe: 'Color of Twitch bot username',
+      coerce: (text) => Color(text).object(),
+      default: { r: 255, g: 0, b: 0 },
+    })
+    .option('twitch.announce.template', {
+      describe: 'Message template for stream announcements',
+      default:
+        'SingsMic <%- stream.source %> <%- stream.city && stream.state ? `(${stream.city} ${stream.state})` : `` %> <%- stream.link %>',
+    })
+    .option('twitch.announce.interval', {
+      describe:
+        'Minimum time interval (in seconds) between re-announcing the same stream',
+      number: true,
+      default: 60,
     })
     .group(
       [
@@ -163,6 +204,7 @@ async function main() {
   streamWindow.init()
 
   let browseWindow = null
+  let twitchBot = null
   let streamdelayClient = null
 
   const clientState = {
@@ -250,10 +292,18 @@ async function main() {
     streamdelayClient.connect()
   }
 
+  if (argv.twitch.token) {
+    twitchBot = new TwitchBot(argv.twitch)
+    twitchBot.connect()
+  }
+
   streamWindow.on('state', (viewStates) => {
     clientState.views = viewStates
     streamWindow.send('state', clientState)
     broadcastState(clientState)
+    if (twitchBot) {
+      twitchBot.onState(clientState)
+    }
   })
 
   const dataSources = [

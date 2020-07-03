@@ -53,6 +53,10 @@ Streamwall can load stream data from both JSON APIs and TOML files. Data sources
 npm start -- --data.json-url="https://your-site/api/streams.json" --data.toml-file="./streams.toml"
 ```
 
+## Twitch bot
+
+Streamwall can announce the name and URL of streams to your Twitch channel as you focus their audio. Use [twitchtokengenerator.com](https://twitchtokengenerator.com/?scope=chat:read+chat:edit) to generate an OAuth token. See `example.config.toml` for all available options.
+
 ## Hotkeys
 
 The following hotkeys are available with the "control" webpage focused:

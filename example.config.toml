@@ -35,6 +35,18 @@ json-url = ["https://woke.net/api/streams.json"]
 # See example.streams.toml for a sample.
 #toml-file = ["./example.streams.toml"]
 
+[twitch]
+#channel = "woke"
+#username = "bot-username"
+#color = "#ff0000"
+
+# Use https://twitchtokengenerator.com/?scope=chat:read+chat:edit to generate an OAuth token:
+#token = "twitch-oauth-token"
+
+    [twitch.announce]
+    #template = "SingsMic <%- stream.source %> <%- stream.city && stream.state ? `(${stream.city} ${stream.state})` : '' %> <%- stream.link %>"
+    #interval = 60
+
 [cert]
 # SSL certificates (optional)
 # If you specify an https:// URL for the "webserver" option, a certificate will be automatically generated and signed by Let's Encrypt.
