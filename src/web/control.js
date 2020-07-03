@@ -45,9 +45,7 @@ function App({ wsEndpoint }) {
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
-  const [delayState, setDelayState] = useState({
-    isConnected: false,
-  })
+  const [delayState, setDelayState] = useState()
 
   const { gridCount } = config
 
@@ -96,7 +94,7 @@ function App({ wsEndpoint }) {
         setStreams(sortBy(newStreams, ['_id']))
         setCustomStreams(newStreams.filter((s) => s._dataSource === 'custom'))
         setDelayState(
-          streamdelay.isConnected && {
+          streamdelay && {
             ...streamdelay,
             state: State.from(streamdelay.state),
           },
@@ -256,10 +254,12 @@ function App({ wsEndpoint }) {
       <div>
         connection status: {isConnected ? 'connected' : 'connecting...'}
       </div>
-      <StreamDelayBox
-        delayState={delayState}
-        setStreamCensored={setStreamCensored}
-      />
+      {delayState && (
+        <StreamDelayBox
+          delayState={delayState}
+          setStreamCensored={setStreamCensored}
+        />
+      )}
       <StyledDataContainer isConnected={isConnected}>
         <div>
           {range(0, gridCount).map((y) => (
