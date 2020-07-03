@@ -43,11 +43,11 @@ For long-term installations, it's recommended to put your options into a configu
 npm start -- --config="../streamwall.json"
 ```
 
-See `config.example.toml` for an example.
+See `example.config.toml` for an example.
 
 ## Data sources
 
-Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `config.example.toml` for an example) or the command line:
+Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `example.config.toml` for an example) or the command line:
 
 ```
 npm start -- --data.json-url="https://your-site/api/streams.json" --data.toml-file="./streams.toml"
