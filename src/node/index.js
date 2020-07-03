@@ -1,7 +1,6 @@
 import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
-import Color from 'color'
 import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -98,8 +97,7 @@ function parseArgs() {
     })
     .option('twitch.color', {
       describe: 'Color of Twitch bot username',
-      coerce: (text) => Color(text).object(),
-      default: { r: 255, g: 0, b: 0 },
+      default: '#ff0000',
     })
     .option('twitch.announce.template', {
       describe: 'Message template for stream announcements',

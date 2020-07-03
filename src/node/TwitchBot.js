@@ -1,5 +1,5 @@
 import EventEmitter from 'events'
-
+import Color from 'color'
 import ejs from 'ejs'
 import { State } from 'xstate'
 import { ChatClient, SlowModeRateLimiter, LoginError } from 'dank-twitch-irc'
@@ -47,7 +47,7 @@ export default class TwitchBot extends EventEmitter {
   async onReady() {
     const { client } = this
     const { channel, color } = this.config
-    await client.setColor(color)
+    await client.setColor(Color(color).object())
     await client.join(channel)
     this.emit('connected')
   }
