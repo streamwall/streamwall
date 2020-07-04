@@ -40,7 +40,7 @@ npm start -- --help
 For long-term installations, it's recommended to put your options into a configuration file. To use a config file, run:
 
 ```
-npm start -- --config="../streamwall.json"
+npm start -- --config="../streamwall.toml"
 ```
 
 See `example.config.toml` for an example.
