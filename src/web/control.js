@@ -58,7 +58,7 @@ function useYDoc(keys) {
   return [docValue, doc, setDoc]
 }
 
-function App({ wsEndpoint }) {
+function useStreamwallConnection(wsEndpoint) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
   const [sharedState, stateDoc, setStateDoc] = useYDoc(['views'])
@@ -67,8 +67,6 @@ function App({ wsEndpoint }) {
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
   const [delayState, setDelayState] = useState()
-
-  const { gridCount } = config
 
   useEffect(() => {
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
@@ -130,6 +128,10 @@ function App({ wsEndpoint }) {
     wsRef.current = ws
   }, [])
 
+  const send = useCallback((...args) => {
+    wsRef.current.send(...args)
+  }, [])
+
   useEffect(() => {
     function sendUpdate(update) {
       wsRef.current.send(update)
@@ -148,6 +150,34 @@ function App({ wsEndpoint }) {
     }
   }, [stateDoc])
 
+  return {
+    isConnected,
+    send,
+    sharedState,
+    stateDoc,
+    config,
+    streams,
+    customStreams,
+    stateIdxMap,
+    delayState,
+  }
+}
+
+function App({ wsEndpoint }) {
+  const {
+    isConnected,
+    send,
+    sharedState,
+    stateDoc,
+    config,
+    streams,
+    customStreams,
+    stateIdxMap,
+    delayState,
+  } = useStreamwallConnection(wsEndpoint)
+
+  const { gridCount } = config
+
   const handleSetView = useCallback(
     (idx, streamId) => {
       const stream = streams.find((d) => d._id === streamId)
@@ -160,7 +190,7 @@ function App({ wsEndpoint }) {
   )
 
   const handleSetListening = useCallback((idx, listening) => {
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'set-listening-view',
         viewIdx: listening ? idx : null,
@@ -169,7 +199,7 @@ function App({ wsEndpoint }) {
   }, [])
 
   const handleSetBlurred = useCallback((idx, blurred) => {
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'set-view-blurred',
         viewIdx: idx,
@@ -179,7 +209,7 @@ function App({ wsEndpoint }) {
   }, [])
 
   const handleReloadView = useCallback((idx) => {
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'reload-view',
         viewIdx: idx,
@@ -193,7 +223,7 @@ function App({ wsEndpoint }) {
       if (!stream) {
         return
       }
-      wsRef.current.send(
+      send(
         JSON.stringify({
           type: 'browse',
           url: stream.link,
@@ -204,7 +234,7 @@ function App({ wsEndpoint }) {
   )
 
   const handleDevTools = useCallback((idx) => {
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'dev-tools',
         viewIdx: idx,
@@ -229,7 +259,7 @@ function App({ wsEndpoint }) {
     let newCustomStreams = [...customStreams]
     newCustomStreams[idx] = customStream
     newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'set-custom-streams',
         streams: newCustomStreams,
@@ -238,7 +268,7 @@ function App({ wsEndpoint }) {
   })
 
   const setStreamCensored = useCallback((isCensored) => {
-    wsRef.current.send(
+    send(
       JSON.stringify({
         type: 'set-stream-censored',
         isCensored,
