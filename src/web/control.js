@@ -144,14 +144,17 @@ function useStreamwallConnection(wsEndpoint) {
   }, [])
 
   useEffect(() => {
-    function sendUpdate(update) {
+    function sendUpdate(update, origin) {
+      if (origin === 'server') {
+        return
+      }
       wsRef.current.send(update)
     }
     function receiveUpdate(ev) {
       if (!(ev.data instanceof ArrayBuffer)) {
         return
       }
-      Y.applyUpdate(stateDoc, new Uint8Array(ev.data))
+      Y.applyUpdate(stateDoc, new Uint8Array(ev.data), 'server')
     }
     stateDoc.on('update', sendUpdate)
     wsRef.current.addEventListener('message', receiveUpdate)
