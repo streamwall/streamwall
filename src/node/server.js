@@ -11,10 +11,18 @@ import route from 'koa-route'
 import serveStatic from 'koa-static'
 import views from 'koa-views'
 import websocket from 'koa-easy-ws'
+import * as Y from 'yjs'
 
 const webDistPath = path.join(app.getAppPath(), 'web')
 
-function initApp({ username, password, baseURL, getInitialState, onMessage }) {
+function initApp({
+  username,
+  password,
+  baseURL,
+  getInitialState,
+  onMessage,
+  stateDoc,
+}) {
   const expectedOrigin = new URL(baseURL).origin
   const sockets = new Set()
 
@@ -47,16 +55,23 @@ function initApp({ username, password, baseURL, getInitialState, onMessage }) {
         const ws = await ctx.ws()
         sockets.add(ws)
 
+        ws.binaryType = 'arraybuffer'
+
         ws.on('close', () => {
           sockets.delete(ws)
         })
 
-        ws.on('message', (dataText) => {
+        ws.on('message', (rawData) => {
+          if (rawData instanceof ArrayBuffer) {
+            Y.applyUpdate(stateDoc, new Uint8Array(rawData))
+            return
+          }
+
           let data
           try {
-            data = JSON.parse(dataText)
+            data = JSON.parse(rawData)
           } catch (err) {
-            console.warn('received unexpected ws data:', dataText)
+            console.warn('received unexpected ws data:', rawData)
             return
           }
 
@@ -69,6 +84,7 @@ function initApp({ username, password, baseURL, getInitialState, onMessage }) {
 
         const state = getInitialState()
         ws.send(JSON.stringify({ type: 'state', state }))
+        ws.send(Y.encodeStateAsUpdate(stateDoc))
         return
       }
       ctx.status = 404
@@ -95,6 +111,7 @@ export default async function initWebServer({
   password,
   getInitialState,
   onMessage,
+  stateDoc,
 }) {
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
@@ -110,6 +127,7 @@ export default async function initWebServer({
     baseURL,
     getInitialState,
     onMessage,
+    stateDoc,
   })
 
   let server

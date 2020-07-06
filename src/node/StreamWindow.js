@@ -145,7 +145,7 @@ export default class StreamWindow extends EventEmitter {
     )
   }
 
-  setViews(viewContentMap) {
+  setViews(viewContentMap, streams) {
     const { gridCount, spaceWidth, spaceHeight } = this.config
     const { win, views } = this
     const boxes = boxesFromViewContentMap(gridCount, gridCount, viewContentMap)

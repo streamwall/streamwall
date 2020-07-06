@@ -2,6 +2,7 @@ import range from 'lodash/range'
 import sortBy from 'lodash/sortBy'
 import truncate from 'lodash/truncate'
 import ReconnectingWebSocket from 'reconnecting-websocket'
+import * as Y from 'yjs'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { State } from 'xstate'
@@ -38,9 +39,29 @@ const hotkeyTriggers = [
   'p',
 ]
 
+function useYDoc(existingDoc, keys) {
+  const { current: doc } = useRef(existingDoc || new Y.Doc())
+  const [docValue, setDocValue] = useState()
+  useEffect(() => {
+    function updateDocValue() {
+      const valueCopy = Object.fromEntries(
+        keys.map((k) => [k, doc.getMap(k).toJSON()]),
+      )
+      setDocValue(valueCopy)
+    }
+    updateDocValue()
+    doc.on('update', updateDocValue)
+    return () => {
+      doc.off('update', updateDocValue)
+    }
+  }, [])
+  return [docValue, doc]
+}
+
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
+  const [sharedState, stateDoc] = useYDoc(null, ['views'])
   const [config, setConfig] = useState({})
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
@@ -55,9 +76,15 @@ function App({ wsEndpoint }) {
       minReconnectionDelay: 1000 + Math.random() * 500,
       reconnectionDelayGrowFactor: 1.1,
     })
+    ws.binaryType = 'arraybuffer'
     ws.addEventListener('open', () => setIsConnected(true))
     ws.addEventListener('close', () => setIsConnected(false))
     ws.addEventListener('message', (ev) => {
+      if (ev.data instanceof ArrayBuffer) {
+        Y.applyUpdate(stateDoc, new Uint8Array(ev.data))
+        return
+      }
+
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
         const {
@@ -68,9 +95,7 @@ function App({ wsEndpoint }) {
         } = msg.state
         const newStateIdxMap = new Map()
         for (const viewState of views) {
-          const { pos, content } = viewState.context
-          const stream = newStreams.find((d) => d.link === content.url)
-          const streamId = stream?._id
+          const { pos } = viewState.context
           const state = State.from(viewState.state)
           const isListening = state.matches(
             'displaying.running.audio.listening',
@@ -81,8 +106,6 @@ function App({ wsEndpoint }) {
               newStateIdxMap.set(space, {})
             }
             Object.assign(newStateIdxMap.get(space), {
-              streamId,
-              content,
               state,
               isListening,
               isBlurred,
@@ -103,33 +126,21 @@ function App({ wsEndpoint }) {
         console.warn('unexpected ws message', msg)
       }
     })
+    stateDoc.on('update', (update) => {
+      ws.send(update)
+    })
     wsRef.current = ws
   }, [])
 
   const handleSetView = useCallback(
     (idx, streamId) => {
-      const newSpaceIdxMap = new Map(stateIdxMap)
       const stream = streams.find((d) => d._id === streamId)
-      if (stream) {
-        const content = {
-          url: stream?.link,
-          kind: stream?.kind || 'video',
-        }
-        newSpaceIdxMap.set(idx, {
-          ...newSpaceIdxMap.get(idx),
-          streamId,
-          content,
-        })
-      } else {
-        newSpaceIdxMap.delete(idx)
-      }
-      const views = Array.from(newSpaceIdxMap, ([space, { content }]) => [
-        space,
-        content,
-      ])
-      wsRef.current.send(JSON.stringify({ type: 'set-views', views }))
+      stateDoc
+        .getMap('views')
+        .get(String(idx))
+        .set('streamId', stream ? streamId : '')
     },
-    [streams, stateIdxMap],
+    [stateDoc, streams],
   )
 
   const handleSetListening = useCallback((idx, listening) => {
@@ -160,14 +171,21 @@ function App({ wsEndpoint }) {
     )
   }, [])
 
-  const handleBrowse = useCallback((url) => {
-    wsRef.current.send(
-      JSON.stringify({
-        type: 'browse',
-        url,
-      }),
-    )
-  }, [])
+  const handleBrowse = useCallback(
+    (streamId) => {
+      const stream = streams.find((d) => d._id === streamId)
+      if (!stream) {
+        return
+      }
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'browse',
+          url: stream.link,
+        }),
+      )
+    },
+    [streams],
+  )
 
   const handleDevTools = useCallback((idx) => {
     wsRef.current.send(
@@ -181,14 +199,14 @@ function App({ wsEndpoint }) {
   const handleClickId = useCallback(
     (streamId) => {
       const availableIdx = range(gridCount * gridCount).find(
-        (i) => !stateIdxMap.has(i),
+        (i) => !sharedState.views[i].streamId,
       )
       if (availableIdx === undefined) {
         return
       }
       handleSetView(availableIdx, streamId)
     },
-    [gridCount, stateIdxMap],
+    [gridCount, sharedState],
   )
 
   const handleChangeCustomStream = useCallback((idx, customStream) => {
@@ -266,17 +284,12 @@ function App({ wsEndpoint }) {
             <StyledGridLine>
               {range(0, gridCount).map((x) => {
                 const idx = gridCount * y + x
-                const {
-                  streamId = '',
-                  isListening = false,
-                  isBlurred = false,
-                  content = { url: '' },
-                  state,
-                } = stateIdxMap.get(idx) || {}
+                const { isListening = false, isBlurred = false, state } =
+                  stateIdxMap.get(idx) || {}
+                const { streamId } = sharedState.views?.[idx] || ''
                 return (
                   <GridInput
                     idx={idx}
-                    url={content.url}
                     spaceValue={streamId}
                     isError={state && state.matches('displaying.error')}
                     isDisplaying={state && state.matches('displaying')}
@@ -396,7 +409,6 @@ function StreamLine({
 
 function GridInput({
   idx,
-  url,
   onChangeSpace,
   spaceValue,
   isDisplaying,
@@ -437,7 +449,10 @@ function GridInput({
     idx,
     onReloadView,
   ])
-  const handleBrowseClick = useCallback(() => onBrowse(url), [url, onBrowse])
+  const handleBrowseClick = useCallback(() => onBrowse(spaceValue), [
+    spaceValue,
+    onBrowse,
+  ])
   const handleDevToolsClick = useCallback(() => onDevTools(idx), [
     idx,
     onDevTools,

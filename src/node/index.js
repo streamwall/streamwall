@@ -1,6 +1,7 @@
 import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
+import * as Y from 'yjs'
 import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -221,12 +222,37 @@ async function main() {
     views: [],
     streamdelay: null,
   }
+
+  const stateDoc = new Y.Doc()
+  const viewsState = stateDoc.getMap('views')
+  stateDoc.transact(() => {
+    for (let i = 0; i < argv.grid.count ** 2; i++) {
+      const data = new Y.Map()
+      data.set('streamId', '')
+      viewsState.set(i, data)
+    }
+  })
+  viewsState.observeDeep(() => {
+    const viewContentMap = new Map()
+    for (const [key, viewData] of viewsState) {
+      const stream = clientState.streams.find(
+        (s) => s._id === viewData.get('streamId'),
+      )
+      if (!stream) {
+        continue
+      }
+      viewContentMap.set(key, {
+        url: stream.link,
+        kind: stream.kind || 'video',
+      })
+    }
+    streamWindow.setViews(viewContentMap)
+  })
+
   const getInitialState = () => clientState
   let broadcastState = () => {}
   const onMessage = (msg) => {
-    if (msg.type === 'set-views') {
-      streamWindow.setViews(new Map(msg.views))
-    } else if (msg.type === 'set-listening-view') {
+    if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
     } else if (msg.type === 'set-view-blurred') {
       streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
@@ -277,6 +303,7 @@ async function main() {
       password: argv.control.password,
       getInitialState,
       onMessage,
+      stateDoc,
     }))
     if (argv.control.open) {
       shell.openExternal(argv.control.address)
