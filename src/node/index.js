@@ -2,6 +2,7 @@ import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
+import { create as createJSONDiffPatch } from 'jsondiffpatch'
 import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -211,7 +212,7 @@ async function main() {
   let twitchBot = null
   let streamdelayClient = null
 
-  const clientState = {
+  let clientState = {
     config: {
       width: argv.window.width,
       height: argv.window.height,
@@ -250,7 +251,7 @@ async function main() {
   })
 
   const getInitialState = () => clientState
-  let broadcastState = () => {}
+  let broadcast = () => {}
   const onMessage = (msg) => {
     if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
@@ -291,8 +292,28 @@ async function main() {
     }
   }
 
+  const stateDiff = createJSONDiffPatch({
+    objectHash: (obj, idx) => obj._id || `$$index:${idx}`,
+  })
+  function updateState(newState) {
+    const lastClientState = clientState
+    clientState = { ...clientState, ...newState }
+    const delta = stateDiff.diff(lastClientState, clientState)
+    if (!delta) {
+      return
+    }
+    broadcast({
+      type: 'state-delta',
+      delta,
+    })
+    streamWindow.send('state', clientState)
+    if (twitchBot) {
+      twitchBot.onState(clientState)
+    }
+  }
+
   if (argv.control.address) {
-    ;({ broadcastState } = await initWebServer({
+    ;({ broadcast } = await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
       email: argv.cert.email,
@@ -316,8 +337,7 @@ async function main() {
       key: argv.streamdelay.key,
     })
     streamdelayClient.on('state', (state) => {
-      clientState.streamdelay = state
-      broadcastState(clientState)
+      updateState({ streamdelay: state })
     })
     streamdelayClient.connect()
   }
@@ -328,12 +348,7 @@ async function main() {
   }
 
   streamWindow.on('state', (viewStates) => {
-    clientState.views = viewStates
-    streamWindow.send('state', clientState)
-    broadcastState(clientState)
-    if (twitchBot) {
-      twitchBot.onState(clientState)
-    }
+    updateState({ views: viewStates })
   })
 
   const dataSources = [
@@ -348,9 +363,7 @@ async function main() {
 
   for await (const rawStreams of combineDataSources(dataSources)) {
     const streams = idGen.process(rawStreams)
-    clientState.streams = streams
-    streamWindow.send('state', clientState)
-    broadcastState(clientState)
+    updateState({ streams })
   }
 }
 

@@ -91,9 +91,9 @@ function initApp({
     }),
   )
 
-  const broadcastState = (state) => {
+  const broadcast = (data) => {
     for (const ws of sockets) {
-      ws.send(JSON.stringify({ type: 'state', state }))
+      ws.send(JSON.stringify(data))
     }
   }
 
@@ -103,7 +103,7 @@ function initApp({
     }
   })
 
-  return { app, broadcastState }
+  return { app, broadcast }
 }
 
 export default async function initWebServer({
@@ -127,7 +127,7 @@ export default async function initWebServer({
     port = overridePort
   }
 
-  const { app, broadcastState } = initApp({
+  const { app, broadcast } = initApp({
     username,
     password,
     baseURL,
@@ -153,5 +153,5 @@ export default async function initWebServer({
   const listen = promisify(server.listen).bind(server)
   await listen(port, overrideHostname || hostname)
 
-  return { broadcastState }
+  return { broadcast }
 }

@@ -3,6 +3,7 @@ import sortBy from 'lodash/sortBy'
 import truncate from 'lodash/truncate'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import * as Y from 'yjs'
+import { patch as patchJSON } from 'jsondiffpatch'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { State } from 'xstate'
@@ -69,6 +70,7 @@ function useStreamwallConnection(wsEndpoint) {
   const [delayState, setDelayState] = useState()
 
   useEffect(() => {
+    let lastStateData
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
       maxReconnectionDelay: 5000,
       minReconnectionDelay: 1000 + Math.random() * 500,
@@ -85,13 +87,21 @@ function useStreamwallConnection(wsEndpoint) {
         return
       }
       const msg = JSON.parse(ev.data)
-      if (msg.type === 'state') {
+      if (msg.type === 'state' || msg.type === 'state-delta') {
+        let state
+        if (msg.type === 'state') {
+          state = msg.state
+        } else {
+          state = patchJSON(lastStateData, msg.delta)
+        }
+        lastStateData = state
+
         const {
           config: newConfig,
           streams: newStreams,
           views,
           streamdelay,
-        } = msg.state
+        } = state
         const newStateIdxMap = new Map()
         for (const viewState of views) {
           const { pos } = viewState.context
