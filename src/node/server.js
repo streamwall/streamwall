@@ -97,6 +97,12 @@ function initApp({
     }
   }
 
+  stateDoc.on('update', (update) => {
+    for (const ws of sockets) {
+      ws.send(update)
+    }
+  })
+
   return { app, broadcastState }
 }
 
