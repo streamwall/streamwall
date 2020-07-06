@@ -11,6 +11,7 @@ import styled, { css } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import '../index.css'
+import { idxInBox } from '../geometry'
 import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
@@ -185,8 +186,32 @@ function App({ wsEndpoint }) {
     stateIdxMap,
     delayState,
   } = useStreamwallConnection(wsEndpoint)
-
   const { gridCount } = config
+
+  const [dragStart, setDragStart] = useState()
+  const handleDragStart = useCallback((idx, ev) => {
+    setDragStart(idx)
+    ev.preventDefault()
+  }, [])
+  const [dragEnd, setDragEnd] = useState()
+  useEffect(() => {
+    function endDrag() {
+      if (dragStart !== undefined) {
+        stateDoc.transact(() => {
+          const viewsState = stateDoc.getMap('views')
+          const streamId = viewsState.get(String(dragStart)).get('streamId')
+          for (let idx = 0; idx < gridCount ** 2; idx++) {
+            if (idxInBox(gridCount, dragStart, dragEnd, idx)) {
+              viewsState.get(String(idx)).set('streamId', streamId)
+            }
+          }
+        })
+        setDragStart()
+      }
+    }
+    window.addEventListener('mouseup', endDrag)
+    return () => window.removeEventListener('mouseup', endDrag)
+  }, [stateDoc, dragStart, dragEnd])
 
   const handleSetView = useCallback(
     (idx, streamId) => {
@@ -344,6 +369,9 @@ function App({ wsEndpoint }) {
                 const { isListening = false, isBlurred = false, state } =
                   stateIdxMap.get(idx) || {}
                 const { streamId } = sharedState.views?.[idx] || ''
+                const isDragHighlighted =
+                  dragStart !== undefined &&
+                  idxInBox(gridCount, dragStart, dragEnd, idx)
                 return (
                   <GridInput
                     idx={idx}
@@ -352,6 +380,9 @@ function App({ wsEndpoint }) {
                     isDisplaying={state && state.matches('displaying')}
                     isListening={isListening}
                     isBlurred={isBlurred}
+                    isHighlighted={isDragHighlighted}
+                    onMouseDown={handleDragStart}
+                    onMouseEnter={setDragEnd}
                     onChangeSpace={handleSetView}
                     onSetListening={handleSetListening}
                     onSetBlurred={handleSetBlurred}
@@ -472,6 +503,9 @@ function GridInput({
   isError,
   isListening,
   isBlurred,
+  isHighlighted,
+  onMouseDown,
+  onMouseEnter,
   onSetListening,
   onSetBlurred,
   onReloadView,
@@ -514,9 +548,14 @@ function GridInput({
     idx,
     onDevTools,
   ])
-  const handleClick = useCallback((ev) => {
-    ev.target.select()
-  })
+  const handleMouseDown = useCallback(
+    (ev) => {
+      ev.target.select()
+      onMouseDown(idx, ev)
+    },
+    [onMouseDown],
+  )
+  const handleMouseEnter = useCallback(() => onMouseEnter(idx), [onMouseEnter])
   return (
     <StyledGridContainer>
       {isDisplaying && (
@@ -552,9 +591,11 @@ function GridInput({
         name={idx}
         value={editingValue || spaceValue || ''}
         isError={isError}
+        isHighlighted={isHighlighted}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
         onChange={handleChange}
       />
     </StyledGridContainer>
@@ -675,6 +716,7 @@ const StyledGridInput = styled.input`
   height: 50px;
   padding: 20px;
   border: 2px solid ${({ isError }) => (isError ? 'red' : 'black')};
+  background: ${({ isHighlighted }) => (isHighlighted ? '#dfd' : 'white')};
   font-size: 20px;
   text-align: center;
 

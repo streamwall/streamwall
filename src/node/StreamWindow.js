@@ -5,7 +5,7 @@ import { BrowserView, BrowserWindow, ipcMain } from 'electron'
 import { interpret } from 'xstate'
 
 import viewStateMachine from './viewStateMachine'
-import { boxesFromViewContentMap } from './geometry'
+import { boxesFromViewContentMap } from '../geometry'
 
 export default class StreamWindow extends EventEmitter {
   constructor(config) {
