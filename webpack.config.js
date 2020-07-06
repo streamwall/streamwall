@@ -1,14 +1,17 @@
 const path = require('path')
 const CopyPlugin = require('copy-webpack-plugin')
 
-const baseConfig = {
+const baseConfig = ({ babel }) => ({
   mode: 'development',
   module: {
     rules: [
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        loader: 'babel-loader',
+        use: {
+          loader: 'babel-loader',
+          options: babel,
+        },
       },
       {
         test: /\.css$/i,
@@ -40,10 +43,22 @@ const baseConfig = {
       'react-dom': 'preact/compat',
     },
   },
-}
+})
 
 const nodeConfig = {
-  ...baseConfig,
+  ...baseConfig({
+    babel: {
+      presets: [
+        [
+          '@babel/preset-env',
+          {
+            modules: 'commonjs',
+            targets: { node: true },
+          },
+        ],
+      ],
+    },
+  }),
   target: 'electron-main',
   entry: {
     index: './src/node/index.js',
@@ -54,7 +69,11 @@ const nodeConfig = {
 }
 
 const browserConfig = {
-  ...baseConfig,
+  ...baseConfig({
+    babel: {
+      presets: [['@babel/preset-env', { targets: { electron: '9' } }]],
+    },
+  }),
   devtool: 'cheap-source-map',
   target: 'electron-renderer',
   entry: {
@@ -68,7 +87,19 @@ const browserConfig = {
 }
 
 const webConfig = {
-  ...baseConfig,
+  ...baseConfig({
+    babel: {
+      presets: [
+        [
+          '@babel/preset-env',
+          {
+            modules: 'commonjs',
+            targets: '> 0.25%, not dead',
+          },
+        ],
+      ],
+    },
+  }),
   devtool: 'cheap-source-map',
   target: 'web',
   entry: {
