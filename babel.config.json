@@ -1,16 +1,4 @@
 {
-  "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "modules": "commonjs",
-        "targets": {
-          "electron": "9",
-          "node": true
-        }
-      }
-    ]
-  ],
   "plugins": [
     "@babel/plugin-proposal-optional-chaining",
     "babel-plugin-styled-components",
