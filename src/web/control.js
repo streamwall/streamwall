@@ -261,6 +261,7 @@ function App({ wsEndpoint }) {
         return
       }
       handleSetView(availableIdx, streamId)
+      navigator.clipboard.writeText(streamId)
     },
     [gridCount, sharedState],
   )
