@@ -39,8 +39,8 @@ const hotkeyTriggers = [
   'p',
 ]
 
-function useYDoc(existingDoc, keys) {
-  const { current: doc } = useRef(existingDoc || new Y.Doc())
+function useYDoc(keys) {
+  const [doc, setDoc] = useState(new Y.Doc())
   const [docValue, setDocValue] = useState()
   useEffect(() => {
     function updateDocValue() {
@@ -54,14 +54,14 @@ function useYDoc(existingDoc, keys) {
     return () => {
       doc.off('update', updateDocValue)
     }
-  }, [])
-  return [docValue, doc]
+  }, [doc])
+  return [docValue, doc, setDoc]
 }
 
 function App({ wsEndpoint }) {
   const wsRef = useRef()
   const [isConnected, setIsConnected] = useState(false)
-  const [sharedState, stateDoc] = useYDoc(null, ['views'])
+  const [sharedState, stateDoc, setStateDoc] = useYDoc(['views'])
   const [config, setConfig] = useState({})
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
@@ -78,13 +78,14 @@ function App({ wsEndpoint }) {
     })
     ws.binaryType = 'arraybuffer'
     ws.addEventListener('open', () => setIsConnected(true))
-    ws.addEventListener('close', () => setIsConnected(false))
+    ws.addEventListener('close', () => {
+      setStateDoc(new Y.Doc())
+      setIsConnected(false)
+    })
     ws.addEventListener('message', (ev) => {
       if (ev.data instanceof ArrayBuffer) {
-        Y.applyUpdate(stateDoc, new Uint8Array(ev.data))
         return
       }
-
       const msg = JSON.parse(ev.data)
       if (msg.type === 'state') {
         const {
@@ -126,11 +127,26 @@ function App({ wsEndpoint }) {
         console.warn('unexpected ws message', msg)
       }
     })
-    stateDoc.on('update', (update) => {
-      ws.send(update)
-    })
     wsRef.current = ws
   }, [])
+
+  useEffect(() => {
+    function sendUpdate(update) {
+      wsRef.current.send(update)
+    }
+    function receiveUpdate(ev) {
+      if (!(ev.data instanceof ArrayBuffer)) {
+        return
+      }
+      Y.applyUpdate(stateDoc, new Uint8Array(ev.data))
+    }
+    stateDoc.on('update', sendUpdate)
+    wsRef.current.addEventListener('message', receiveUpdate)
+    return () => {
+      stateDoc.off('update', sendUpdate)
+      wsRef.current.removeEventListener('message', receiveUpdate)
+    }
+  }, [stateDoc])
 
   const handleSetView = useCallback(
     (idx, streamId) => {
