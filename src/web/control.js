@@ -217,6 +217,10 @@ function App({ wsEndpoint }) {
     return () => window.removeEventListener('mouseup', endDrag)
   }, [stateDoc, dragStart, dragEnd])
 
+  const [focusedInputIdx, setFocusedInputIdx] = useState()
+  const handleFocusInput = useCallback(setFocusedInputIdx, [])
+  const handleBlurInput = useCallback(() => setFocusedInputIdx(), [])
+
   const handleSetView = useCallback(
     (idx, streamId) => {
       const stream = streams.find((d) => d._id === streamId)
@@ -284,6 +288,12 @@ function App({ wsEndpoint }) {
   const handleClickId = useCallback(
     (streamId) => {
       navigator.clipboard.writeText(streamId)
+
+      if (focusedInputIdx !== undefined) {
+        handleSetView(focusedInputIdx, streamId)
+        return
+      }
+
       const availableIdx = range(gridCount * gridCount).find(
         (i) => !sharedState.views[i].streamId,
       )
@@ -292,7 +302,7 @@ function App({ wsEndpoint }) {
       }
       handleSetView(availableIdx, streamId)
     },
-    [gridCount, sharedState],
+    [gridCount, sharedState, focusedInputIdx],
   )
 
   const handleChangeCustomStream = useCallback((idx, customStream) => {
@@ -387,6 +397,8 @@ function App({ wsEndpoint }) {
                     isHighlighted={isDragHighlighted}
                     onMouseDown={handleDragStart}
                     onMouseEnter={setDragEnd}
+                    onFocus={handleFocusInput}
+                    onBlur={handleBlurInput}
                     onChangeSpace={handleSetView}
                     onSetListening={handleSetListening}
                     onSetBlurred={handleSetBlurred}
@@ -471,7 +483,8 @@ function StreamLine({
   row: { label, source, title, link, notes, state, city },
   onClickId,
 }) {
-  const handleClickId = useCallback(() => {
+  // Use mousedown instead of click event so a potential destination grid input stays focused.
+  const handleMouseDownId = useCallback(() => {
     onClickId(id)
   }, [onClickId, id])
   let location
@@ -480,7 +493,7 @@ function StreamLine({
   }
   return (
     <StyledStreamLine>
-      <StyledId onClick={handleClickId} color={idColor(id)}>
+      <StyledId onMouseDown={handleMouseDownId} color={idColor(id)}>
         {id}
       </StyledId>
       <div>
@@ -512,6 +525,8 @@ function GridInput({
   isHighlighted,
   onMouseDown,
   onMouseEnter,
+  onFocus,
+  onBlur,
   onSetListening,
   onSetBlurred,
   onReloadView,
@@ -519,12 +534,20 @@ function GridInput({
   onDevTools,
 }) {
   const [editingValue, setEditingValue] = useState()
-  const handleFocus = useCallback((ev) => {
-    setEditingValue(ev.target.value)
-  })
-  const handleBlur = useCallback((ev) => {
-    setEditingValue(undefined)
-  })
+  const handleFocus = useCallback(
+    (ev) => {
+      setEditingValue(ev.target.value)
+      onFocus(idx)
+    },
+    [onFocus, idx],
+  )
+  const handleBlur = useCallback(
+    (ev) => {
+      setEditingValue(undefined)
+      onBlur(idx)
+    },
+    [onBlur, idx],
+  )
   const handleChange = useCallback(
     (ev) => {
       const { value } = ev.target
