@@ -57,8 +57,13 @@ function initApp({
 
         ws.binaryType = 'arraybuffer'
 
+        const pingInterval = setInterval(() => {
+          ws.ping()
+        }, 20 * 1000)
+
         ws.on('close', () => {
           sockets.delete(ws)
+          clearInterval(pingInterval)
         })
 
         ws.on('message', (rawData) => {
