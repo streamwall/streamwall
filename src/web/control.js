@@ -282,6 +282,7 @@ function App({ wsEndpoint }) {
 
   const handleClickId = useCallback(
     (streamId) => {
+      navigator.clipboard.writeText(streamId)
       const availableIdx = range(gridCount * gridCount).find(
         (i) => !sharedState.views[i].streamId,
       )
@@ -289,7 +290,6 @@ function App({ wsEndpoint }) {
         return
       }
       handleSetView(availableIdx, streamId)
-      navigator.clipboard.writeText(streamId)
     },
     [gridCount, sharedState],
   )
