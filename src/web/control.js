@@ -17,6 +17,7 @@ import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
+import { idColor } from './colors'
 
 const hotkeyTriggers = [
   '1',
@@ -479,7 +480,9 @@ function StreamLine({
   }
   return (
     <StyledStreamLine>
-      <StyledId onClick={handleClickId}>{id}</StyledId>
+      <StyledId onClick={handleClickId} color={idColor(id)}>
+        {id}
+      </StyledId>
       <div>
         {label ? (
           label
@@ -593,6 +596,7 @@ function GridInput({
       <StyledGridInput
         name={idx}
         value={editingValue || spaceValue || ''}
+        color={idColor(spaceValue)}
         isError={isError}
         isHighlighted={isHighlighted}
         onFocus={handleFocus}
@@ -719,7 +723,8 @@ const StyledGridInput = styled.input`
   height: 50px;
   padding: 20px;
   border: 2px solid ${({ isError }) => (isError ? 'red' : 'black')};
-  background: ${({ isHighlighted }) => (isHighlighted ? '#dfd' : 'white')};
+  background: ${({ color, isHighlighted }) =>
+    isHighlighted ? color.lightness(90) : color.lightness(75)};
   font-size: 20px;
   text-align: center;
 
@@ -732,7 +737,7 @@ const StyledGridInput = styled.input`
 const StyledId = styled.div`
   flex-shrink: 0;
   margin-right: 5px;
-  background: #333;
+  background: ${({ color }) => color.lightness(50) || '#333'};
   color: white;
   padding: 3px;
   border-radius: 5px;
