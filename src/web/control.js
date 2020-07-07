@@ -527,11 +527,11 @@ function GridInput({
   })
   const handleChange = useCallback(
     (ev) => {
-      const { name, value } = ev.target
+      const { value } = ev.target
       setEditingValue(value)
-      onChangeSpace(Number(name), value)
+      onChangeSpace(idx, value)
     },
-    [onChangeSpace],
+    [idx, onChangeSpace],
   )
   const handleListeningClick = useCallback(
     () => onSetListening(idx, !isListening),
@@ -594,7 +594,6 @@ function GridInput({
         </StyledToggleButton>
       </StyledGridButtons>
       <StyledGridInput
-        name={idx}
         value={editingValue || spaceValue || ''}
         color={idColor(spaceValue)}
         isError={isError}
