@@ -473,7 +473,7 @@ function StreamLine({
 }) {
   const handleClickId = useCallback(() => {
     onClickId(id)
-  })
+  }, [onClickId, id])
   let location
   if (state && city) {
     location = ` (${city} ${state}) `
