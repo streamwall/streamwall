@@ -287,7 +287,11 @@ function App({ wsEndpoint }) {
 
   const handleClickId = useCallback(
     (streamId) => {
-      navigator.clipboard.writeText(streamId)
+      try {
+        navigator.clipboard.writeText(streamId)
+      } catch (err) {
+        console.warn('Unable to copy stream id to clipboard:', err)
+      }
 
       if (focusedInputIdx !== undefined) {
         handleSetView(focusedInputIdx, streamId)
