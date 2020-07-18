@@ -25,14 +25,33 @@ const VIDEO_OVERRIDE_STYLE = `
     right: 0 !important;
     top: 0 !important;
     bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    width: 100vw !important;
+    height: 100vh !important;
     object-fit: cover !important;
     transition: none !important;
     z-index: 999999 !important;
   }
   .__video_parent__ {
     display: block !important;
+  }
+  video.__rot180__ {
+    transform: rotate(180deg) !important;
+  }
+  /* For 90 degree rotations, we position the video with swapped width and height and rotate it into place.
+     It's helpful to offset the video so the transformation is centered in the viewport center.
+     We move the video top left corner to center of the page and then translate half the video dimensions up and left.
+     Note that the width and height are swapped in the translate because the video starts with the side dimensions swapped. */
+  video.__rot90__ {
+    transform: translate(-50vh, -50vw) rotate(90deg) !important;
+  }
+  video.__rot270__ {
+    transform: translate(-50vh, -50vw) rotate(270deg) !important;
+  }
+  video.__rot90__, video.__rot270__ {
+    left: 50vw !important;
+    top: 50vh !important;
+    width: 100vh !important;
+    height: 100vw !important;
   }
 `
 
@@ -237,7 +256,52 @@ const viewStateMachine = Machine(
             return {}
           }
 
+          const periscopeHacks = {
+            isMatch() {
+              return location.host === 'www.pscp.tv' || location.host === 'www.periscope.tv'
+            },
+            onLoad() {
+              const playButton = document.querySelector('.PlayButton')
+              if (playButton) {
+                playButton.click()
+              }
+            },
+            afterPlay(video) {
+              const baseVideoEl = document.querySelector('div.BaseVideo')
+              if (!baseVideoEl) {
+                return
+              }
+
+              function positionPeriscopeVideo() {
+                // Periscope videos can be rotated using transform matrix. They need to be rotated correctly.
+                const tr = baseVideoEl.style.transform
+                if (tr.endsWith('matrix(0, 1, -1, 0, 0, 0)')) {
+                  video.className = '__rot90__'
+                } else if (tr.endsWith('matrix(-1, 0, 0, -1, 0)')) {
+                  video.className = '__rot180__'
+                } else if (tr.endsWith('matrix(0, -1, 1, 0, 0, 0)')) {
+                  video.className = '__rot270__'
+                }
+              }
+
+              positionPeriscopeVideo()
+              const obs = new MutationObserver(ml => {
+                for (const m of ml) {
+                  if (m.attributeName === 'style') {
+                    positionPeriscopeVideo()
+                    return
+                  }
+                }
+              })
+              obs.observe(baseVideoEl, {attributes: true})
+            },
+          }
+
           async function findVideo() {
+            if (periscopeHacks.isMatch()) {
+              periscopeHacks.onLoad()
+            }
+
             const { video, iframe } = await waitForVideo()
             if (!video) {
               throw new Error('could not find video')
@@ -264,19 +328,11 @@ const viewStateMachine = Machine(
             // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
             Object.defineProperty(video, 'muted', {writable: true, value: false})
 
-            const info = { title: document.title }
-            let divBase = document.querySelector('div.BaseVideo') // This will filter for only periscope videos
-            if (divBase && divBase.style && divBase.style.transform) {
-              // periscope videos can be rotated using transform matrix. They need to be rotated correctly.
-              const tr = divBase.style.transform
-              if (tr.endsWith("matrix(0, 1, -1, 0, 0, 0)")) {
-                video.style.transform = 'rotate(90deg)'
-              } else if (tr.endsWith("matrix(-1, 0, 0, -1, 0)")) {
-                video.style.transform = 'rotate(180deg)'
-              } else if (tr.endsWith("matrix(0, -1, 1, 0, 0, 0)")) {
-                video.style.transform = 'rotate(-90deg)'
-              }
+            if (periscopeHacks.isMatch()) {
+              periscopeHacks.afterPlay(video)
             }
+
+            const info = { title: document.title }
             return info
           }
           findVideo()
