@@ -28,6 +28,7 @@ const VIDEO_OVERRIDE_STYLE = `
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+    transition: none !important;
     z-index: 999999 !important;
   }
   .__video_parent__ {
