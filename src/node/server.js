@@ -142,7 +142,7 @@ export default async function initWebServer({
   })
 
   let server
-  if (protocol === 'https:') {
+  if (protocol === 'https:' && certDir) {
     const { key, cert } = await simpleCert({
       dataDir: certDir,
       commonName: hostname,
