@@ -1,3 +1,4 @@
+import debounce from 'lodash/debounce'
 import range from 'lodash/range'
 import sortBy from 'lodash/sortBy'
 import truncate from 'lodash/truncate'
@@ -222,13 +223,13 @@ function App({ wsEndpoint }) {
   const handleBlurInput = useCallback(() => setFocusedInputIdx(), [])
 
   const handleSetView = useCallback(
-    (idx, streamId) => {
+    debounce((idx, streamId) => {
       const stream = streams.find((d) => d._id === streamId)
       stateDoc
         .getMap('views')
         .get(String(idx))
         .set('streamId', stream ? streamId : '')
-    },
+    }, 500),
     [stateDoc, streams],
   )
 
@@ -309,17 +310,19 @@ function App({ wsEndpoint }) {
     [gridCount, sharedState, focusedInputIdx],
   )
 
-  const handleChangeCustomStream = useCallback((idx, customStream) => {
-    let newCustomStreams = [...customStreams]
-    newCustomStreams[idx] = customStream
-    newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
-    send(
-      JSON.stringify({
-        type: 'set-custom-streams',
-        streams: newCustomStreams,
-      }),
-    )
-  })
+  const handleChangeCustomStream = useCallback(
+    debounce((idx, customStream) => {
+      let newCustomStreams = [...customStreams]
+      newCustomStreams[idx] = customStream
+      newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
+      send(
+        JSON.stringify({
+          type: 'set-custom-streams',
+          streams: newCustomStreams,
+        }),
+      )
+    }, 500),
+  )
 
   const setStreamCensored = useCallback((isCensored) => {
     send(
