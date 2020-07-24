@@ -221,121 +221,123 @@ const viewStateMachine = Machine(
         }
         const wc = view.webContents
         const info = await wc.executeJavaScript(`
-          const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
+          (function() {
+            const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
 
-          async function waitForVideo() {
-            let tries = 0
-            let video
-            while ((!video || !video.src) && tries < 10) {
-              video = document.querySelector('video')
-              tries++
-              await sleep(200)
-            }
-            if (video) {
-              return {video}
-            }
-
-            tries = 0
-            let iframe
-            while ((!video || !video.src) && tries < 10) {
-              for (iframe of document.querySelectorAll('iframe')) {
-                if (!iframe.contentDocument) {
-                  continue
-                }
-                video = iframe.contentDocument.querySelector('video')
-                if (video) {
-                  break
-                }
+            async function waitForVideo() {
+              let tries = 0
+              let video
+              while ((!video || !video.src) && tries < 10) {
+                video = document.querySelector('video')
+                tries++
+                await sleep(200)
               }
-              tries++
-              await sleep(200)
-            }
-            if (video) {
-              return { video, iframe }
-            }
-            return {}
-          }
-
-          const periscopeHacks = {
-            isMatch() {
-              return location.host === 'www.pscp.tv' || location.host === 'www.periscope.tv'
-            },
-            onLoad() {
-              const playButton = document.querySelector('.PlayButton')
-              if (playButton) {
-                playButton.click()
-              }
-            },
-            afterPlay(video) {
-              const baseVideoEl = document.querySelector('div.BaseVideo')
-              if (!baseVideoEl) {
-                return
+              if (video) {
+                return {video}
               }
 
-              function positionPeriscopeVideo() {
-                // Periscope videos can be rotated using transform matrix. They need to be rotated correctly.
-                const tr = baseVideoEl.style.transform
-                if (tr.endsWith('matrix(0, 1, -1, 0, 0, 0)')) {
-                  video.className = '__rot90__'
-                } else if (tr.endsWith('matrix(-1, 0, 0, -1, 0)')) {
-                  video.className = '__rot180__'
-                } else if (tr.endsWith('matrix(0, -1, 1, 0, 0, 0)')) {
-                  video.className = '__rot270__'
-                }
-              }
-
-              positionPeriscopeVideo()
-              const obs = new MutationObserver(ml => {
-                for (const m of ml) {
-                  if (m.attributeName === 'style') {
-                    positionPeriscopeVideo()
-                    return
+              tries = 0
+              let iframe
+              while ((!video || !video.src) && tries < 10) {
+                for (iframe of document.querySelectorAll('iframe')) {
+                  if (!iframe.contentDocument) {
+                    continue
+                  }
+                  video = iframe.contentDocument.querySelector('video')
+                  if (video) {
+                    break
                   }
                 }
-              })
-              obs.observe(baseVideoEl, {attributes: true})
-            },
-          }
-
-          async function findVideo() {
-            if (periscopeHacks.isMatch()) {
-              periscopeHacks.onLoad()
-            }
-
-            const { video, iframe } = await waitForVideo()
-            if (!video) {
-              throw new Error('could not find video')
-            }
-            if (iframe) {
-              const style = iframe.contentDocument.createElement('style')
-              style.innerHTML = \`${VIDEO_OVERRIDE_STYLE}\`
-              iframe.contentDocument.head.appendChild(style)
-              iframe.className = '__video__'
-              let parentEl = iframe.parentElement
-              while (parentEl) {
-                parentEl.className = '__video_parent__'
-                parentEl = parentEl.parentElement
+                tries++
+                await sleep(200)
               }
-              iframe.contentDocument.body.appendChild(video)
-            } else {
-              document.body.appendChild(video)
-            }
-            video.muted = false
-            video.autoPlay = true
-            video.play()
-            setInterval(() => video.play(), 1000)
-
-            // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
-            Object.defineProperty(video, 'muted', {writable: true, value: false})
-
-            if (periscopeHacks.isMatch()) {
-              periscopeHacks.afterPlay(video)
+              if (video) {
+                return { video, iframe }
+              }
+              return {}
             }
 
-            const info = { title: document.title }
-            return info
-          }
-          findVideo()
+            const periscopeHacks = {
+              isMatch() {
+                return location.host === 'www.pscp.tv' || location.host === 'www.periscope.tv'
+              },
+              onLoad() {
+                const playButton = document.querySelector('.PlayButton')
+                if (playButton) {
+                  playButton.click()
+                }
+              },
+              afterPlay(video) {
+                const baseVideoEl = document.querySelector('div.BaseVideo')
+                if (!baseVideoEl) {
+                  return
+                }
+
+                function positionPeriscopeVideo() {
+                  // Periscope videos can be rotated using transform matrix. They need to be rotated correctly.
+                  const tr = baseVideoEl.style.transform
+                  if (tr.endsWith('matrix(0, 1, -1, 0, 0, 0)')) {
+                    video.className = '__rot90__'
+                  } else if (tr.endsWith('matrix(-1, 0, 0, -1, 0)')) {
+                    video.className = '__rot180__'
+                  } else if (tr.endsWith('matrix(0, -1, 1, 0, 0, 0)')) {
+                    video.className = '__rot270__'
+                  }
+                }
+
+                positionPeriscopeVideo()
+                const obs = new MutationObserver(ml => {
+                  for (const m of ml) {
+                    if (m.attributeName === 'style') {
+                      positionPeriscopeVideo()
+                      return
+                    }
+                  }
+                })
+                obs.observe(baseVideoEl, {attributes: true})
+              },
+            }
+
+            async function findVideo() {
+              if (periscopeHacks.isMatch()) {
+                periscopeHacks.onLoad()
+              }
+
+              const { video, iframe } = await waitForVideo()
+              if (!video) {
+                throw new Error('could not find video')
+              }
+              if (iframe) {
+                const style = iframe.contentDocument.createElement('style')
+                style.innerHTML = \`${VIDEO_OVERRIDE_STYLE}\`
+                iframe.contentDocument.head.appendChild(style)
+                iframe.className = '__video__'
+                let parentEl = iframe.parentElement
+                while (parentEl) {
+                  parentEl.className = '__video_parent__'
+                  parentEl = parentEl.parentElement
+                }
+                iframe.contentDocument.body.appendChild(video)
+              } else {
+                document.body.appendChild(video)
+              }
+              video.muted = false
+              video.autoPlay = true
+              video.play()
+              setInterval(() => video.play(), 1000)
+
+              // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
+              Object.defineProperty(video, 'muted', {writable: true, value: false})
+
+              if (periscopeHacks.isMatch()) {
+                periscopeHacks.afterPlay(video)
+              }
+
+              const info = { title: document.title }
+              return info
+            }
+            findVideo()
+          }())
         `)
         return info
       },
