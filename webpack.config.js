@@ -65,6 +65,7 @@ const nodeConfig = {
   },
   externals: {
     consolidate: 'commonjs consolidate',
+    fsevents: 'commonjs fsevents',
   },
 }
 
