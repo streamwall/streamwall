@@ -11,7 +11,7 @@ const sleep = promisify(setTimeout)
 function filterLive(data) {
   return data.filter(
     ({ kind, status }) =>
-      kind !== 'video' || status === 'Live' || status === 'Unknown',
+      (kind && kind !== 'video') || status === 'Live' || status === 'Unknown',
   )
 }
 
