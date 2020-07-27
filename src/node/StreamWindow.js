@@ -18,6 +18,7 @@ export default class StreamWindow extends EventEmitter {
 
     this.win = null
     this.offscreenWin = null
+    this.backgroundView = null
     this.overlayView = null
     this.views = []
     this.viewActions = null
@@ -64,6 +65,21 @@ export default class StreamWindow extends EventEmitter {
       },
     })
     this.offscreenWin = offscreenWin
+
+    const backgroundView = new BrowserView({
+      webPreferences: {
+        nodeIntegration: true,
+      },
+    })
+    win.addBrowserView(backgroundView)
+    backgroundView.setBounds({
+      x: 0,
+      y: 0,
+      width,
+      height,
+    })
+    backgroundView.webContents.loadFile('background.html')
+    this.backgroundView = backgroundView
 
     const overlayView = new BrowserView({
       webPreferences: {
@@ -254,5 +270,6 @@ export default class StreamWindow extends EventEmitter {
 
   send(...args) {
     this.overlayView.webContents.send(...args)
+    this.backgroundView.webContents.send(...args)
   }
 }

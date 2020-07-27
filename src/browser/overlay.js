@@ -20,6 +20,7 @@ function Overlay({ config, views, streams }) {
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
     .filter((s) => s.matches('displaying') && !s.matches('displaying.error'))
+  const overlays = streams.filter((s) => s.kind === 'overlay')
   return (
     <div>
       {activeViews.map((viewState) => {
@@ -57,6 +58,9 @@ function Overlay({ config, views, streams }) {
           </SpaceBorder>
         )
       })}
+      {overlays.map((s) => (
+        <OverlayIFrame key={s._id} src={s.link} sandbox="allow-scripts" />
+      ))}
     </div>
   )
 }
@@ -206,6 +210,16 @@ const BlurCover = styled.div`
   top: 0;
   bottom: 0;
   backdrop-filter: ${({ isBlurred }) => (isBlurred ? 'blur(30px)' : 'blur(0)')};
+`
+
+const OverlayIFrame = styled.iframe`
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  pointer-events: none;
 `
 
 render(<App />, document.body)

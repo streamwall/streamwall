@@ -78,11 +78,12 @@ const browserConfig = {
   devtool: 'cheap-source-map',
   target: 'electron-renderer',
   entry: {
+    background: './src/browser/background.js',
     overlay: './src/browser/overlay.js',
   },
   plugins: [
     new CopyPlugin({
-      patterns: [{ from: 'src/browser/overlay.html', to: '[name].html' }],
+      patterns: [{ from: 'src/browser/*.html', to: '[name].html' }],
     }),
   ],
 }

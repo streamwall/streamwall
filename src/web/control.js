@@ -366,6 +366,10 @@ function App({ wsEndpoint }) {
     [setStreamCensored],
   )
 
+  const normalStreams = streams.filter(
+    (s) => !s.kind || s.kind === 'video' || s.kind === 'web',
+  )
+
   return (
     <div>
       <h1>Streamwall ({location.host})</h1>
@@ -417,7 +421,7 @@ function App({ wsEndpoint }) {
         </div>
         <div>
           {isConnected
-            ? streams.map((row) => (
+            ? normalStreams.map((row) => (
                 <StreamLine id={row._id} row={row} onClickId={handleClickId} />
               ))
             : 'loading...'}
@@ -669,6 +673,8 @@ function CustomStreamInput({ idx, onChange, ...props }) {
       <select onChange={handleChangeKind} value={props.kind}>
         <option value="video">video</option>
         <option value="web">web</option>
+        <option value="overlay">overlay</option>
+        <option value="background">background</option>
       </select>
     </div>
   )
