@@ -27,6 +27,9 @@ username = "woke"
 password = "woke"
 
 [data]
+# Interval to refresh polled datasources
+#interval = 30
+
 # By default, we use the woke.net streams data source.
 # You can add other URLs to fetch here:
 json-url = ["https://woke.net/api/streams.json"]

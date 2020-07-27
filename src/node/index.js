@@ -62,7 +62,12 @@ function parseArgs() {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
     })
-    .group(['data.json-url', 'data.toml-file'], 'Datasources')
+    .group(['data.interval', 'data.json-url', 'data.toml-file'], 'Datasources')
+    .option('data.interval', {
+      describe: 'Interval (in seconds) for refreshing polled data sources',
+      number: true,
+      default: 30,
+    })
     .option('data.json-url', {
       describe: 'Fetch streams from the specified URL(s)',
       array: true,
@@ -353,7 +358,7 @@ async function main() {
 
   const dataSources = [
     ...argv.data['json-url'].map((url) =>
-      markDataSource(pollDataURL(url), 'json-url'),
+      markDataSource(pollDataURL(url, argv.data.interval), 'json-url'),
     ),
     ...argv.data['toml-file'].map((path) =>
       markDataSource(watchDataFile(path), 'toml-file'),

@@ -12,8 +12,8 @@ function filterLive(data) {
   return data.filter(({ status }) => status === 'Live' || status === 'Unknown')
 }
 
-export async function* pollDataURL(url) {
-  const refreshInterval = 5 * 1000
+export async function* pollDataURL(url, intervalSecs) {
+  const refreshInterval = intervalSecs * 1000
   let lastData = []
   while (true) {
     let data = []
