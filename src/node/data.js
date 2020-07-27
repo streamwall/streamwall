@@ -9,7 +9,10 @@ import chokidar from 'chokidar'
 const sleep = promisify(setTimeout)
 
 function filterLive(data) {
-  return data.filter(({ status }) => status === 'Live' || status === 'Unknown')
+  return data.filter(
+    ({ kind, status }) =>
+      kind !== 'video' || status === 'Live' || status === 'Unknown',
+  )
 }
 
 export async function* pollDataURL(url, intervalSecs) {
