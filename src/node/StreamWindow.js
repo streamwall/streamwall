@@ -47,6 +47,7 @@ export default class StreamWindow extends EventEmitter {
     })
     win.removeMenu()
     win.loadURL('about:blank')
+    win.on('close', () => this.emit('close'))
 
     // Work around https://github.com/electron/electron/issues/14308
     // via https://github.com/lutzroeder/netron/commit/910ce67395130690ad76382c094999a4f5b51e92

@@ -356,6 +356,10 @@ async function main() {
     updateState({ views: viewStates })
   })
 
+  streamWindow.on('close', () => {
+    process.exit(0)
+  })
+
   const dataSources = [
     ...argv.data['json-url'].map((url) =>
       markDataSource(pollDataURL(url, argv.data.interval), 'json-url'),
