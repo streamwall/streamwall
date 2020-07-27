@@ -192,6 +192,11 @@ function App({ wsEndpoint }) {
   } = useStreamwallConnection(wsEndpoint)
   const { gridCount } = config
 
+  const [showDebug, setShowDebug] = useState(false)
+  const handleChangeShowDebug = useCallback((ev) => {
+    setShowDebug(ev.target.checked)
+  })
+
   const [dragStart, setDragStart] = useState()
   const handleDragStart = useCallback((idx, ev) => {
     setDragStart(idx)
@@ -403,6 +408,7 @@ function App({ wsEndpoint }) {
                     isListening={isListening}
                     isBlurred={isBlurred}
                     isHighlighted={isDragHighlighted}
+                    showDebug={showDebug}
                     onMouseDown={handleDragStart}
                     onMouseEnter={setDragEnd}
                     onFocus={handleFocusInput}
@@ -419,6 +425,14 @@ function App({ wsEndpoint }) {
             </StyledGridLine>
           ))}
         </div>
+        <label>
+          <input
+            type="checkbox"
+            value={showDebug}
+            onChange={handleChangeShowDebug}
+          />
+          Show stream debug tools
+        </label>
         <div>
           {isConnected
             ? normalStreams.map((row) => (
@@ -531,6 +545,7 @@ function GridInput({
   isListening,
   isBlurred,
   isHighlighted,
+  showDebug,
   onMouseDown,
   onMouseEnter,
   onFocus,
@@ -600,12 +615,16 @@ function GridInput({
           <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
             <ReloadIcon />
           </StyledSmallButton>
-          <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
-            <WindowIcon />
-          </StyledSmallButton>
-          <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
-            <LifeRingIcon />
-          </StyledSmallButton>
+          {showDebug && (
+            <>
+              <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
+                <WindowIcon />
+              </StyledSmallButton>
+              <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
+                <LifeRingIcon />
+              </StyledSmallButton>
+            </>
+          )}
         </StyledGridButtons>
       )}
       <StyledGridButtons side="right">
