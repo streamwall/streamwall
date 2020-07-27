@@ -51,10 +51,10 @@ function Overlay({ config, views, streams }) {
                     </>
                   )}
                 </span>
+                {isListening && <SoundIcon />}
               </StreamTitle>
             )}
             {isLoading && <LoadingSpinner />}
-            {isListening && <ListeningIndicator />}
           </SpaceBorder>
         )
       })}
@@ -174,9 +174,16 @@ const StreamTitle = styled.div`
   svg {
     width: 1.25em;
     height: 1.25em;
-    margin-right: 0.35em;
     overflow: visible;
     filter: drop-shadow(0 0 4px black);
+
+    &:first-child {
+      margin-right: 0.35em;
+    }
+
+    &:last-child {
+      margin-left: 0.5em;
+    }
 
     path {
       fill: white;
@@ -192,19 +199,6 @@ const LoadingSpinner = styled(TailSpin)`
   width: 100px;
   height: 100px;
   opacity: 0.5;
-`
-
-const ListeningIndicator = styled(SoundIcon)`
-  position: absolute;
-  right: 15px;
-  bottom: 10px;
-  width: 30px;
-  height: 30px;
-  opacity: 0.9;
-
-  path {
-    fill: white;
-  }
 `
 
 const BlurCover = styled.div`
