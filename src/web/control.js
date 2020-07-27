@@ -7,7 +7,7 @@ import { patch as patchJSON } from 'jsondiffpatch'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { State } from 'xstate'
-import styled, { css } from 'styled-components'
+import styled, { createGlobalStyle } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 import '../index.css'
@@ -41,6 +41,17 @@ const hotkeyTriggers = [
   'o',
   'p',
 ]
+
+const GlobalStyle = createGlobalStyle`
+  html {
+    height: 100%;
+  }
+
+  html, body {
+    display: flex;
+    flex: 1;
+  }
+`
 
 function useYDoc(keys) {
   const [doc, setDoc] = useState(new Y.Doc())
@@ -376,93 +387,110 @@ function App({ wsEndpoint }) {
   )
 
   return (
-    <div>
-      <h1>Streamwall ({location.host})</h1>
-      <div>
-        connection status: {isConnected ? 'connected' : 'connecting...'}
-      </div>
-      {delayState && (
-        <StreamDelayBox
-          delayState={delayState}
-          setStreamCensored={setStreamCensored}
-        />
-      )}
-      <StyledDataContainer isConnected={isConnected}>
+    <Stack flex="1">
+      <Stack>
+        <h1>Streamwall ({location.host})</h1>
         <div>
-          {range(0, gridCount).map((y) => (
-            <StyledGridLine>
-              {range(0, gridCount).map((x) => {
-                const idx = gridCount * y + x
-                const { isListening = false, isBlurred = false, state } =
-                  stateIdxMap.get(idx) || {}
-                const { streamId } = sharedState.views?.[idx] || ''
-                const isDragHighlighted =
-                  dragStart !== undefined &&
-                  idxInBox(gridCount, dragStart, dragEnd, idx)
-                return (
-                  <GridInput
-                    idx={idx}
-                    spaceValue={streamId}
-                    isError={state && state.matches('displaying.error')}
-                    isDisplaying={state && state.matches('displaying')}
-                    isListening={isListening}
-                    isBlurred={isBlurred}
-                    isHighlighted={isDragHighlighted}
-                    showDebug={showDebug}
-                    onMouseDown={handleDragStart}
-                    onMouseEnter={setDragEnd}
-                    onFocus={handleFocusInput}
-                    onBlur={handleBlurInput}
-                    onChangeSpace={handleSetView}
-                    onSetListening={handleSetListening}
-                    onSetBlurred={handleSetBlurred}
-                    onReloadView={handleReloadView}
-                    onBrowse={handleBrowse}
-                    onDevTools={handleDevTools}
-                  />
-                )
-              })}
-            </StyledGridLine>
-          ))}
+          connection status: {isConnected ? 'connected' : 'connecting...'}
         </div>
-        <label>
-          <input
-            type="checkbox"
-            value={showDebug}
-            onChange={handleChangeShowDebug}
+        {delayState && (
+          <StreamDelayBox
+            delayState={delayState}
+            setStreamCensored={setStreamCensored}
           />
-          Show stream debug tools
-        </label>
-        <div>
-          {isConnected
-            ? normalStreams.map((row) => (
-                <StreamLine id={row._id} row={row} onClickId={handleClickId} />
-              ))
-            : 'loading...'}
-        </div>
-        <h2>Custom Streams</h2>
-        <div>
-          {/*
+        )}
+        <StyledDataContainer isConnected={isConnected}>
+          <div>
+            {range(0, gridCount).map((y) => (
+              <StyledGridLine>
+                {range(0, gridCount).map((x) => {
+                  const idx = gridCount * y + x
+                  const { isListening = false, isBlurred = false, state } =
+                    stateIdxMap.get(idx) || {}
+                  const { streamId } = sharedState.views?.[idx] || ''
+                  const isDragHighlighted =
+                    dragStart !== undefined &&
+                    idxInBox(gridCount, dragStart, dragEnd, idx)
+                  return (
+                    <GridInput
+                      idx={idx}
+                      spaceValue={streamId}
+                      isError={state && state.matches('displaying.error')}
+                      isDisplaying={state && state.matches('displaying')}
+                      isListening={isListening}
+                      isBlurred={isBlurred}
+                      isHighlighted={isDragHighlighted}
+                      showDebug={showDebug}
+                      onMouseDown={handleDragStart}
+                      onMouseEnter={setDragEnd}
+                      onFocus={handleFocusInput}
+                      onBlur={handleBlurInput}
+                      onChangeSpace={handleSetView}
+                      onSetListening={handleSetListening}
+                      onSetBlurred={handleSetBlurred}
+                      onReloadView={handleReloadView}
+                      onBrowse={handleBrowse}
+                      onDevTools={handleDevTools}
+                    />
+                  )
+                })}
+              </StyledGridLine>
+            ))}
+          </div>
+          <label>
+            <input
+              type="checkbox"
+              value={showDebug}
+              onChange={handleChangeShowDebug}
+            />
+            Show stream debug tools
+          </label>
+        </StyledDataContainer>
+      </Stack>
+      <Stack flex="1" scroll={true}>
+        <StyledDataContainer isConnected={isConnected}>
+          <div>
+            {isConnected
+              ? normalStreams.map((row) => (
+                  <StreamLine
+                    id={row._id}
+                    row={row}
+                    onClickId={handleClickId}
+                  />
+                ))
+              : 'loading...'}
+          </div>
+          <h2>Custom Streams</h2>
+          <div>
+            {/*
             Include an empty object at the end to create an extra input for a new custom stream.
             We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
            */}
-          {[...customStreams, { link: '', label: '', kind: 'video' }].map(
-            ({ link, label, kind }, idx) => (
-              <CustomStreamInput
-                key={idx}
-                idx={idx}
-                link={link}
-                label={label}
-                kind={kind}
-                onChange={handleChangeCustomStream}
-              />
-            ),
-          )}
-        </div>
-      </StyledDataContainer>
-    </div>
+            {[...customStreams, { link: '', label: '', kind: 'video' }].map(
+              ({ link, label, kind }, idx) => (
+                <CustomStreamInput
+                  key={idx}
+                  idx={idx}
+                  link={link}
+                  label={label}
+                  kind={kind}
+                  onChange={handleChangeCustomStream}
+                />
+              ),
+            )}
+          </div>
+        </StyledDataContainer>
+      </Stack>
+    </Stack>
   )
 }
+
+const Stack = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: ${({ flex }) => flex};
+  ${({ scroll }) => scroll && `overflow-y: auto`};
+`
 
 function StreamDelayBox({ delayState, setStreamCensored }) {
   const handleToggleStreamCensored = useCallback(() => {
@@ -805,7 +833,13 @@ const StyledStreamLine = styled.div`
 
 function main() {
   const script = document.getElementById('main-script')
-  render(<App wsEndpoint={script.dataset.wsEndpoint} />, document.body)
+  render(
+    <>
+      <GlobalStyle />
+      <App wsEndpoint={script.dataset.wsEndpoint} />
+    </>,
+    document.body,
+  )
 }
 
 main()
