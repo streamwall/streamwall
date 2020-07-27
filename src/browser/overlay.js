@@ -110,7 +110,11 @@ function StreamIcon({ url, ...props }) {
     return <FacebookIcon {...props} />
   } else if (host === 'twitch.tv') {
     return <TwitchIcon {...props} />
-  } else if (host === 'periscope.tv' || host === 'pscp.tv') {
+  } else if (
+    host === 'periscope.tv' ||
+    host === 'pscp.tv' ||
+    host === 'twitter.com'
+  ) {
     return <PeriscopeIcon {...props} />
   } else if (host === 'instagram.com') {
     return <InstagramIcon {...props} />
