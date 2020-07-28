@@ -59,7 +59,12 @@ function Overlay({ config, views, streams }) {
         )
       })}
       {overlays.map((s) => (
-        <OverlayIFrame key={s._id} src={s.link} sandbox="allow-scripts" />
+        <OverlayIFrame
+          key={s._id}
+          src={s.link}
+          sandbox="allow-scripts"
+          allow="autoplay"
+        />
       ))}
     </div>
   )

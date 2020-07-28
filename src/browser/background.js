@@ -10,7 +10,12 @@ function Background({ streams }) {
   return (
     <div>
       {backgrounds.map((s) => (
-        <BackgroundIFrame key={s._id} src={s.link} sandbox="allow-scripts" />
+        <BackgroundIFrame
+          key={s._id}
+          src={s.link}
+          sandbox="allow-scripts"
+          allow="autoplay"
+        />
       ))}
     </div>
   )
