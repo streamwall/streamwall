@@ -62,7 +62,7 @@ function Overlay({ config, views, streams }) {
         <OverlayIFrame
           key={s._id}
           src={s.link}
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-same-origin"
           allow="autoplay"
         />
       ))}
