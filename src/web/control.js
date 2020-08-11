@@ -21,6 +21,7 @@ import { idxInBox } from '../geometry'
 import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
+import SwapIcon from '../static/exchange-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
 import { idColor } from './colors'
@@ -137,6 +138,7 @@ function useStreamwallConnection(wsEndpoint) {
               state,
               isListening,
               isBlurred,
+              spaces: pos.spaces,
             })
           }
         }
@@ -214,26 +216,72 @@ function App({ wsEndpoint }) {
     setShowDebug(ev.target.checked)
   })
 
+  const [swapStartIdx, setSwapStartIdx] = useState()
+  const handleSwapView = useCallback(
+    (idx) => {
+      if (!stateIdxMap.has(idx)) {
+        return
+      }
+      // Deselect the input so the contents aren't persisted by GridInput's `editingValue`
+      document.activeElement.blur()
+      setSwapStartIdx(idx)
+    },
+    [stateIdxMap],
+  )
+  const handleSwap = useCallback(
+    (toIdx) => {
+      if (swapStartIdx === undefined) {
+        return
+      }
+      stateDoc.transact(() => {
+        const viewsState = stateDoc.getMap('views')
+        const startStreamId = viewsState
+          .get(String(swapStartIdx))
+          .get('streamId')
+        const toStreamId = viewsState.get(String(toIdx)).get('streamId')
+        const startSpaces = stateIdxMap.get(swapStartIdx).spaces
+        const toSpaces = stateIdxMap.get(toIdx).spaces
+        for (const startSpaceIdx of startSpaces) {
+          viewsState.get(String(startSpaceIdx)).set('streamId', toStreamId)
+        }
+        for (const toSpaceIdx of toSpaces) {
+          viewsState.get(String(toSpaceIdx)).set('streamId', startStreamId)
+        }
+      })
+      setSwapStartIdx()
+    },
+    [stateDoc, stateIdxMap, swapStartIdx],
+  )
+
   const [dragStart, setDragStart] = useState()
-  const handleDragStart = useCallback((idx, ev) => {
-    setDragStart(idx)
-    ev.preventDefault()
-  }, [])
+  const handleDragStart = useCallback(
+    (idx, ev) => {
+      ev.preventDefault()
+      if (swapStartIdx !== undefined) {
+        handleSwap(idx)
+      } else {
+        setDragStart(idx)
+        ev.target.select()
+      }
+    },
+    [handleSwap],
+  )
   const [dragEnd, setDragEnd] = useState()
   useLayoutEffect(() => {
     function endDrag() {
-      if (dragStart !== undefined) {
-        stateDoc.transact(() => {
-          const viewsState = stateDoc.getMap('views')
-          const streamId = viewsState.get(String(dragStart)).get('streamId')
-          for (let idx = 0; idx < gridCount ** 2; idx++) {
-            if (idxInBox(gridCount, dragStart, dragEnd, idx)) {
-              viewsState.get(String(idx)).set('streamId', streamId)
-            }
-          }
-        })
-        setDragStart()
+      if (dragStart === undefined) {
+        return
       }
+      stateDoc.transact(() => {
+        const viewsState = stateDoc.getMap('views')
+        const streamId = viewsState.get(String(dragStart)).get('streamId')
+        for (let idx = 0; idx < gridCount ** 2; idx++) {
+          if (idxInBox(gridCount, dragStart, dragEnd, idx)) {
+            viewsState.get(String(idx)).set('streamId', streamId)
+          }
+        }
+      })
+      setDragStart()
     }
     window.addEventListener('mouseup', endDrag)
     return () => window.removeEventListener('mouseup', endDrag)
@@ -361,6 +409,8 @@ function App({ wsEndpoint }) {
       const isListening = stateIdxMap.get(idx)?.isListening ?? false
       handleSetListening(idx, !isListening)
     },
+    // This enables hotkeys when input elements are focused, and affects all hotkeys, not just this one.
+    { filter: () => true },
     [stateIdxMap],
   )
   useHotkeys(
@@ -386,6 +436,13 @@ function App({ wsEndpoint }) {
       setStreamCensored(false)
     },
     [setStreamCensored],
+  )
+  useHotkeys(
+    `alt+s`,
+    () => {
+      handleSwapView(focusedInputIdx)
+    },
+    [handleSwapView, focusedInputIdx],
   )
 
   const normalStreams = streams.filter(
@@ -426,6 +483,7 @@ function App({ wsEndpoint }) {
                       isListening={isListening}
                       isBlurred={isBlurred}
                       isHighlighted={isDragHighlighted}
+                      isSwapping={idx === swapStartIdx}
                       showDebug={showDebug}
                       onMouseDown={handleDragStart}
                       onMouseEnter={setDragEnd}
@@ -435,6 +493,7 @@ function App({ wsEndpoint }) {
                       onSetListening={handleSetListening}
                       onSetBlurred={handleSetBlurred}
                       onReloadView={handleReloadView}
+                      onSwapView={handleSwapView}
                       onBrowse={handleBrowse}
                       onDevTools={handleDevTools}
                     />
@@ -579,6 +638,7 @@ function GridInput({
   isListening,
   isBlurred,
   isHighlighted,
+  isSwapping,
   showDebug,
   onMouseDown,
   onMouseEnter,
@@ -587,6 +647,7 @@ function GridInput({
   onSetListening,
   onSetBlurred,
   onReloadView,
+  onSwapView,
   onBrowse,
   onDevTools,
 }) {
@@ -626,6 +687,7 @@ function GridInput({
     idx,
     onReloadView,
   ])
+  const handleSwapClick = useCallback(() => onSwapView(idx), [idx, onSwapView])
   const handleBrowseClick = useCallback(() => onBrowse(spaceValue), [
     spaceValue,
     onBrowse,
@@ -636,7 +698,6 @@ function GridInput({
   ])
   const handleMouseDown = useCallback(
     (ev) => {
-      ev.target.select()
       onMouseDown(idx, ev)
     },
     [onMouseDown],
@@ -646,16 +707,26 @@ function GridInput({
     <StyledGridContainer>
       {isDisplaying && (
         <StyledGridButtons side="left">
-          <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
-            <ReloadIcon />
-          </StyledSmallButton>
-          {showDebug && (
+          {showDebug ? (
             <>
               <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
                 <WindowIcon />
               </StyledSmallButton>
               <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
                 <LifeRingIcon />
+              </StyledSmallButton>
+            </>
+          ) : (
+            <>
+              <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
+                <ReloadIcon />
+              </StyledSmallButton>
+              <StyledSmallButton
+                isActive={isSwapping}
+                onClick={handleSwapClick}
+                tabIndex={1}
+              >
+                <SwapIcon />
               </StyledSmallButton>
             </>
           )}

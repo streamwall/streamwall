@@ -63,6 +63,7 @@ The following hotkeys are available with the "control" webpage focused:
 
 - **alt+[1...9]**: Listen to the numbered stream
 - **alt+shift+[1...9]**: Toggle blur on the numbered stream
+- **alt+s**: Select the currently focused stream box to be swapped
 - **alt+c**: Activate [Streamdelay](https://github.com/chromakode/streamdelay) censor mode
 - **alt+shift+c**: Deactivate [Streamdelay](https://github.com/chromakode/streamdelay) censor mode
 
