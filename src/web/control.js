@@ -520,13 +520,13 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
         {delayState.isConnected && (
           <>
             <span>delay: {delayState.delaySeconds}s</span>
-            <StyledToggleButton
+            <StyledButton
               isActive={delayState.isCensored}
               onClick={handleToggleStreamCensored}
               tabIndex={1}
             >
               {buttonText}
-            </StyledToggleButton>
+            </StyledButton>
           </>
         )}
       </StyledStreamDelayBox>
@@ -662,20 +662,20 @@ function GridInput({
         </StyledGridButtons>
       )}
       <StyledGridButtons side="right">
-        <StyledToggleButton
+        <StyledButton
           isActive={isBlurred}
           onClick={handleBlurClick}
           tabIndex={1}
         >
           <NoVideoIcon />
-        </StyledToggleButton>
-        <StyledToggleButton
+        </StyledButton>
+        <StyledButton
           isActive={isListening}
           onClick={handleListeningClick}
           tabIndex={1}
         >
           <SoundIcon />
-        </StyledToggleButton>
+        </StyledButton>
       </StyledGridButtons>
       <StyledGridInput
         value={editingValue || spaceValue || ''}
@@ -760,6 +760,13 @@ const StyledButton = styled.button`
   background: #ccc;
   border-radius: 5px;
 
+  ${({ isActive }) =>
+    isActive &&
+    `
+      border-color: red;
+      background: #c77;
+    `};
+
   &:focus {
     outline: none;
     box-shadow: 0 0 10px orange inset;
@@ -776,15 +783,6 @@ const StyledSmallButton = styled(StyledButton)`
     width: 14px;
     height: 14px;
   }
-`
-
-const StyledToggleButton = styled(StyledButton)`
-  ${({ isActive }) =>
-    isActive &&
-    `
-      border-color: red;
-      background: #c77;
-    `};
 `
 
 const StyledGridContainer = styled.div`
