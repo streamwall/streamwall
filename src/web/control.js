@@ -5,7 +5,13 @@ import ReconnectingWebSocket from 'reconnecting-websocket'
 import * as Y from 'yjs'
 import { patch as patchJSON } from 'jsondiffpatch'
 import { h, Fragment, render } from 'preact'
-import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+  useRef,
+} from 'preact/hooks'
 import { State } from 'xstate'
 import styled, { createGlobalStyle } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -214,7 +220,7 @@ function App({ wsEndpoint }) {
     ev.preventDefault()
   }, [])
   const [dragEnd, setDragEnd] = useState()
-  useEffect(() => {
+  useLayoutEffect(() => {
     function endDrag() {
       if (dragStart !== undefined) {
         stateDoc.transact(() => {
