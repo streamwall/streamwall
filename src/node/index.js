@@ -48,11 +48,11 @@ function parseArgs() {
     })
     .option('window.width', {
       number: true,
-      default: screen.getPrimaryDisplay().workAreaSize.width,
+      default: 1920,
     })
     .option('window.height', {
       number: true,
-      default: screen.getPrimaryDisplay().workAreaSize.height,
+      default: 1080,
     })
     .option('window.frameless', {
       boolean: true,
@@ -202,10 +202,13 @@ async function main() {
     updateCustomStreams = push
   })
 
+  const scaledWidth = argv.window.width / screen.getPrimaryDisplay().scaleFactor
+  const scaledHeight = argv.window.height / screen.getPrimaryDisplay().scaleFactor
+
   const streamWindow = new StreamWindow({
     gridCount: argv.grid.count,
-    width: argv.window.width,
-    height: argv.window.height,
+    width: scaledWidth,
+    height: scaledHeight,
     x: argv.window.x,
     y: argv.window.y,
     frameless: argv.window.frameless,
@@ -219,8 +222,8 @@ async function main() {
 
   let clientState = {
     config: {
-      width: argv.window.width,
-      height: argv.window.height,
+      width: scaledWidth,
+      height: scaledHeight,
       gridCount: argv.grid.count,
     },
     streams: [],
