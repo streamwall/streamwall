@@ -53,7 +53,7 @@ export default class StreamWindow extends EventEmitter {
     // Work around https://github.com/electron/electron/issues/14308
     // via https://github.com/lutzroeder/netron/commit/910ce67395130690ad76382c094999a4f5b51e92
     win.once('ready-to-show', () => {
-      win.resizable = false
+      win.resizable = true
       win.show()
     })
     this.win = win
@@ -133,6 +133,7 @@ export default class StreamWindow extends EventEmitter {
       },
     })
     view.setBackgroundColor(backgroundColor)
+    view.setAutoResize({ width: true, height: true, horizontal: true, vertical: true })
 
     const machine = viewStateMachine
       .withContext({

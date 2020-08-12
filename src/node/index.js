@@ -4,7 +4,7 @@ import TOML from '@iarna/toml'
 import * as Y from 'yjs'
 import { create as createJSONDiffPatch } from 'jsondiffpatch'
 import { Repeater } from '@repeaterjs/repeater'
-import { app, shell, session, BrowserWindow } from 'electron'
+import { app, shell, session, BrowserWindow, screen } from 'electron'
 
 import { ensureValidURL } from '../util'
 import {
@@ -48,11 +48,11 @@ function parseArgs() {
     })
     .option('window.width', {
       number: true,
-      default: 1920,
+      default: screen.getPrimaryDisplay().workAreaSize.width,
     })
     .option('window.height', {
       number: true,
-      default: 1080,
+      default: screen.getPrimaryDisplay().workAreaSize.height,
     })
     .option('window.frameless', {
       boolean: true,
