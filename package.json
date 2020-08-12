@@ -26,7 +26,7 @@
     "koa-route": "^3.2.0",
     "koa-static": "^5.0.0",
     "koa-views": "^6.3.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "node-fetch": "^2.6.0",
     "node-simple-cert": "0.0.1",
     "preact": "^10.4.4",
