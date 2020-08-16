@@ -202,13 +202,10 @@ async function main() {
     updateCustomStreams = push
   })
 
-  const scaledWidth = argv.window.width / screen.getPrimaryDisplay().scaleFactor
-  const scaledHeight = argv.window.height / screen.getPrimaryDisplay().scaleFactor
-
   const streamWindow = new StreamWindow({
     gridCount: argv.grid.count,
-    width: scaledWidth,
-    height: scaledHeight,
+    width: argv.window.width,
+    height: argv.window.height,
     x: argv.window.x,
     y: argv.window.y,
     frameless: argv.window.frameless,
@@ -222,8 +219,8 @@ async function main() {
 
   let clientState = {
     config: {
-      width: scaledWidth,
-      height: scaledHeight,
+      width: argv.window.width,
+      height: argv.window.height,
       gridCount: argv.grid.count,
     },
     streams: [],
@@ -380,6 +377,9 @@ async function main() {
 }
 
 if (require.main === module) {
+  app.commandLine.appendSwitch('high-dpi-support', 1)
+  app.commandLine.appendSwitch('force-device-scale-factor', 1)
+
   app
     .whenReady()
     .then(main)
