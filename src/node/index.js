@@ -377,6 +377,9 @@ async function main() {
 }
 
 if (require.main === module) {
+  app.commandLine.appendSwitch('high-dpi-support', 1)
+  app.commandLine.appendSwitch('force-device-scale-factor', 1)
+
   app
     .whenReady()
     .then(main)
