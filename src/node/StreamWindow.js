@@ -127,6 +127,7 @@ export default class StreamWindow extends EventEmitter {
     const view = new BrowserView({
       webPreferences: {
         nodeIntegration: false,
+        enableRemoteModule: false,
         contextIsolation: true,
         partition: 'persist:session',
         sandbox: true,
