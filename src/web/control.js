@@ -18,6 +18,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 
 import '../index.css'
 import { idxInBox } from '../geometry'
+import { roleCan } from '../roles'
 import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
@@ -88,6 +89,7 @@ function useStreamwallConnection(wsEndpoint) {
   const [customStreams, setCustomStreams] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
   const [delayState, setDelayState] = useState()
+  const [authState, setAuthState] = useState()
 
   useEffect(() => {
     let lastStateData
@@ -107,7 +109,14 @@ function useStreamwallConnection(wsEndpoint) {
         return
       }
       const msg = JSON.parse(ev.data)
-      if (msg.type === 'state' || msg.type === 'state-delta') {
+      if (msg.response) {
+        const { responseMap } = wsRef.current
+        const responseCb = responseMap.get(msg.id)
+        if (responseCb) {
+          responseMap.delete(msg.id)
+          responseCb(msg)
+        }
+      } else if (msg.type === 'state' || msg.type === 'state-delta') {
         let state
         if (msg.type === 'state') {
           state = msg.state
@@ -121,6 +130,7 @@ function useStreamwallConnection(wsEndpoint) {
           streams: newStreams,
           views,
           streamdelay,
+          auth,
         } = state
         const newStateIdxMap = new Map()
         for (const viewState of views) {
@@ -152,15 +162,26 @@ function useStreamwallConnection(wsEndpoint) {
             state: State.from(streamdelay.state),
           },
         )
+        setAuthState(auth)
       } else {
         console.warn('unexpected ws message', msg)
       }
     })
-    wsRef.current = ws
+    wsRef.current = { ws, msgId: 0, responseMap: new Map() }
   }, [])
 
-  const send = useCallback((...args) => {
-    wsRef.current.send(...args)
+  const send = useCallback((msg, cb) => {
+    const { ws, msgId, responseMap } = wsRef.current
+    ws.send(
+      JSON.stringify({
+        ...msg,
+        id: msgId,
+      }),
+    )
+    if (cb) {
+      responseMap.set(msgId, cb)
+    }
+    wsRef.current.msgId++
   }, [])
 
   useEffect(() => {
@@ -168,7 +189,7 @@ function useStreamwallConnection(wsEndpoint) {
       if (origin === 'server') {
         return
       }
-      wsRef.current.send(update)
+      wsRef.current.ws.send(update)
     }
     function receiveUpdate(ev) {
       if (!(ev.data instanceof ArrayBuffer)) {
@@ -177,10 +198,10 @@ function useStreamwallConnection(wsEndpoint) {
       Y.applyUpdate(stateDoc, new Uint8Array(ev.data), 'server')
     }
     stateDoc.on('update', sendUpdate)
-    wsRef.current.addEventListener('message', receiveUpdate)
+    wsRef.current.ws.addEventListener('message', receiveUpdate)
     return () => {
       stateDoc.off('update', sendUpdate)
-      wsRef.current.removeEventListener('message', receiveUpdate)
+      wsRef.current.ws.removeEventListener('message', receiveUpdate)
     }
   }, [stateDoc])
 
@@ -194,10 +215,11 @@ function useStreamwallConnection(wsEndpoint) {
     customStreams,
     stateIdxMap,
     delayState,
+    authState,
   }
 }
 
-function App({ wsEndpoint }) {
+function App({ wsEndpoint, role }) {
   const {
     isConnected,
     send,
@@ -208,6 +230,7 @@ function App({ wsEndpoint }) {
     customStreams,
     stateIdxMap,
     delayState,
+    authState,
   } = useStreamwallConnection(wsEndpoint)
   const { gridCount } = config
 
@@ -303,31 +326,25 @@ function App({ wsEndpoint }) {
   )
 
   const handleSetListening = useCallback((idx, listening) => {
-    send(
-      JSON.stringify({
-        type: 'set-listening-view',
-        viewIdx: listening ? idx : null,
-      }),
-    )
+    send({
+      type: 'set-listening-view',
+      viewIdx: listening ? idx : null,
+    })
   }, [])
 
   const handleSetBlurred = useCallback((idx, blurred) => {
-    send(
-      JSON.stringify({
-        type: 'set-view-blurred',
-        viewIdx: idx,
-        blurred: blurred,
-      }),
-    )
+    send({
+      type: 'set-view-blurred',
+      viewIdx: idx,
+      blurred: blurred,
+    })
   }, [])
 
   const handleReloadView = useCallback((idx) => {
-    send(
-      JSON.stringify({
-        type: 'reload-view',
-        viewIdx: idx,
-      }),
-    )
+    send({
+      type: 'reload-view',
+      viewIdx: idx,
+    })
   }, [])
 
   const handleBrowse = useCallback(
@@ -336,23 +353,19 @@ function App({ wsEndpoint }) {
       if (!stream) {
         return
       }
-      send(
-        JSON.stringify({
-          type: 'browse',
-          url: stream.link,
-        }),
-      )
+      send({
+        type: 'browse',
+        url: stream.link,
+      })
     },
     [streams],
   )
 
   const handleDevTools = useCallback((idx) => {
-    send(
-      JSON.stringify({
-        type: 'dev-tools',
-        viewIdx: idx,
-      }),
-    )
+    send({
+      type: 'dev-tools',
+      viewIdx: idx,
+    })
   }, [])
 
   const handleClickId = useCallback(
@@ -383,22 +396,44 @@ function App({ wsEndpoint }) {
     let newCustomStreams = [...customStreams]
     newCustomStreams[idx] = customStream
     newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
-    send(
-      JSON.stringify({
-        type: 'set-custom-streams',
-        streams: newCustomStreams,
-      }),
-    )
+    send({
+      type: 'set-custom-streams',
+      streams: newCustomStreams,
+    })
   })
 
   const setStreamCensored = useCallback((isCensored) => {
+    send({
+      type: 'set-stream-censored',
+      isCensored,
+    })
+  }, [])
+
+  const [newInvite, setNewInvite] = useState()
+
+  const handleCreateInvite = useCallback(({ name, role }) => {
     send(
-      JSON.stringify({
-        type: 'set-stream-censored',
-        isCensored,
-      }),
+      {
+        type: 'create-invite',
+        name,
+        role,
+      },
+      ({ name, secret }) => {
+        setNewInvite({ name, secret })
+      },
     )
   }, [])
+
+  const handleDeleteToken = useCallback((tokenId) => {
+    send({
+      type: 'delete-token',
+      tokenId,
+    })
+  }, [])
+
+  const preventLinkClick = useCallback((ev) => {
+    ev.preventDefault()
+  })
 
   // Set up keyboard shortcuts.
   useHotkeys(
@@ -456,6 +491,7 @@ function App({ wsEndpoint }) {
         <div>
           connection status: {isConnected ? 'connected' : 'connecting...'}
         </div>
+        <div>role: {role}</div>
         {delayState && (
           <StreamDelayBox
             delayState={delayState}
@@ -485,6 +521,7 @@ function App({ wsEndpoint }) {
                       isHighlighted={isDragHighlighted}
                       isSwapping={idx === swapStartIdx}
                       showDebug={showDebug}
+                      role={role}
                       onMouseDown={handleDragStart}
                       onMouseEnter={setDragEnd}
                       onFocus={handleFocusInput}
@@ -502,14 +539,16 @@ function App({ wsEndpoint }) {
               </StyledGridLine>
             ))}
           </div>
-          <label>
-            <input
-              type="checkbox"
-              value={showDebug}
-              onChange={handleChangeShowDebug}
-            />
-            Show stream debug tools
-          </label>
+          {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
+            <label>
+              <input
+                type="checkbox"
+                value={showDebug}
+                onChange={handleChangeShowDebug}
+              />
+              Show stream debug tools
+            </label>
+          )}
         </StyledDataContainer>
       </Stack>
       <Stack flex="1" scroll={true}>
@@ -520,30 +559,72 @@ function App({ wsEndpoint }) {
                   <StreamLine
                     id={row._id}
                     row={row}
+                    disabled={!roleCan(role, 'mutate-state-doc')}
                     onClickId={handleClickId}
                   />
                 ))
               : 'loading...'}
           </div>
-          <h2>Custom Streams</h2>
-          <div>
-            {/*
+          {roleCan(role, 'set-custom-streams') && (
+            <>
+              <h2>Custom Streams</h2>
+              <div>
+                {/*
             Include an empty object at the end to create an extra input for a new custom stream.
             We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
            */}
-            {[...customStreams, { link: '', label: '', kind: 'video' }].map(
-              ({ link, label, kind }, idx) => (
-                <CustomStreamInput
-                  key={idx}
-                  idx={idx}
-                  link={link}
-                  label={label}
-                  kind={kind}
-                  onChange={handleChangeCustomStream}
-                />
-              ),
-            )}
-          </div>
+                {[...customStreams, { link: '', label: '', kind: 'video' }].map(
+                  ({ link, label, kind }, idx) => (
+                    <CustomStreamInput
+                      key={idx}
+                      idx={idx}
+                      link={link}
+                      label={label}
+                      kind={kind}
+                      onChange={handleChangeCustomStream}
+                    />
+                  ),
+                )}
+              </div>
+            </>
+          )}
+          {roleCan(role, 'edit-tokens') && authState && (
+            <>
+              <h2>Access</h2>
+              <div>
+                <CreateInviteInput onCreateInvite={handleCreateInvite} />
+                <h3>Invites</h3>
+                {newInvite && (
+                  <StyledNewInviteBox>
+                    Invite link created:{' '}
+                    <a
+                      href={`/invite/${newInvite.secret}`}
+                      onClick={preventLinkClick}
+                    >
+                      "{newInvite.name}"
+                    </a>
+                  </StyledNewInviteBox>
+                )}
+                {authState.invites.map(({ id, name, role }) => (
+                  <AuthTokenLine
+                    id={id}
+                    name={name}
+                    role={role}
+                    onDelete={handleDeleteToken}
+                  />
+                ))}
+                <h3>Sessions</h3>
+                {authState.sessions.map(({ id, name, role }) => (
+                  <AuthTokenLine
+                    id={id}
+                    name={name}
+                    role={role}
+                    onDelete={handleDeleteToken}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </StyledDataContainer>
       </Stack>
     </Stack>
@@ -596,6 +677,7 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
 function StreamLine({
   id,
   row: { label, source, title, link, notes, state, city },
+  disabled,
   onClickId,
 }) {
   // Use mousedown instead of click event so a potential destination grid input stays focused.
@@ -608,7 +690,11 @@ function StreamLine({
   }
   return (
     <StyledStreamLine>
-      <StyledId onMouseDown={handleMouseDownId} color={idColor(id)}>
+      <StyledId
+        disabled={disabled}
+        onMouseDown={disabled ? null : handleMouseDownId}
+        color={idColor(id)}
+      >
         {id}
       </StyledId>
       <div>
@@ -640,6 +726,7 @@ function GridInput({
   isHighlighted,
   isSwapping,
   showDebug,
+  role,
   onMouseDown,
   onMouseEnter,
   onFocus,
@@ -709,50 +796,63 @@ function GridInput({
         <StyledGridButtons side="left">
           {showDebug ? (
             <>
-              <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
-                <WindowIcon />
-              </StyledSmallButton>
-              <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
-                <LifeRingIcon />
-              </StyledSmallButton>
+              {roleCan(role, 'browse') && (
+                <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
+                  <WindowIcon />
+                </StyledSmallButton>
+              )}
+              {roleCan(role, 'dev-tools') && (
+                <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
+                  <LifeRingIcon />
+                </StyledSmallButton>
+              )}
             </>
           ) : (
             <>
-              <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
-                <ReloadIcon />
-              </StyledSmallButton>
-              <StyledSmallButton
-                isActive={isSwapping}
-                onClick={handleSwapClick}
-                tabIndex={1}
-              >
-                <SwapIcon />
-              </StyledSmallButton>
+              {roleCan(role, 'reload-view') && (
+                <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
+                  <ReloadIcon />
+                </StyledSmallButton>
+              )}
+              {roleCan(role, 'mutate-state-doc') && (
+                <StyledSmallButton
+                  isActive={isSwapping}
+                  onClick={handleSwapClick}
+                  tabIndex={1}
+                >
+                  <SwapIcon />
+                </StyledSmallButton>
+              )}
             </>
           )}
         </StyledGridButtons>
       )}
       <StyledGridButtons side="right">
-        <StyledButton
-          isActive={isBlurred}
-          onClick={handleBlurClick}
-          tabIndex={1}
-        >
-          <NoVideoIcon />
-        </StyledButton>
-        <StyledButton
-          isActive={isListening}
-          onClick={handleListeningClick}
-          tabIndex={1}
-        >
-          <SoundIcon />
-        </StyledButton>
+        {roleCan(role, 'set-view-blurred') && (
+          <StyledButton
+            isActive={isBlurred}
+            onClick={handleBlurClick}
+            tabIndex={1}
+          >
+            <NoVideoIcon />
+          </StyledButton>
+        )}
+        {roleCan(role, 'set-listening-view') && (
+          <StyledButton
+            isActive={isListening}
+            onClick={handleListeningClick}
+            tabIndex={1}
+          >
+            <SoundIcon />
+          </StyledButton>
+        )}
       </StyledGridButtons>
       <StyledGridInput
         value={editingValue || spaceValue || ''}
         color={idColor(spaceValue)}
         isError={isError}
         isHighlighted={isHighlighted}
+        disabled={!roleCan(role, 'mutate-state-doc')}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onMouseDown={handleMouseDown}
@@ -897,7 +997,7 @@ const StyledId = styled.div`
   border-radius: 5px;
   width: 3em;
   text-align: center;
-  cursor: pointer;
+  cursor: ${({ disabled }) => (disabled ? 'normal' : 'pointer')};
 `
 
 const StyledStreamLine = styled.div`
@@ -906,12 +1006,72 @@ const StyledStreamLine = styled.div`
   margin: 0.5em 0;
 `
 
+function CreateInviteInput({ onCreateInvite }) {
+  const [inviteName, setInviteName] = useState('')
+  const [inviteRole, setInviteRole] = useState('operator')
+  const handleChangeName = useCallback(
+    (ev) => {
+      setInviteName(ev.target.value)
+    },
+    [setInviteName],
+  )
+  const handleChangeRole = useCallback(
+    (ev) => {
+      setInviteRole(ev.target.value)
+    },
+    [setInviteRole],
+  )
+  const handleSubmit = useCallback(
+    (ev) => {
+      ev.preventDefault()
+      setInviteName('')
+      setInviteRole('operator')
+      onCreateInvite({ name: inviteName, role: inviteRole })
+    },
+    [onCreateInvite, inviteName, inviteRole],
+  )
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <input
+          onChange={handleChangeName}
+          placeholder="Name"
+          value={inviteName}
+        />
+        <select onChange={handleChangeRole} value={inviteRole}>
+          <option value="operator">operator</option>
+          <option value="monitor">monitor</option>
+        </select>
+        <button type="submit">create invite</button>
+      </form>
+    </div>
+  )
+}
+
+const StyledNewInviteBox = styled.div`
+  display: inline-block;
+  padding: 10px;
+  background: #dfd;
+`
+
+function AuthTokenLine({ id, role, name, onDelete }) {
+  const handleDeleteClick = useCallback(() => {
+    onDelete(id)
+  }, [id])
+  return (
+    <div>
+      <strong>{name}</strong>: {role}{' '}
+      <button onClick={handleDeleteClick}>revoke</button>
+    </div>
+  )
+}
+
 function main() {
   const script = document.getElementById('main-script')
   render(
     <>
       <GlobalStyle />
-      <App wsEndpoint={script.dataset.wsEndpoint} />
+      <App wsEndpoint={script.dataset.wsEndpoint} role={script.dataset.role} />
     </>,
     document.body,
   )

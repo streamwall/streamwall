@@ -2,7 +2,6 @@ import fs from 'fs'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
-import { create as createJSONDiffPatch } from 'jsondiffpatch'
 import { Repeater } from '@repeaterjs/repeater'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -14,6 +13,7 @@ import {
   markDataSource,
   combineDataSources,
 } from './data'
+import { Auth, StateWrapper } from './auth'
 import StreamWindow from './StreamWindow'
 import TwitchBot from './TwitchBot'
 import StreamdelayClient from './StreamdelayClient'
@@ -213,21 +213,27 @@ async function main() {
   })
   streamWindow.init()
 
+  const auth = new Auth({
+    adminUsername: argv.control.username,
+    adminPassword: argv.control.password,
+  })
+
   let browseWindow = null
   let twitchBot = null
   let streamdelayClient = null
 
-  let clientState = {
+  let clientState = new StateWrapper({
     config: {
       width: argv.window.width,
       height: argv.window.height,
       gridCount: argv.grid.count,
     },
+    auth: auth.getState(),
     streams: [],
     customStreams: [],
     views: [],
     streamdelay: null,
-  }
+  })
 
   const stateDoc = new Y.Doc()
   const viewsState = stateDoc.getMap('views')
@@ -241,7 +247,7 @@ async function main() {
   viewsState.observeDeep(() => {
     const viewContentMap = new Map()
     for (const [key, viewData] of viewsState) {
-      const stream = clientState.streams.find(
+      const stream = clientState.info.streams.find(
         (s) => s._id === viewData.get('streamId'),
       )
       if (!stream) {
@@ -257,7 +263,7 @@ async function main() {
 
   const getInitialState = () => clientState
   let broadcast = () => {}
-  const onMessage = (msg) => {
+  const onMessage = async (msg, respond) => {
     if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
     } else if (msg.type === 'set-view-blurred') {
@@ -294,26 +300,27 @@ async function main() {
       }
     } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
       streamdelayClient.setCensored(msg.isCensored)
+    } else if (msg.type === 'create-invite') {
+      const secret = await auth.createToken({
+        kind: 'invite',
+        role: msg.role,
+        name: msg.name,
+      })
+      respond({ name: msg.name, secret })
+    } else if (msg.type === 'delete-token') {
+      auth.deleteToken(msg.tokenId)
     }
   }
 
-  const stateDiff = createJSONDiffPatch({
-    objectHash: (obj, idx) => obj._id || `$$index:${idx}`,
-  })
   function updateState(newState) {
-    const lastClientState = clientState
-    clientState = { ...clientState, ...newState }
-    const delta = stateDiff.diff(lastClientState, clientState)
-    if (!delta) {
-      return
-    }
+    clientState.update(newState)
     broadcast({
-      type: 'state-delta',
-      delta,
+      type: 'state',
+      state: clientState,
     })
-    streamWindow.send('state', clientState)
+    streamWindow.send('state', clientState.info)
     if (twitchBot) {
-      twitchBot.onState(clientState)
+      twitchBot.onState(clientState.info)
     }
   }
 
@@ -325,8 +332,7 @@ async function main() {
       url: argv.control.address,
       hostname: argv.control.hostname,
       port: argv.control.port,
-      username: argv.control.username,
-      password: argv.control.password,
+      auth,
       getInitialState,
       onMessage,
       stateDoc,
@@ -358,6 +364,10 @@ async function main() {
 
   streamWindow.on('close', () => {
     process.exit(0)
+  })
+
+  auth.on('state', (authState) => {
+    updateState({ auth: authState })
   })
 
   const dataSources = [
