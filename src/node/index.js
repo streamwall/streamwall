@@ -13,6 +13,7 @@ import {
   markDataSource,
   combineDataSources,
 } from './data'
+import * as persistence from './persistence'
 import { Auth, StateWrapper } from './auth'
 import StreamWindow from './StreamWindow'
 import TwitchBot from './TwitchBot'
@@ -195,6 +196,8 @@ async function main() {
       callback(false)
     })
 
+  const persistData = await persistence.load()
+
   const idGen = new StreamIDGenerator()
   let updateCustomStreams
   const customStreamData = new Repeater(async (push) => {
@@ -216,6 +219,7 @@ async function main() {
   const auth = new Auth({
     adminUsername: argv.control.username,
     adminPassword: argv.control.password,
+    persistData: persistData.auth,
   })
 
   let browseWindow = null
@@ -368,6 +372,7 @@ async function main() {
 
   auth.on('state', (authState) => {
     updateState({ auth: authState })
+    persistence.save({ auth: auth.getPersistData() })
   })
 
   const dataSources = [

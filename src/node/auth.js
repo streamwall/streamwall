@@ -64,13 +64,24 @@ export class StateWrapper {
 }
 
 export class Auth extends EventEmitter {
-  constructor({ adminUsername, adminPassword }) {
+  constructor({ adminUsername, adminPassword, persistData }) {
     super()
     this.adminUsername = adminUsername
     this.adminPassword = adminPassword
-    this.salt = rand62(16)
+    this.salt = persistData?.salt || rand62(16)
     this.tokensById = new Map()
     this.tokensByHash = new Map()
+    for (const token of persistData?.tokens ?? []) {
+      this.tokensById.set(token.id, token)
+      this.tokensByHash.set(token.tokenHash, token)
+    }
+  }
+
+  getPersistData() {
+    return {
+      salt: this.salt,
+      tokens: [...this.tokensById.values()],
+    }
   }
 
   getState() {
