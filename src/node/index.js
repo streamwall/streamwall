@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
@@ -220,6 +221,7 @@ async function main() {
     adminUsername: argv.control.username,
     adminPassword: argv.control.password,
     persistData: persistData.auth,
+    logEnabled: true,
   })
 
   let browseWindow = null
@@ -265,8 +267,6 @@ async function main() {
     streamWindow.setViews(viewContentMap)
   })
 
-  const getInitialState = () => clientState
-  let broadcast = () => {}
   const onMessage = async (msg, respond) => {
     if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
@@ -305,7 +305,7 @@ async function main() {
     } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
       streamdelayClient.setCensored(msg.isCensored)
     } else if (msg.type === 'create-invite') {
-      const secret = await auth.createToken({
+      const { secret } = await auth.createToken({
         kind: 'invite',
         role: msg.role,
         name: msg.name,
@@ -318,10 +318,6 @@ async function main() {
 
   function updateState(newState) {
     clientState.update(newState)
-    broadcast({
-      type: 'state',
-      state: clientState,
-    })
     streamWindow.send('state', clientState.info)
     if (twitchBot) {
       twitchBot.onState(clientState.info)
@@ -329,18 +325,21 @@ async function main() {
   }
 
   if (argv.control.address) {
-    ;({ broadcast } = await initWebServer({
+    const webDistPath = path.join(app.getAppPath(), 'web')
+    await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
       email: argv.cert.email,
       url: argv.control.address,
       hostname: argv.control.hostname,
       port: argv.control.port,
+      logEnabled: true,
+      webDistPath,
       auth,
-      getInitialState,
+      clientState,
       onMessage,
       stateDoc,
-    }))
+    })
     if (argv.control.open) {
       shell.openExternal(argv.control.address)
     }

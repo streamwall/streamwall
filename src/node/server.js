@@ -1,6 +1,4 @@
-import { app } from 'electron'
 import { promisify } from 'util'
-import path from 'path'
 import url from 'url'
 import http from 'http'
 import https from 'https'
@@ -17,15 +15,21 @@ import { create as createJSONDiffPatch } from 'jsondiffpatch'
 
 import { roleCan } from '../roles'
 
-const SESSION_COOKIE_NAME = 's'
-
-const webDistPath = path.join(app.getAppPath(), 'web')
+export const SESSION_COOKIE_NAME = 's'
 
 const stateDiff = createJSONDiffPatch({
   objectHash: (obj, idx) => obj._id || `$$index:${idx}`,
 })
 
-function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
+function initApp({
+  auth,
+  baseURL,
+  webDistPath,
+  clientState,
+  logEnabled,
+  onMessage,
+  stateDoc,
+}) {
   const expectedOrigin = new URL(baseURL).origin
   const sockets = new Set()
 
@@ -44,12 +48,12 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
       if (!tokenInfo || tokenInfo.kind !== 'invite') {
         return ctx.throw(403)
       }
-      const sessionToken = await auth.createToken({
+      const { secret } = await auth.createToken({
         kind: 'session',
         name: tokenInfo.name,
         role: tokenInfo.role,
       })
-      ctx.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
+      ctx.cookies.set(SESSION_COOKIE_NAME, secret, {
         maxAge: 1 * 365 * 24 * 60 * 60 * 1000,
         overwrite: true,
       })
@@ -71,10 +75,6 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
         await next()
         return
       }
-      ctx.cookies.set(SESSION_COOKIE_NAME, '', {
-        maxAge: 0,
-        overwrite: true,
-      })
     }
     await basicAuthMiddleware(ctx, async () => {
       ctx.state.identity = auth.admin()
@@ -102,11 +102,12 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
         const { identity } = ctx.state
 
         const ws = await ctx.ws()
-        sockets.add({
+        const client = {
           ws,
           lastState: null,
           identity,
-        })
+        }
+        sockets.add(client)
 
         ws.binaryType = 'arraybuffer'
 
@@ -120,43 +121,55 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
         })
 
         ws.on('message', (rawData) => {
+          let msg
+          const respond = (responseData) => {
+            if (ws.readyState !== WebSocket.OPEN) {
+              return
+            }
+            ws.send(
+              JSON.stringify({
+                ...responseData,
+                response: true,
+                id: msg && msg.id,
+              }),
+            )
+          }
           if (rawData instanceof ArrayBuffer) {
             if (!roleCan(identity.role, 'mutate-state-doc')) {
-              console.warn(
-                `Unauthorized attempt to edit state doc by "${identity.name}"`,
-              )
+              if (logEnabled) {
+                console.warn(
+                  `Unauthorized attempt to edit state doc by "${identity.name}"`,
+                )
+              }
+              respond({
+                error: 'unauthorized',
+              })
               return
             }
             Y.applyUpdate(stateDoc, new Uint8Array(rawData))
             return
           }
 
-          let msg
           try {
             msg = JSON.parse(rawData)
           } catch (err) {
-            console.warn('received unexpected ws data:', rawData)
+            if (logEnabled) {
+              console.warn('received unexpected ws data:', rawData)
+            }
             return
           }
 
           try {
             if (!roleCan(identity.role, msg.type)) {
-              console.warn(
-                `Unauthorized attempt to "${msg.type}" by "${identity.name}"`,
-              )
-              return
-            }
-            const respond = (responseData) => {
-              if (ws.readyState !== WebSocket.OPEN) {
-                return
+              if (logEnabled) {
+                console.warn(
+                  `Unauthorized attempt to "${msg.type}" by "${identity.name}"`,
+                )
               }
-              ws.send(
-                JSON.stringify({
-                  ...responseData,
-                  response: true,
-                  id: msg.id,
-                }),
-              )
+              respond({
+                error: 'unauthorized',
+              })
+              return
             }
             onMessage(msg, respond)
           } catch (err) {
@@ -164,33 +177,30 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
           }
         })
 
-        const state = getInitialState().view(identity.role)
+        const state = clientState.view(identity.role)
         ws.send(JSON.stringify({ type: 'state', state }))
         ws.send(Y.encodeStateAsUpdate(stateDoc))
+        client.lastState = state
         return
       }
       ctx.status = 404
     }),
   )
 
-  const broadcast = (origMsg) => {
-    if (origMsg.type !== 'state') {
-      console.warn(`Unexpected ws broadcast type: ${origMsg.type}`)
-      return
-    }
+  clientState.on('state', (state) => {
     for (const client of sockets) {
       if (client.ws.readyState !== WebSocket.OPEN) {
         continue
       }
-      const state = origMsg.state.view(client.identity.role)
-      const delta = stateDiff.diff(client.lastState, state)
-      client.lastState = state
+      const stateView = state.view(client.identity.role)
+      const delta = stateDiff.diff(client.lastState, stateView)
+      client.lastState = stateView
       if (!delta) {
         continue
       }
       client.ws.send(JSON.stringify({ type: 'state-delta', delta }))
     }
-  }
+  })
 
   stateDoc.on('update', (update) => {
     for (const client of sockets) {
@@ -213,7 +223,7 @@ function initApp({ auth, baseURL, getInitialState, onMessage, stateDoc }) {
     }
   })
 
-  return { app, broadcast }
+  return { app }
 }
 
 export default async function initWebServer({
@@ -223,8 +233,10 @@ export default async function initWebServer({
   url: baseURL,
   hostname: overrideHostname,
   port: overridePort,
+  webDistPath,
   auth,
-  getInitialState,
+  logEnabled,
+  clientState,
   onMessage,
   stateDoc,
 }) {
@@ -236,10 +248,12 @@ export default async function initWebServer({
     port = overridePort
   }
 
-  const { app, broadcast } = initApp({
+  const { app } = initApp({
     auth,
     baseURL,
-    getInitialState,
+    webDistPath,
+    clientState,
+    logEnabled,
     onMessage,
     stateDoc,
   })
@@ -261,5 +275,5 @@ export default async function initWebServer({
   const listen = promisify(server.listen).bind(server)
   await listen(port, overrideHostname || hostname)
 
-  return { broadcast }
+  return { server }
 }

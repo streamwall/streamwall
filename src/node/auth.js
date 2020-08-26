@@ -20,8 +20,9 @@ async function hashToken62(token, salt) {
 }
 
 // Wrapper for state data to facilitate role-scoped data access.
-export class StateWrapper {
+export class StateWrapper extends EventEmitter {
   constructor(value) {
+    super()
     this._value = value
   }
 
@@ -55,6 +56,7 @@ export class StateWrapper {
 
   update(value) {
     this._value = { ...this._value, ...value }
+    this.emit('state', this)
   }
 
   // Unprivileged getter
@@ -64,10 +66,11 @@ export class StateWrapper {
 }
 
 export class Auth extends EventEmitter {
-  constructor({ adminUsername, adminPassword, persistData }) {
+  constructor({ adminUsername, adminPassword, persistData, logEnabled }) {
     super()
     this.adminUsername = adminUsername
     this.adminPassword = adminPassword
+    this.logEnabled = logEnabled || false
     this.salt = persistData?.salt || rand62(16)
     this.tokensById = new Map()
     this.tokensByHash = new Map()
@@ -139,8 +142,12 @@ export class Auth extends EventEmitter {
     this.tokensById.set(id, tokenData)
     this.tokensByHash.set(tokenHash, tokenData)
     this.emitState()
-    console.log(`Created ${kind} token:`, { id, role, name })
-    return secret
+
+    if (this.logEnabled) {
+      console.log(`Created ${kind} token:`, { id, role, name })
+    }
+
+    return { id, secret }
   }
 
   deleteToken(tokenId) {
