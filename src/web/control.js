@@ -494,7 +494,8 @@ function App({ wsEndpoint, role }) {
   )
 
   const normalStreams = streams.filter(
-    (s) => !s.kind || s.kind === 'video' || s.kind === 'web',
+    (s) =>
+      !s.kind || s.kind === 'video' || s.kind === 'audio' || s.kind === 'web',
   )
 
   return (
@@ -927,6 +928,7 @@ function CustomStreamInput({ idx, onChange, ...props }) {
       />
       <select onChange={handleChangeKind} value={props.kind}>
         <option value="video">video</option>
+        <option value="audio">audio</option>
         <option value="web">web</option>
         <option value="overlay">overlay</option>
         <option value="background">background</option>

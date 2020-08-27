@@ -10,7 +10,7 @@ const VIDEO_OVERRIDE_STYLE = `
     position: static !important;
     z-index: 0 !important;
   }
-  html, body, video {
+  html, body, video, audio {
     display: block !important;
     background: black !important;
   }
@@ -18,7 +18,7 @@ const VIDEO_OVERRIDE_STYLE = `
     overflow: hidden !important;
     background: black !important;
   }
-  video, iframe.__video__ {
+  video, iframe.__video__, audio {
     display: block !important;
     position: fixed !important;
     left: 0 !important;
@@ -30,6 +30,9 @@ const VIDEO_OVERRIDE_STYLE = `
     object-fit: cover !important;
     transition: none !important;
     z-index: 999999 !important;
+  }
+  audio {
+    z-index: 999998 !important;
   }
   .__video_parent__ {
     display: block !important;
@@ -210,7 +213,7 @@ const viewStateMachine = Machine(
         const wc = view.webContents
         wc.audioMuted = true
         await wc.loadURL(content.url)
-        if (content.kind === 'video') {
+        if (content.kind === 'video' || content.kind === 'audio') {
           wc.insertCSS(VIDEO_OVERRIDE_STYLE, { cssOrigin: 'user' })
         } else if (content.kind === 'web') {
           wc.insertCSS(
@@ -225,19 +228,23 @@ const viewStateMachine = Machine(
       },
       startVideo: async (context, event) => {
         const { content, view } = context
-        if (content.kind !== 'video') {
+        if (content.kind !== 'video' && content.kind !== 'audio') {
           return
         }
         const wc = view.webContents
+        // TODO: generalize "video" terminology to "media"
         const info = await wc.executeJavaScript(`
           (function() {
             const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms))
+            const kind = ${JSON.stringify(
+              content.kind === 'video' ? 'video' : 'audio',
+            )}
 
             async function waitForVideo() {
               let tries = 0
               let video
               while ((!video || !video.src) && tries < 10) {
-                video = document.querySelector('video')
+                video = document.querySelector(kind)
                 tries++
                 await sleep(200)
               }
@@ -252,7 +259,7 @@ const viewStateMachine = Machine(
                   if (!iframe.contentDocument) {
                     continue
                   }
-                  video = iframe.contentDocument.querySelector('video')
+                  video = iframe.contentDocument.querySelector(kind)
                   if (video) {
                     break
                   }
