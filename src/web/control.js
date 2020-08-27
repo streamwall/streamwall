@@ -15,6 +15,7 @@ import {
 import { State } from 'xstate'
 import styled, { createGlobalStyle } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
+import Color from 'color'
 
 import '../index.css'
 import { idxInBox } from '../geometry'
@@ -139,6 +140,9 @@ function useStreamwallConnection(wsEndpoint) {
           const isListening = state.matches(
             'displaying.running.audio.listening',
           )
+          const isBackgroundListening = state.matches(
+            'displaying.running.audio.background',
+          )
           const isBlurred = state.matches('displaying.running.video.blurred')
           for (const space of pos.spaces) {
             if (!newStateIdxMap.has(space)) {
@@ -147,6 +151,7 @@ function useStreamwallConnection(wsEndpoint) {
             Object.assign(newStateIdxMap.get(space), {
               state,
               isListening,
+              isBackgroundListening,
               isBlurred,
               spaces: pos.spaces,
             })
@@ -332,6 +337,14 @@ function App({ wsEndpoint, role }) {
     })
   }, [])
 
+  const handleSetBackgroundListening = useCallback((viewIdx, listening) => {
+    send({
+      type: 'set-view-background-listening',
+      viewIdx,
+      listening,
+    })
+  }, [])
+
   const handleSetBlurred = useCallback((idx, blurred) => {
     send({
       type: 'set-view-blurred',
@@ -504,8 +517,12 @@ function App({ wsEndpoint, role }) {
               <StyledGridLine>
                 {range(0, gridCount).map((x) => {
                   const idx = gridCount * y + x
-                  const { isListening = false, isBlurred = false, state } =
-                    stateIdxMap.get(idx) || {}
+                  const {
+                    isListening = false,
+                    isBackgroundListening = false,
+                    isBlurred = false,
+                    state,
+                  } = stateIdxMap.get(idx) || {}
                   const { streamId } = sharedState.views?.[idx] || ''
                   const isDragHighlighted =
                     dragStart !== undefined &&
@@ -517,6 +534,7 @@ function App({ wsEndpoint, role }) {
                       isError={state && state.matches('displaying.error')}
                       isDisplaying={state && state.matches('displaying')}
                       isListening={isListening}
+                      isBackgroundListening={isBackgroundListening}
                       isBlurred={isBlurred}
                       isHighlighted={isDragHighlighted}
                       isSwapping={idx === swapStartIdx}
@@ -528,6 +546,7 @@ function App({ wsEndpoint, role }) {
                       onBlur={handleBlurInput}
                       onChangeSpace={handleSetView}
                       onSetListening={handleSetListening}
+                      onSetBackgroundListening={handleSetBackgroundListening}
                       onSetBlurred={handleSetBlurred}
                       onReloadView={handleReloadView}
                       onSwapView={handleSwapView}
@@ -722,6 +741,7 @@ function GridInput({
   isDisplaying,
   isError,
   isListening,
+  isBackgroundListening,
   isBlurred,
   isHighlighted,
   isSwapping,
@@ -732,6 +752,7 @@ function GridInput({
   onFocus,
   onBlur,
   onSetListening,
+  onSetBackgroundListening,
   onSetBlurred,
   onReloadView,
   onSwapView,
@@ -762,8 +783,17 @@ function GridInput({
     [idx, onChangeSpace],
   )
   const handleListeningClick = useCallback(
-    () => onSetListening(idx, !isListening),
-    [idx, onSetListening, isListening],
+    (ev) =>
+      ev.shiftKey || isBackgroundListening
+        ? onSetBackgroundListening(idx, !isBackgroundListening)
+        : onSetListening(idx, !isListening),
+    [
+      idx,
+      onSetListening,
+      onSetBackgroundListening,
+      isListening,
+      isBackgroundListening,
+    ],
   )
   const handleBlurClick = useCallback(() => onSetBlurred(idx, !isBlurred), [
     idx,
@@ -839,7 +869,8 @@ function GridInput({
         )}
         {roleCan(role, 'set-listening-view') && (
           <StyledButton
-            isActive={isListening}
+            isActive={isListening || isBackgroundListening}
+            activeColor={isListening ? 'red' : Color('red').desaturate(0.5)}
             onClick={handleListeningClick}
             tabIndex={1}
           >
@@ -931,11 +962,11 @@ const StyledButton = styled.button`
   background: #ccc;
   border-radius: 5px;
 
-  ${({ isActive }) =>
+  ${({ isActive, activeColor }) =>
     isActive &&
     `
-      border-color: red;
-      background: #c77;
+      border-color: ${activeColor};
+      background: ${Color(activeColor).desaturate(0.5).lighten(0.5)};
     `};
 
   &:focus {

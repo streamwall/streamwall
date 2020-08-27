@@ -1,5 +1,6 @@
 const operatorActions = new Set([
   'set-listening-view',
+  'set-view-background-listening',
   'set-view-blurred',
   'set-custom-streams',
   'reload-view',

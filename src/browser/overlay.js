@@ -29,6 +29,9 @@ function Overlay({ config, views, streams }) {
         const isListening = viewState.matches(
           'displaying.running.audio.listening',
         )
+        const isBackgroundListening = viewState.matches(
+          'displaying.running.audio.background',
+        )
         const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
         return (
@@ -51,7 +54,7 @@ function Overlay({ config, views, streams }) {
                     </>
                   )}
                 </span>
-                {isListening && <SoundIcon />}
+                {(isListening || isBackgroundListening) && <SoundIcon />}
               </StreamTitle>
             )}
             {isLoading && <LoadingSpinner />}

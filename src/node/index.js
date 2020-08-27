@@ -270,6 +270,8 @@ async function main() {
   const onMessage = async (msg, respond) => {
     if (msg.type === 'set-listening-view') {
       streamWindow.setListeningView(msg.viewIdx)
+    } else if (msg.type === 'set-view-background-listening') {
+      streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
     } else if (msg.type === 'set-view-blurred') {
       streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
     } else if (msg.type === 'set-custom-streams') {

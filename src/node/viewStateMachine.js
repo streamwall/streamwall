@@ -141,12 +141,21 @@ const viewStateMachine = Machine(
                 on: {
                   MUTE: '.muted',
                   UNMUTE: '.listening',
+                  BACKGROUND: '.background',
+                  UNBACKGROUND: '.muted',
                 },
                 states: {
                   muted: {
                     entry: 'muteAudio',
                   },
                   listening: {
+                    entry: 'unmuteAudio',
+                  },
+                  background: {
+                    on: {
+                      // Ignore normal audio swapping.
+                      MUTE: {},
+                    },
                     entry: 'unmuteAudio',
                   },
                 },

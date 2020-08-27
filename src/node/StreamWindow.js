@@ -257,6 +257,10 @@ export default class StreamWindow extends EventEmitter {
     }
   }
 
+  setViewBackgroundListening(viewIdx, listening) {
+    this.sendViewEvent(viewIdx, listening ? 'BACKGROUND' : 'UNBACKGROUND')
+  }
+
   setViewBlurred(viewIdx, blurred) {
     this.sendViewEvent(viewIdx, blurred ? 'BLUR' : 'UNBLUR')
   }
