@@ -964,7 +964,7 @@ const StyledButton = styled.button`
   background: #ccc;
   border-radius: 5px;
 
-  ${({ isActive, activeColor }) =>
+  ${({ isActive, activeColor = 'red' }) =>
     isActive &&
     `
       border-color: ${activeColor};
