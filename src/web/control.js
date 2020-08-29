@@ -501,11 +501,13 @@ function App({ wsEndpoint, role }) {
   return (
     <Stack flex="1">
       <Stack>
-        <h1>Streamwall ({location.host})</h1>
-        <div>
-          connection status: {isConnected ? 'connected' : 'connecting...'}
-        </div>
-        <div>role: {role}</div>
+        <StyledHeader>
+          <h1>Streamwall ({location.host})</h1>
+          <div>
+            connection status: {isConnected ? 'connected' : 'connecting...'}
+          </div>
+          <div>role: {role}</div>
+        </StyledHeader>
         {delayState && (
           <StreamDelayBox
             delayState={delayState}
@@ -571,7 +573,7 @@ function App({ wsEndpoint, role }) {
           )}
         </StyledDataContainer>
       </Stack>
-      <Stack flex="1" scroll={true}>
+      <Stack flex="1" scroll={true} minHeight={200}>
         <StyledDataContainer isConnected={isConnected}>
           <div>
             {isConnected
@@ -656,6 +658,7 @@ const Stack = styled.div`
   flex-direction: column;
   flex: ${({ flex }) => flex};
   ${({ scroll }) => scroll && `overflow-y: auto`};
+  ${({ minHeight }) => minHeight && `min-height: ${minHeight}px`};
 `
 
 function StreamDelayBox({ delayState, setStreamCensored }) {
@@ -936,6 +939,21 @@ function CustomStreamInput({ idx, onChange, ...props }) {
     </div>
   )
 }
+
+const StyledHeader = styled.header`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  h1 {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  * {
+    margin-right: 2rem;
+  }
+`
 
 const StyledStreamDelayBox = styled.div`
   display: inline-flex;
