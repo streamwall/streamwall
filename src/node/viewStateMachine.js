@@ -340,7 +340,6 @@ const viewStateMachine = Machine(
               video.muted = false
               video.autoPlay = true
               video.play()
-              setInterval(() => video.play(), 1000)
 
               // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
               Object.defineProperty(video, 'muted', {writable: true, value: false})
