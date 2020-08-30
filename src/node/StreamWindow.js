@@ -135,6 +135,12 @@ export default class StreamWindow extends EventEmitter {
     })
     view.setBackgroundColor(backgroundColor)
 
+    // Prevent view pages from navigating away from the specified URL.
+    view.webContents.on('will-navigate', (ev) => {
+      console.log(ev)
+      ev.preventDefault()
+    })
+
     const machine = viewStateMachine
       .withContext({
         ...viewStateMachine.context,
