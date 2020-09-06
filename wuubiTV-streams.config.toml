@@ -1,0 +1,11 @@
+[[streams]]
+city   = "ATX"
+label  = "Yoo"
+link   = "https://twitch.tv/wuubi"
+notes  = "ARTDEV.APP ARTDEVAPP.COM MERCH.WUU.BI"
+source = "wuu.bi"
+
+[[streams]]
+kind  = "web"
+label = "zombocom"
+link  = "https://html5zombo.com"

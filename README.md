@@ -1,4 +1,4 @@
-# Streamwall
+# Streamwall - Wuu.BI INT
 
 :construction: Early WIP release! :construction:
 
@@ -7,6 +7,8 @@ Streamwall makes it easy to compose multiple livestreams into a mosaic, with sou
 ![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
 
 ## How it works
+
+// Early TODO create APIs for receiving/creating streams with this + PeerTube APIs from whatco-de git wiki
 
 Under the hood, think of Streamwall as a specialized web browser for mosaicing video streams. It uses [Electron](https://www.electronjs.org) to create a grid of web browser views, loading the specified webpages into them. Once the page loads, Streamwall finds the `<video>` tag and reformats the page so that the video fills the space. This works for a wide variety of web pages without specialized scrapers.
 
