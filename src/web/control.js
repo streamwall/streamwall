@@ -571,6 +571,7 @@ function App({ wsEndpoint, role }) {
               Show stream debug tools
             </label>
           )}
+          <Facts />
         </StyledDataContainer>
       </Stack>
       <Stack flex="1" scroll={true} minHeight={200}>
@@ -1116,6 +1117,52 @@ function AuthTokenLine({ id, role, name, onDelete }) {
     </div>
   )
 }
+
+function Facts() {
+  return (
+    <StyledFacts>
+      <BLM>Black Lives Matter.</BLM>
+      <TRM>
+        Trans rights are <em>human rights.</em>
+      </TRM>
+      <TIN>Technology is not neutral.</TIN>
+    </StyledFacts>
+  )
+}
+
+const StyledFacts = styled.div`
+  display: flex;
+  margin: 4px 0;
+
+  & > * {
+    line-height: 26px;
+    margin-right: 0.5em;
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+`
+
+const BLM = styled.div`
+  background: black;
+  color: white;
+`
+
+const TRM = styled.div`
+  background: linear-gradient(
+    to bottom,
+    #55cdfc 12%,
+    #f7a8b8 12%,
+    #f7a8b8 88%,
+    #55cdfc 88%
+  );
+  color: white;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+`
+
+const TIN = styled.div`
+  background: gray;
+  font-family: monospace;
+`
 
 function main() {
   const script = document.getElementById('main-script')
