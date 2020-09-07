@@ -5,6 +5,7 @@ const operatorActions = new Set([
   'set-custom-streams',
   'reload-view',
   'set-stream-censored',
+  'set-stream-running',
   'mutate-state-doc',
 ])
 

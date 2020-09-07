@@ -50,4 +50,8 @@ export default class StreamdelayClient extends EventEmitter {
   setCensored(isCensored) {
     this.ws.send(JSON.stringify({ isCensored }))
   }
+
+  setStreamRunning(isStreamRunning) {
+    this.ws.send(JSON.stringify({ isStreamRunning }))
+  }
 }

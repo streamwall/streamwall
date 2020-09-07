@@ -306,6 +306,8 @@ async function main() {
       }
     } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
       streamdelayClient.setCensored(msg.isCensored)
+    } else if (msg.type === 'set-stream-running' && streamdelayClient) {
+      streamdelayClient.setStreamRunning(msg.isStreamRunning)
     } else if (msg.type === 'create-invite') {
       const { secret } = await auth.createToken({
         kind: 'invite',

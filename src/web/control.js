@@ -422,6 +422,13 @@ function App({ wsEndpoint, role }) {
     })
   }, [])
 
+  const setStreamRunning = useCallback((isStreamRunning) => {
+    send({
+      type: 'set-stream-running',
+      isStreamRunning,
+    })
+  }, [])
+
   const [newInvite, setNewInvite] = useState()
 
   const handleCreateInvite = useCallback(({ name, role }) => {
@@ -510,8 +517,10 @@ function App({ wsEndpoint, role }) {
         </StyledHeader>
         {delayState && (
           <StreamDelayBox
+            role={role}
             delayState={delayState}
             setStreamCensored={setStreamCensored}
+            setStreamRunning={setStreamRunning}
           />
         )}
         <StyledDataContainer isConnected={isConnected}>
@@ -662,10 +671,20 @@ const Stack = styled.div`
   ${({ minHeight }) => minHeight && `min-height: ${minHeight}px`};
 `
 
-function StreamDelayBox({ delayState, setStreamCensored }) {
+function StreamDelayBox({
+  role,
+  delayState,
+  setStreamCensored,
+  setStreamRunning,
+}) {
   const handleToggleStreamCensored = useCallback(() => {
     setStreamCensored(!delayState.isCensored)
   }, [delayState.isCensored, setStreamCensored])
+  const handleToggleStreamRunning = useCallback(() => {
+    if (!delayState.isStreamRunning || confirm('End stream?')) {
+      setStreamRunning(!delayState.isStreamRunning)
+    }
+  }, [delayState.isStreamRunning, setStreamRunning])
   let buttonText
   if (delayState.isConnected) {
     if (delayState.state.matches('censorship.censored.deactivating')) {
@@ -680,17 +699,25 @@ function StreamDelayBox({ delayState, setStreamCensored }) {
     <div>
       <StyledStreamDelayBox>
         <strong>Streamdelay</strong>
-        <span>{delayState.isConnected ? 'connected' : 'connecting...'}</span>
+        {!delayState.isConnected && <span>connecting...</span>}
+        {!delayState.isStreamRunning && <span>stream stopped</span>}
         {delayState.isConnected && (
           <>
             <span>delay: {delayState.delaySeconds}s</span>
-            <StyledButton
-              isActive={delayState.isCensored}
-              onClick={handleToggleStreamCensored}
-              tabIndex={1}
-            >
-              {buttonText}
-            </StyledButton>
+            {delayState.isStreamRunning && (
+              <StyledButton
+                isActive={delayState.isCensored}
+                onClick={handleToggleStreamCensored}
+                tabIndex={1}
+              >
+                {buttonText}
+              </StyledButton>
+            )}
+            {roleCan(role, 'set-stream-running') && (
+              <StyledButton onClick={handleToggleStreamRunning} tabIndex={1}>
+                {delayState.isStreamRunning ? 'End stream' : 'Start stream'}
+              </StyledButton>
+            )}
           </>
         )}
       </StyledStreamDelayBox>
