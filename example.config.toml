@@ -11,6 +11,9 @@
 # Set the background color (useful for chroma-keying)
 #background-color = "#0f0"
 
+# Set the active (highlight) color
+#active-color = "#fff"
+
 [grid]
 #count = 3
 

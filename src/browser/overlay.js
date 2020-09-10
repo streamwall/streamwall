@@ -5,6 +5,7 @@ import { State } from 'xstate'
 import styled from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { TailSpin } from 'svg-loaders-react'
+import Color from 'color'
 
 import '../index.css'
 
@@ -16,7 +17,7 @@ import YouTubeIcon from '../static/youtube.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
 
 function Overlay({ config, views, streams }) {
-  const { width, height } = config
+  const { width, height, activeColor } = config
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
     .filter((s) => s.matches('displaying') && !s.matches('displaying.error'))
@@ -39,11 +40,12 @@ function Overlay({ config, views, streams }) {
             pos={pos}
             windowWidth={width}
             windowHeight={height}
+            activeColor={activeColor}
             isListening={isListening}
           >
             <BlurCover isBlurred={isBlurred} />
             {data && (
-              <StreamTitle isListening={isListening}>
+              <StreamTitle activeColor={activeColor} isListening={isListening}>
                 <StreamIcon url={content.url} />
                 <span>
                   {data.hasOwnProperty('label') ? (
@@ -149,8 +151,8 @@ const SpaceBorder = styled.div.attrs((props) => ({
     pos.y === 0 ? 0 : borderWidth}px;
   border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
     pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
-  box-shadow: ${({ isListening }) =>
-    isListening ? '0 0 10px red inset' : 'none'};
+  box-shadow: ${({ isListening, activeColor }) =>
+    isListening ? `0 0 10px ${activeColor} inset` : 'none'};
   box-sizing: border-box;
   pointer-events: none;
   user-select: none;
@@ -167,8 +169,8 @@ const StreamTitle = styled.div`
   color: white;
   text-shadow: 0 0 4px black;
   letter-spacing: -0.025em;
-  background: ${({ isListening }) =>
-    isListening ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)'};
+  background: ${({ isListening, activeColor }) =>
+    Color(isListening ? activeColor : 'black').alpha(0.5)};
   border-radius: 4px;
   backdrop-filter: blur(10px);
   overflow: hidden;

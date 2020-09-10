@@ -39,6 +39,7 @@ function parseArgs() {
         'window.y',
         'window.frameless',
         'window.background-color',
+        'window.active-color',
       ],
       'Window settings',
     )
@@ -63,6 +64,10 @@ function parseArgs() {
     .option('window.background-color', {
       describe: 'Background color of wall (useful for chroma-keying)',
       default: '#000',
+    })
+    .option('window.active-color', {
+      describe: 'Active (highlight) color of wall',
+      default: '#fff',
     })
     .group(['data.interval', 'data.json-url', 'data.toml-file'], 'Datasources')
     .option('data.interval', {
@@ -233,6 +238,7 @@ async function main() {
       width: argv.window.width,
       height: argv.window.height,
       gridCount: argv.grid.count,
+      activeColor: argv.window['active-color'],
     },
     auth: auth.getState(),
     streams: [],
