@@ -137,7 +137,6 @@ export default class StreamWindow extends EventEmitter {
 
     // Prevent view pages from navigating away from the specified URL.
     view.webContents.on('will-navigate', (ev) => {
-      console.log(ev)
       ev.preventDefault()
     })
 
