@@ -28,7 +28,7 @@
     "koa-static": "^5.0.0",
     "koa-views": "^6.3.0",
     "lodash": "^4.17.19",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "node-simple-cert": "0.0.1",
     "preact": "^10.4.4",
     "react-hotkeys-hook": "^2.1.3",
