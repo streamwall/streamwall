@@ -66,6 +66,7 @@ const nodeConfig = {
   externals: {
     consolidate: 'commonjs consolidate',
     fsevents: 'commonjs fsevents',
+    'gstreamer-superficial': 'commonjs gstreamer-superficial',
   },
 }
 

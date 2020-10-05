@@ -1,4 +1,5 @@
 import path from 'path'
+const gstreamer = require('gstreamer-superficial')
 import isEqual from 'lodash/isEqual'
 import sortBy from 'lodash/sortBy'
 import intersection from 'lodash/intersection'
@@ -45,9 +46,9 @@ export default class StreamWindow extends EventEmitter {
       x,
       y,
       frame: !frameless,
+      show: false,
       backgroundColor,
       useContentSize: true,
-      show: false,
       webPreferences: {
         offscreen: true,
         sandbox: true,
@@ -55,6 +56,7 @@ export default class StreamWindow extends EventEmitter {
         nodeIntegrationInSubFrames: true,
         contextIsolation: true,
         worldSafeExecuteJavaScript: true,
+        offscreen: true,
         partition: 'persist:session',
         preload: path.join(app.getAppPath(), 'wallPreload.js'),
       },
@@ -83,36 +85,30 @@ export default class StreamWindow extends EventEmitter {
     win.webContents.loadFile('wall.html')
     win.on('close', () => this.emit('close'))
 
-    let sock = net.connect(3000, '127.0.0.1')
-    let reconnectTimeout
-    sock.on('close', () => {
-      clearTimeout(reconnectTimeout)
-      reconnectTimeout = setTimeout(() => {
-        try {
-          sock.connect(3000, '127.0.0.1')
-        } catch (err) {}
-      }, 1000)
-    })
-    sock.on('error', () => {})
-    win.webContents.beginFrameSubscription((image) => {
-      if (sock.destroyed) {
-        return
-      }
-      try {
-        sock.write(image.getBitmap())
-      } catch (err) {}
-    })
-    win.webContents.setFrameRate(30)
-
-    // Work around https://github.com/electron/electron/issues/14308
-    // via https://github.com/lutzroeder/netron/commit/910ce67395130690ad76382c094999a4f5b51e92
-    win.once('ready-to-show', () => {
-      win.resizable = false
-    })
     this.win = win
 
     ipcMain.on('devtools-overlay', () => {
       win.webContents.openDevTools()
+    })
+
+    const pipeline = new gstreamer.Pipeline(
+      'appsrc name=mysource is-live=true do-timestamp=true ! rawvideoparse width=1920 height=1080 framerate=30/1 format=GST_VIDEO_FORMAT_RGBA !' +
+        'videoconvert ! video/x-raw,format=I420 ! queue ! x264enc bitrate=4500 tune=zerolatency speed-preset=fast byte-stream=true threads=0 psy-tune=none key-int-max=60 ! mpegtsmux ! tcpclientsink name=sink host=127.0.0.1 port=3000',
+    )
+    const appsrc = pipeline.findChild('mysource')
+    appsrc.caps =
+      'video/x-raw,format=RGBA,width=1920,height=1080,framerate=30/1'
+    pipeline.play()
+    win.webContents.beginFrameSubscription((image) => {
+      appsrc.push(image.getBitmap())
+    })
+    win.webContents.setFrameRate(30)
+    pipeline.pollBus((msg) => {
+      if (msg.type === 'error') {
+        console.error(msg)
+      } else {
+        console.log(msg)
+      }
     })
 
     ipcMain.handle('view-init', async (ev, { viewId }) => {
