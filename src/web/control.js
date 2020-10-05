@@ -24,7 +24,6 @@ import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
 import ReloadIcon from '../static/redo-alt-solid.svg'
 import SwapIcon from '../static/exchange-alt-solid.svg'
-import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
 import { idColor } from './colors'
 
@@ -137,13 +136,11 @@ function useStreamwallConnection(wsEndpoint) {
         for (const viewState of views) {
           const { pos } = viewState.context
           const state = State.from(viewState.state)
-          const isListening = state.matches(
-            'displaying.running.audio.listening',
-          )
+          const isListening = state.matches('running.audio.listening')
           const isBackgroundListening = state.matches(
-            'displaying.running.audio.background',
+            'running.audio.background',
           )
-          const isBlurred = state.matches('displaying.running.video.blurred')
+          const isBlurred = state.matches('running.video.blurred')
           for (const space of pos.spaces) {
             if (!newStateIdxMap.has(space)) {
               newStateIdxMap.set(space, {})
@@ -374,13 +371,6 @@ function App({ wsEndpoint, role }) {
     [streams],
   )
 
-  const handleDevTools = useCallback((idx) => {
-    send({
-      type: 'dev-tools',
-      viewIdx: idx,
-    })
-  }, [])
-
   const handleClickId = useCallback(
     (streamId) => {
       try {
@@ -543,8 +533,8 @@ function App({ wsEndpoint, role }) {
                     <GridInput
                       idx={idx}
                       spaceValue={streamId}
-                      isError={state && state.matches('displaying.error')}
-                      isDisplaying={state && state.matches('displaying')}
+                      isError={state && state.matches('error')}
+                      isDisplaying={!!state}
                       isListening={isListening}
                       isBackgroundListening={isBackgroundListening}
                       isBlurred={isBlurred}
@@ -563,7 +553,6 @@ function App({ wsEndpoint, role }) {
                       onReloadView={handleReloadView}
                       onSwapView={handleSwapView}
                       onBrowse={handleBrowse}
-                      onDevTools={handleDevTools}
                     />
                   )
                 })}
@@ -789,7 +778,6 @@ function GridInput({
   onReloadView,
   onSwapView,
   onBrowse,
-  onDevTools,
 }) {
   const [editingValue, setEditingValue] = useState()
   const handleFocus = useCallback(
@@ -841,10 +829,6 @@ function GridInput({
     spaceValue,
     onBrowse,
   ])
-  const handleDevToolsClick = useCallback(() => onDevTools(idx), [
-    idx,
-    onDevTools,
-  ])
   const handleMouseDown = useCallback(
     (ev) => {
       onMouseDown(idx, ev)
@@ -861,11 +845,6 @@ function GridInput({
               {roleCan(role, 'browse') && (
                 <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
                   <WindowIcon />
-                </StyledSmallButton>
-              )}
-              {roleCan(role, 'dev-tools') && (
-                <StyledSmallButton onClick={handleDevToolsClick} tabIndex={1}>
-                  <LifeRingIcon />
                 </StyledSmallButton>
               )}
             </>

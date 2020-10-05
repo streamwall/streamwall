@@ -71,6 +71,17 @@ export async function* combineDataSources(dataSources) {
   }
 }
 
+export function filterStreams(streams) {
+  return streams.filter(({ link }) => {
+    const url = new URL(link)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      console.warn(`filtering non-http stream URL '${urlStr}'`)
+      return false
+    }
+    return true
+  })
+}
+
 export class StreamIDGenerator {
   constructor() {
     this.idMap = new Map()

@@ -57,7 +57,7 @@ export default class TwitchBot extends EventEmitter {
     this.streams = streams
 
     const listeningView = views.find(({ state, context }) =>
-      State.from(state, context).matches('displaying.running.audio.listening'),
+      State.from(state, context).matches('running.audio.listening'),
     )
     if (!listeningView) {
       return

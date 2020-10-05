@@ -1,6 +1,5 @@
-import { ipcRenderer } from 'electron'
 import { h, Fragment, render } from 'preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useState, useRef } from 'preact/hooks'
 import { State } from 'xstate'
 import styled from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -16,60 +15,75 @@ import TwitchIcon from '../static/twitch.svg'
 import YouTubeIcon from '../static/youtube.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
 
+const VIEW_POS_TRANSITION = '0.1s linear'
+const VIEW_OPACITY_TRANSITION = '0.5s ease-out'
+
 function Overlay({ config, views, streams }) {
   const { width, height, activeColor } = config
   const activeViews = views
     .map(({ state, context }) => State.from(state, context))
-    .filter((s) => s.matches('displaying') && !s.matches('displaying.error'))
+    .filter((s) => !s.matches('error'))
+  const backgrounds = streams.filter((s) => s.kind === 'background')
   const overlays = streams.filter((s) => s.kind === 'overlay')
+  // TODO: prevent iframes from being reparented
   return (
     <div>
+      {backgrounds.map((s) => (
+        <OverlayIframe key={s._id} src={s.link} />
+      ))}
       {activeViews.map((viewState) => {
-        const { content, pos } = viewState.context
+        const { viewId, content, pos, info } = viewState.context
         const data = streams.find((d) => content.url === d.link)
-        const isListening = viewState.matches(
-          'displaying.running.audio.listening',
-        )
+        const isListening = viewState.matches('running.audio.listening')
         const isBackgroundListening = viewState.matches(
-          'displaying.running.audio.background',
+          'running.audio.background',
         )
-        const isBlurred = viewState.matches('displaying.running.video.blurred')
-        const isLoading = viewState.matches('displaying.loading')
+        const isBlurred = viewState.matches('running.video.blurred')
+        const isLoading = viewState.matches('loading')
+        const isRunning = viewState.matches('running')
         return (
-          <SpaceBorder
-            pos={pos}
-            windowWidth={width}
-            windowHeight={height}
-            activeColor={activeColor}
-            isListening={isListening}
-          >
-            <BlurCover isBlurred={isBlurred} />
-            {data && (
-              <StreamTitle activeColor={activeColor} isListening={isListening}>
-                <StreamIcon url={content.url} />
-                <span>
-                  {data.hasOwnProperty('label') ? (
-                    data.label
-                  ) : (
-                    <>
-                      {data.source} &ndash; {data.city} {data.state}
-                    </>
-                  )}
-                </span>
-                {(isListening || isBackgroundListening) && <SoundIcon />}
-              </StreamTitle>
-            )}
+          <ViewContainer key={viewId} pos={pos}>
+            <MediaIframe
+              key={viewId}
+              pos={pos}
+              intrinsicWidth={info.intrinsicWidth}
+              intrinsicHeight={info.intrinsicHeight}
+              isRunning={isRunning}
+              src={content.url}
+              name={viewId}
+            ></MediaIframe>
+            <SpaceBorder
+              pos={pos}
+              windowWidth={width}
+              windowHeight={height}
+              activeColor={activeColor}
+              isListening={isListening}
+            >
+              {data && (
+                <StreamTitle
+                  activeColor={activeColor}
+                  isListening={isListening}
+                >
+                  <StreamIcon url={content.url} />
+                  <span>
+                    {data.hasOwnProperty('label') ? (
+                      data.label
+                    ) : (
+                      <>
+                        {data.source} &ndash; {data.city} {data.state}
+                      </>
+                    )}
+                  </span>
+                  {(isListening || isBackgroundListening) && <SoundIcon />}
+                </StreamTitle>
+              )}
+            </SpaceBorder>
             {isLoading && <LoadingSpinner />}
-          </SpaceBorder>
+          </ViewContainer>
         )
       })}
       {overlays.map((s) => (
-        <OverlayIFrame
-          key={s._id}
-          src={s.link}
-          sandbox="allow-scripts allow-same-origin"
-          allow="autoplay"
-        />
+        <OverlayIframe key={s._id} src={s.link} />
       ))}
     </div>
   )
@@ -84,13 +98,17 @@ function App() {
   })
 
   useEffect(() => {
-    ipcRenderer.on('state', (ev, state) => {
-      setState(state)
+    streamwall.onState(setState)
+    streamwall.onReloadView(({ viewId }) => {
+      const viewFrame = document.querySelector(`iframe[name="${viewId}"]`)
+      if (viewFrame) {
+        viewFrame.src = viewFrame.src
+      }
     })
   }, [])
 
   useHotkeys('ctrl+shift+i', () => {
-    ipcRenderer.send('devtools-overlay')
+    streamwall.openDevTools()
   })
 
   const { config, views, streams, customStreams } = state
@@ -132,16 +150,74 @@ function StreamIcon({ url, ...props }) {
   return null
 }
 
-const SpaceBorder = styled.div.attrs((props) => ({
-  borderWidth: 2,
-}))`
-  display: flex;
-  align-items: flex-start;
+function MediaIframe({
+  isRunning,
+  pos,
+  intrinsicWidth,
+  intrinsicHeight,
+  ...props
+}) {
+  const frameRef = useRef()
+
+  // Set isMounted after render so the transition doesn't apply to the initial sizing of the frame.
+  useEffect(() => {
+    if (!isRunning) {
+      return
+    }
+    const { current: el } = frameRef
+    el.style.transition = `transform ${VIEW_POS_TRANSITION}, opacity ${VIEW_OPACITY_TRANSITION}`
+    el.style.opacity = 1
+  }, [isRunning])
+
+  let style = {
+    position: 'absolute',
+    left: -9999,
+    width: pos.width,
+    height: pos.height,
+    opacity: 0,
+  }
+  if (isRunning) {
+    const scale = Math.max(
+      pos.width / intrinsicWidth,
+      pos.height / intrinsicHeight,
+    )
+    const translateX = -(intrinsicWidth * scale - pos.width) / 2
+    const translateY = -(intrinsicHeight * scale - pos.height) / 2
+    const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`
+    style = {
+      opacity: 0,
+      transform,
+      transition: 'none',
+      // TODO: explore not oversampling as a perf improvement
+      width: intrinsicWidth,
+      height: intrinsicHeight,
+    }
+  }
+  return <StyledMediaIframe ref={frameRef} {...props} style={style} />
+}
+
+const ViewContainer = styled.div`
   position: fixed;
   left: ${({ pos }) => pos.x}px;
   top: ${({ pos }) => pos.y}px;
   width: ${({ pos }) => pos.width}px;
   height: ${({ pos }) => pos.height}px;
+  overflow: hidden;
+  transition: left ${VIEW_POS_TRANSITION}, top ${VIEW_POS_TRANSITION},
+    width ${VIEW_POS_TRANSITION}, height ${VIEW_POS_TRANSITION};
+  will-change: left, top, width, height;
+`
+
+const SpaceBorder = styled.div.attrs((props) => ({
+  borderWidth: 2,
+}))`
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-start;
   border: 0 solid black;
   border-left-width: ${({ pos, borderWidth }) =>
     pos.x === 0 ? 0 : borderWidth}px;
@@ -220,14 +296,26 @@ const BlurCover = styled.div`
   backdrop-filter: ${({ isBlurred }) => (isBlurred ? 'blur(30px)' : 'blur(0)')};
 `
 
-const OverlayIFrame = styled.iframe`
+const Iframe = styled.iframe.attrs((props) => ({
+  sandbox: 'allow-scripts allow-same-origin',
+  allow: 'autoplay',
+}))`
+  border: none;
+  pointer-events: none;
+`
+
+const StyledMediaIframe = styled(Iframe)`
+  position: absolute;
+  transform-origin: top left;
+  will-change: opacity, transform;
+`
+
+const OverlayIframe = styled(Iframe)`
   position: fixed;
   left: 0;
   top: 0;
   width: 100vw;
   height: 100vh;
-  border: none;
-  pointer-events: none;
 `
 
 render(<App />, document.body)

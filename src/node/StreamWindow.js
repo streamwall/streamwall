@@ -1,7 +1,10 @@
+import path from 'path'
 import isEqual from 'lodash/isEqual'
+import sortBy from 'lodash/sortBy'
 import intersection from 'lodash/intersection'
 import EventEmitter from 'events'
-import { BrowserView, BrowserWindow, ipcMain } from 'electron'
+import net from 'net'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { interpret } from 'xstate'
 
 import viewStateMachine from './viewStateMachine'
@@ -20,8 +23,8 @@ export default class StreamWindow extends EventEmitter {
     this.offscreenWin = null
     this.backgroundView = null
     this.overlayView = null
-    this.views = []
-    this.viewActions = null
+    this.views = new Map()
+    this.nextViewId = 0
   }
 
   init() {
@@ -45,135 +48,133 @@ export default class StreamWindow extends EventEmitter {
       backgroundColor,
       useContentSize: true,
       show: false,
+      webPreferences: {
+        offscreen: true,
+        sandbox: true,
+        nodeIntegration: true,
+        nodeIntegrationInSubFrames: true,
+        contextIsolation: true,
+        worldSafeExecuteJavaScript: true,
+        partition: 'persist:session',
+        preload: path.join(app.getAppPath(), 'wallPreload.js'),
+      },
     })
     win.removeMenu()
-    win.loadURL('about:blank')
+    // via https://github.com/electron/electron/pull/573#issuecomment-642216738
+    win.webContents.session.webRequest.onHeadersReceived(
+      ({ responseHeaders }, callback) => {
+        for (const headerName of Object.keys(responseHeaders)) {
+          if (headerName.toLowerCase() === 'x-frame-options') {
+            delete responseHeaders[headerName]
+          }
+          if (headerName.toLowerCase() === 'content-security-policy') {
+            const csp = responseHeaders[headerName]
+            responseHeaders[headerName] = csp.map((val) =>
+              val.replace(/frame-ancestors[^;]+;/, ''),
+            )
+          }
+        }
+        callback({ responseHeaders })
+      },
+    )
+    win.webContents.session.setPreloads([
+      path.join(app.getAppPath(), 'mediaPreload.js'),
+    ])
+    win.webContents.loadFile('wall.html')
     win.on('close', () => this.emit('close'))
+
+    let sock = net.connect(3000, '127.0.0.1')
+    let reconnectTimeout
+    sock.on('close', () => {
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = setTimeout(() => {
+        try {
+          sock.connect(3000, '127.0.0.1')
+        } catch (err) {}
+      }, 1000)
+    })
+    sock.on('error', () => {})
+    win.webContents.beginFrameSubscription((image) => {
+      if (sock.destroyed) {
+        return
+      }
+      try {
+        sock.write(image.getBitmap())
+      } catch (err) {}
+    })
+    win.webContents.setFrameRate(30)
 
     // Work around https://github.com/electron/electron/issues/14308
     // via https://github.com/lutzroeder/netron/commit/910ce67395130690ad76382c094999a4f5b51e92
     win.once('ready-to-show', () => {
       win.resizable = false
-      win.show()
     })
     this.win = win
 
-    const offscreenWin = new BrowserWindow({
-      show: false,
-      webPreferences: {
-        offscreen: true,
-      },
-    })
-    this.offscreenWin = offscreenWin
-
-    const backgroundView = new BrowserView({
-      webPreferences: {
-        nodeIntegration: true,
-      },
-    })
-    win.addBrowserView(backgroundView)
-    backgroundView.setBounds({
-      x: 0,
-      y: 0,
-      width,
-      height,
-    })
-    backgroundView.webContents.loadFile('background.html')
-    this.backgroundView = backgroundView
-
-    const overlayView = new BrowserView({
-      webPreferences: {
-        nodeIntegration: true,
-      },
-    })
-    win.addBrowserView(overlayView)
-    overlayView.setBounds({
-      x: 0,
-      y: 0,
-      width,
-      height,
-    })
-    overlayView.webContents.loadFile('overlay.html')
-    this.overlayView = overlayView
-
-    this.viewActions = {
-      offscreenView: (context, event) => {
-        const { view } = context
-        // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
-        win.removeBrowserView(view)
-        offscreenWin.addBrowserView(view)
-        view.setBounds({ x: 0, y: 0, width: spaceWidth, height: spaceHeight })
-      },
-      positionView: (context, event) => {
-        const { pos, view } = context
-        win.addBrowserView(view)
-
-        // It's necessary to remove and re-add the overlay view to ensure it's on top.
-        win.removeBrowserView(overlayView)
-        win.addBrowserView(overlayView)
-
-        view.setBounds(pos)
-      },
-    }
-
     ipcMain.on('devtools-overlay', () => {
-      overlayView.webContents.openDevTools()
+      win.webContents.openDevTools()
+    })
+
+    ipcMain.handle('view-init', async (ev, { viewId }) => {
+      const view = this.views.get(viewId)
+      if (view) {
+        view.send({
+          type: 'VIEW_INIT',
+          sendToFrame: (...args) => ev.sender.sendToFrame(ev.frameId, ...args),
+        })
+        return { content: view.state.context.content }
+      }
+    })
+
+    ipcMain.on('view-loaded', (ev, { viewId, info }) => {
+      this.views.get(viewId)?.send?.({ type: 'VIEW_LOADED', info })
+    })
+
+    ipcMain.on('view-error', (ev, { viewId, err }) => {
+      this.views.get(viewId)?.send?.({ type: 'VIEW_ERROR', err })
     })
   }
 
   createView() {
-    const { win, overlayView, viewActions } = this
-    const { backgroundColor } = this.config
-    const view = new BrowserView({
-      webPreferences: {
-        nodeIntegration: false,
-        enableRemoteModule: false,
-        contextIsolation: true,
-        partition: 'persist:session',
-        sandbox: true,
-      },
-    })
-    view.setBackgroundColor(backgroundColor)
-
+    // TODO: no parallel functionality in iframe?
+    /*
     // Prevent view pages from navigating away from the specified URL.
     view.webContents.on('will-navigate', (ev) => {
       ev.preventDefault()
     })
-
-    const machine = viewStateMachine
-      .withContext({
-        ...viewStateMachine.context,
-        view,
-        parentWin: win,
-        overlayView,
-      })
-      .withConfig({ actions: viewActions })
+    */
+    const machine = viewStateMachine.withContext({
+      ...viewStateMachine.context,
+      id: `__view:${this.nextViewId}`,
+      sendToWall: (...args) => this.win.webContents.send(...args),
+    })
     const service = interpret(machine).start()
     service.onTransition(this.emitState.bind(this))
+
+    this.nextViewId++
 
     return service
   }
 
   emitState() {
-    this.emit(
-      'state',
-      this.views.map(({ state }) => ({
-        state: state.value,
-        context: {
-          content: state.context.content,
-          info: state.context.info,
-          pos: state.context.pos,
-        },
-      })),
-    )
+    const states = Array.from(this.views.values(), ({ state }) => ({
+      state: state.value,
+      context: {
+        viewId: state.context.id,
+        content: state.context.content,
+        info: state.context.info,
+        pos: state.context.pos,
+      },
+    }))
+    this.emit('state', sortBy(states, 'context.viewId'))
   }
 
   setViews(viewContentMap) {
     const { gridCount, spaceWidth, spaceHeight } = this.config
-    const { win, views } = this
+    const { views } = this
     const boxes = boxesFromViewContentMap(gridCount, gridCount, viewContentMap)
     const remainingBoxes = new Set(boxes)
-    const unusedViews = new Set(views)
+    const unusedViews = new Set(views.values())
     const viewsToDisplay = []
 
     // We try to find the best match for moving / reusing existing views to match the new positions.
@@ -181,12 +182,11 @@ export default class StreamWindow extends EventEmitter {
       // First try to find a loaded view of the same URL in the same space...
       (v, content, spaces) =>
         isEqual(v.state.context.content, content) &&
-        v.state.matches('displaying.running') &&
+        v.state.matches('running') &&
         intersection(v.state.context.pos.spaces, spaces).length > 0,
       // Then try to find a loaded view of the same URL...
       (v, content) =>
-        isEqual(v.state.context.content, content) &&
-        v.state.matches('displaying.running'),
+        isEqual(v.state.context.content, content) && v.state.matches('running'),
       // Then try view with the same URL that is still loading...
       (v, content) => isEqual(v.state.context.content, content),
     ]
@@ -214,7 +214,7 @@ export default class StreamWindow extends EventEmitter {
       viewsToDisplay.push({ box, view })
     }
 
-    const newViews = []
+    const newViews = new Map()
     for (const { box, view } of viewsToDisplay) {
       const { content, x, y, w, h, spaces } = box
       const pos = {
@@ -225,12 +225,7 @@ export default class StreamWindow extends EventEmitter {
         spaces,
       }
       view.send({ type: 'DISPLAY', pos, content })
-      newViews.push(view)
-    }
-    for (const view of unusedViews) {
-      const browserView = view.state.context.view
-      win.removeBrowserView(browserView)
-      browserView.destroy()
+      newViews.set(view.state.context.id, view)
     }
     this.views = newViews
     this.emitState()
@@ -238,10 +233,7 @@ export default class StreamWindow extends EventEmitter {
 
   setListeningView(viewIdx) {
     const { views } = this
-    for (const view of views) {
-      if (!view.state.matches('displaying')) {
-        continue
-      }
+    for (const view of views.values()) {
       const { context } = view.state
       const isSelectedView = context.pos.spaces.includes(viewIdx)
       view.send(isSelectedView ? 'UNMUTE' : 'MUTE')
@@ -249,10 +241,11 @@ export default class StreamWindow extends EventEmitter {
   }
 
   findViewByIdx(viewIdx) {
-    return this.views.find(
-      (v) =>
-        v.state.context.pos && v.state.context.pos.spaces.includes(viewIdx),
-    )
+    for (const view of this.views.values()) {
+      if (view.state.context.pos?.spaces?.includes?.(viewIdx)) {
+        return view
+      }
+    }
   }
 
   sendViewEvent(viewIdx, event) {
@@ -279,7 +272,6 @@ export default class StreamWindow extends EventEmitter {
   }
 
   send(...args) {
-    this.overlayView.webContents.send(...args)
-    this.backgroundView.webContents.send(...args)
+    this.win.webContents.send(...args)
   }
 }
