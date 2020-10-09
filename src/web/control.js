@@ -62,6 +62,24 @@ const GlobalStyle = createGlobalStyle`
   }
 `
 
+const normalStreamKinds = new Set(['video', 'audio', 'web'])
+function filterStreams(streams) {
+  const liveStreams = []
+  const otherStreams = []
+  for (const stream of streams) {
+    const { kind, status } = stream
+    if (kind && !normalStreamKinds.has(kind)) {
+      continue
+    }
+    if ((kind && kind !== 'video') || status === 'Live') {
+      liveStreams.push(stream)
+    } else {
+      otherStreams.push(stream)
+    }
+  }
+  return [liveStreams, otherStreams]
+}
+
 function useYDoc(keys) {
   const [doc, setDoc] = useState(new Y.Doc())
   const [docValue, setDocValue] = useState()
@@ -500,10 +518,17 @@ function App({ wsEndpoint, role }) {
     [handleSwapView, focusedInputIdx],
   )
 
-  const normalStreams = streams.filter(
-    (s) =>
-      !s.kind || s.kind === 'video' || s.kind === 'audio' || s.kind === 'web',
-  )
+  const [liveStreams, otherStreams] = filterStreams(streams)
+  function StreamList({ rows }) {
+    return rows.map((row) => (
+      <StreamLine
+        id={row._id}
+        row={row}
+        disabled={!roleCan(role, 'mutate-state-doc')}
+        onClickId={handleClickId}
+      />
+    ))
+  }
 
   return (
     <Stack flex="1">
@@ -585,18 +610,16 @@ function App({ wsEndpoint, role }) {
       </Stack>
       <Stack flex="1" scroll={true} minHeight={200}>
         <StyledDataContainer isConnected={isConnected}>
-          <div>
-            {isConnected
-              ? normalStreams.map((row) => (
-                  <StreamLine
-                    id={row._id}
-                    row={row}
-                    disabled={!roleCan(role, 'mutate-state-doc')}
-                    onClickId={handleClickId}
-                  />
-                ))
-              : 'loading...'}
-          </div>
+          {isConnected ? (
+            <div>
+              <h3>Live</h3>
+              <StreamList rows={liveStreams} />
+              <h3>Offline / Unknown</h3>
+              <StreamList rows={otherStreams} />
+            </div>
+          ) : (
+            <div>loading...</div>
+          )}
           {roleCan(role, 'set-custom-streams') && (
             <>
               <h2>Custom Streams</h2>

@@ -8,13 +8,6 @@ import chokidar from 'chokidar'
 
 const sleep = promisify(setTimeout)
 
-function filterLive(data) {
-  return data.filter(
-    ({ kind, status }) =>
-      (kind && kind !== 'video') || status === 'Live' || status === 'Unknown',
-  )
-}
-
 export async function* pollDataURL(url, intervalSecs) {
   const refreshInterval = intervalSecs * 1000
   let lastData = []
@@ -31,7 +24,7 @@ export async function* pollDataURL(url, intervalSecs) {
     if (!data.length && lastData.length) {
       console.warn('using cached stream data')
     } else {
-      yield filterLive(data)
+      yield data
       lastData = data
     }
 
