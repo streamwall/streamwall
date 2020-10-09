@@ -1,7 +1,8 @@
+import path from 'path'
 import isEqual from 'lodash/isEqual'
 import intersection from 'lodash/intersection'
 import EventEmitter from 'events'
-import { BrowserView, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserView, BrowserWindow, ipcMain } from 'electron'
 import { interpret } from 'xstate'
 
 import viewStateMachine from './viewStateMachine'
@@ -68,7 +69,8 @@ export default class StreamWindow extends EventEmitter {
 
     const backgroundView = new BrowserView({
       webPreferences: {
-        nodeIntegration: true,
+        contextIsolation: true,
+        preload: path.join(app.getAppPath(), 'layerPreload.js'),
       },
     })
     win.addBrowserView(backgroundView)
@@ -83,7 +85,8 @@ export default class StreamWindow extends EventEmitter {
 
     const overlayView = new BrowserView({
       webPreferences: {
-        nodeIntegration: true,
+        contextIsolation: true,
+        preload: path.join(app.getAppPath(), 'layerPreload.js'),
       },
     })
     win.addBrowserView(overlayView)
@@ -130,7 +133,6 @@ export default class StreamWindow extends EventEmitter {
         enableRemoteModule: false,
         contextIsolation: true,
         partition: 'persist:session',
-        sandbox: true,
       },
     })
     view.setBackgroundColor(backgroundColor)

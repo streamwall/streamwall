@@ -1,4 +1,3 @@
-import { ipcRenderer } from 'electron'
 import { h, Fragment, render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { State } from 'xstate'
@@ -84,13 +83,11 @@ function App() {
   })
 
   useEffect(() => {
-    ipcRenderer.on('state', (ev, state) => {
-      setState(state)
-    })
+    streamwall.onState(setState)
   }, [])
 
   useHotkeys('ctrl+shift+i', () => {
-    ipcRenderer.send('devtools-overlay')
+    streamwall.openDevTools()
   })
 
   const { config, views, streams, customStreams } = state

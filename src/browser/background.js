@@ -1,4 +1,3 @@
-import { ipcRenderer } from 'electron'
 import { h, render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import styled from 'styled-components'
@@ -27,9 +26,7 @@ function App() {
   })
 
   useEffect(() => {
-    ipcRenderer.on('state', (ev, state) => {
-      setState(state)
-    })
+    streamwall.onState(setState)
   }, [])
 
   const { streams } = state

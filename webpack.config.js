@@ -80,6 +80,7 @@ const browserConfig = {
   entry: {
     background: './src/browser/background.js',
     overlay: './src/browser/overlay.js',
+    layerPreload: './src/browser/layerPreload.js',
   },
   plugins: [
     new CopyPlugin({
