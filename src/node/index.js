@@ -4,6 +4,7 @@ import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
 import { Repeater } from '@repeaterjs/repeater'
+import * as Sentry from '@sentry/electron'
 import { app, shell, session, BrowserWindow } from 'electron'
 
 import { ensureValidURL } from '../util'
@@ -20,6 +21,9 @@ import StreamWindow from './StreamWindow'
 import TwitchBot from './TwitchBot'
 import StreamdelayClient from './StreamdelayClient'
 import initWebServer from './server'
+
+const SENTRY_DSN =
+  'https://e630a21dcf854d1a9eb2a7a8584cbd0b@o459879.ingest.sentry.io/5459505'
 
 function parseArgs() {
   return yargs
@@ -186,6 +190,12 @@ function parseArgs() {
       describe: 'Streamdelay API key',
       default: null,
     })
+    .group(['telemetry.sentry'], 'Telemetry')
+    .option('telemetry.sentry', {
+      describe: 'Enable error reporting to Sentry',
+      boolean: true,
+      default: true,
+    })
     .help().argv
 }
 
@@ -193,6 +203,10 @@ async function main() {
   const argv = parseArgs()
   if (argv.help) {
     return
+  }
+
+  if (argv.telemetry.sentry) {
+    Sentry.init({ dsn: SENTRY_DSN })
   }
 
   // Reject all permission requests from web content.
