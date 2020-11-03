@@ -54,6 +54,10 @@ json-url = ["https://woke.net/api/streams.json"]
     #interval = 60
     #delay = 30
 
+    [twitch.vote]
+    #template = "Switching to #<%- selectedIdx %> (with <%- voteCount %> votes)"
+    #interval = 15
+
 [cert]
 # SSL certificates (optional)
 # If you specify an https:// URL for the "webserver" option, a certificate will be automatically generated and signed by Let's Encrypt.

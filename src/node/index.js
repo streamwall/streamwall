@@ -98,6 +98,8 @@ function parseArgs() {
         'twitch.color',
         'twitch.announce.template',
         'twitch.announce.interval',
+        'twitch.vote.template',
+        'twitch.vote.interval',
       ],
       'Twitch Chat',
     )
@@ -132,6 +134,15 @@ function parseArgs() {
       describe: 'Time to dwell on a stream before its details are announced',
       number: true,
       default: 30,
+    })
+    .option('twitch.vote.template', {
+      describe: 'Message template for vote result announcements',
+      default: 'Switching to #<%- selectedIdx %> (with <%- voteCount %> votes)',
+    })
+    .option('twitch.vote.interval', {
+      describe: 'Time interval (in seconds) between votes (0 to disable)',
+      number: true,
+      default: 0,
     })
     .group(
       [
@@ -382,6 +393,9 @@ async function main() {
 
   if (argv.twitch.token) {
     twitchBot = new TwitchBot(argv.twitch)
+    twitchBot.on('setListeningView', (idx) => {
+      streamWindow.setListeningView(idx)
+    })
     twitchBot.connect()
   }
 
