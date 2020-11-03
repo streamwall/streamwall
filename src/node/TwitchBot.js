@@ -96,7 +96,6 @@ export default class TwitchBot extends EventEmitter {
 
     const msg = this.announceTemplate({ stream })
     await client.say(channel, msg)
-    this.emit('sent', msg)
 
     const timeout = setTimeout(() => {
       this.announceTimeouts.delete(listeningURL)
