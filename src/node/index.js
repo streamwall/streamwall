@@ -97,7 +97,7 @@ function parseArgs() {
         'twitch.password',
         'twitch.color',
         'twitch.announce.template',
-        'twitch.announce.interval-seconds',
+        'twitch.announce.interval',
       ],
       'Twitch Chat',
     )
