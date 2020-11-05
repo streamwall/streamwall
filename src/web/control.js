@@ -106,6 +106,7 @@ function useStreamwallConnection(wsEndpoint) {
   const [config, setConfig] = useState({})
   const [streams, setStreams] = useState([])
   const [customStreams, setCustomStreams] = useState([])
+  const [views, setViews] = useState([])
   const [stateIdxMap, setStateIdxMap] = useState(new Map())
   const [delayState, setDelayState] = useState()
   const [authState, setAuthState] = useState()
@@ -152,9 +153,10 @@ function useStreamwallConnection(wsEndpoint) {
           auth,
         } = state
         const newStateIdxMap = new Map()
+        const newViews = []
         for (const viewState of views) {
           const { pos } = viewState.context
-          const state = State.from(viewState.state)
+          const state = State.from(viewState.state, viewState.context)
           const isListening = state.matches(
             'displaying.running.audio.listening',
           )
@@ -162,22 +164,25 @@ function useStreamwallConnection(wsEndpoint) {
             'displaying.running.audio.background',
           )
           const isBlurred = state.matches('displaying.running.video.blurred')
+          const viewInfo = {
+            state,
+            isListening,
+            isBackgroundListening,
+            isBlurred,
+            spaces: pos.spaces,
+          }
+          newViews.push(viewInfo)
           for (const space of pos.spaces) {
             if (!newStateIdxMap.has(space)) {
               newStateIdxMap.set(space, {})
             }
-            Object.assign(newStateIdxMap.get(space), {
-              state,
-              isListening,
-              isBackgroundListening,
-              isBlurred,
-              spaces: pos.spaces,
-            })
+            Object.assign(newStateIdxMap.get(space), viewInfo)
           }
         }
         setConfig(newConfig)
         setStateIdxMap(newStateIdxMap)
         setStreams(sortBy(newStreams, ['_id']))
+        setViews(newViews)
         setCustomStreams(newStreams.filter((s) => s._dataSource === 'custom'))
         setDelayState(
           streamdelay && {
@@ -236,6 +241,7 @@ function useStreamwallConnection(wsEndpoint) {
     config,
     streams,
     customStreams,
+    views,
     stateIdxMap,
     delayState,
     authState,
@@ -251,11 +257,12 @@ function App({ wsEndpoint, role }) {
     config,
     streams,
     customStreams,
+    views,
     stateIdxMap,
     delayState,
     authState,
   } = useStreamwallConnection(wsEndpoint)
-  const { gridCount } = config
+  const { gridCount, width: windowWidth, height: windowHeight } = config
 
   const [showDebug, setShowDebug] = useState(false)
   const handleChangeShowDebug = useCallback((ev) => {
@@ -549,39 +556,91 @@ function App({ wsEndpoint, role }) {
           />
         )}
         <StyledDataContainer isConnected={isConnected}>
-          <div>
-            {range(0, gridCount).map((y) => (
-              <StyledGridLine>
-                {range(0, gridCount).map((x) => {
-                  const idx = gridCount * y + x
-                  const {
-                    isListening = false,
-                    isBackgroundListening = false,
-                    isBlurred = false,
-                    state,
-                  } = stateIdxMap.get(idx) || {}
-                  const { streamId } = sharedState.views?.[idx] || ''
-                  const isDragHighlighted =
-                    dragStart !== undefined &&
-                    idxInBox(gridCount, dragStart, dragEnd, idx)
+          {gridCount && (
+            <StyledGridContainer
+              windowWidth={windowWidth}
+              windowHeight={windowHeight}
+            >
+              <StyledGridInputs>
+                {range(0, gridCount).map((y) =>
+                  range(0, gridCount).map((x) => {
+                    const idx = gridCount * y + x
+                    const { state } = stateIdxMap.get(idx) || {}
+                    const { streamId } = sharedState.views?.[idx] ?? {}
+                    const isDragHighlighted =
+                      dragStart !== undefined &&
+                      idxInBox(gridCount, dragStart, dragEnd, idx)
+                    return (
+                      <GridInput
+                        style={{
+                          width: `${100 / gridCount}%`,
+                          height: `${100 / gridCount}%`,
+                          left: `${(100 * x) / gridCount}%`,
+                          top: `${(100 * y) / gridCount}%`,
+                        }}
+                        idx={idx}
+                        spaceValue={streamId}
+                        onChangeSpace={handleSetView}
+                        isHighlighted={isDragHighlighted}
+                        role={role}
+                        onMouseDown={handleDragStart}
+                        onMouseEnter={setDragEnd}
+                        onFocus={handleFocusInput}
+                        onBlur={handleBlurInput}
+                      />
+                    )
+                  }),
+                )}
+              </StyledGridInputs>
+              <StyledGridPreview>
+                {views.map(({ state, isListening }) => {
+                  const { pos } = state.context
+                  const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
+                  const data = streams.find((d) => d._id === streamId)
                   return (
-                    <GridInput
-                      idx={idx}
-                      spaceValue={streamId}
+                    <StyledGridPreviewBox
+                      color={idColor(streamId)}
+                      style={{
+                        left: `${(100 * pos.x) / windowWidth}%`,
+                        top: `${(100 * pos.y) / windowHeight}%`,
+                        width: `${(100 * pos.width) / windowWidth}%`,
+                        height: `${(100 * pos.height) / windowHeight}%`,
+                      }}
+                      pos={pos}
+                      windowWidth={windowWidth}
+                      windowHeight={windowHeight}
+                      isListening={isListening}
                       isError={state && state.matches('displaying.error')}
+                    >
+                      <StyledGridInfo>
+                        <StyledGridLabel>{streamId}</StyledGridLabel>
+                        <div>{data?.source}</div>
+                      </StyledGridInfo>
+                    </StyledGridPreviewBox>
+                  )
+                })}
+              </StyledGridPreview>
+              {views.map(
+                ({ state, isListening, isBackgroundListening, isBlurred }) => {
+                  const { pos } = state.context
+                  const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
+                  return (
+                    <GridControls
+                      idx={pos.spaces[0]}
+                      streamId={streamId}
+                      style={{
+                        left: `${(100 * pos.x) / windowWidth}%`,
+                        top: `${(100 * pos.y) / windowHeight}%`,
+                        width: `${(100 * pos.width) / windowWidth}%`,
+                        height: `${(100 * pos.height) / windowHeight}%`,
+                      }}
                       isDisplaying={state && state.matches('displaying')}
                       isListening={isListening}
                       isBackgroundListening={isBackgroundListening}
                       isBlurred={isBlurred}
-                      isHighlighted={isDragHighlighted}
-                      isSwapping={idx === swapStartIdx}
+                      isSwapping={pos.spaces.includes(swapStartIdx)}
                       showDebug={showDebug}
                       role={role}
-                      onMouseDown={handleDragStart}
-                      onMouseEnter={setDragEnd}
-                      onFocus={handleFocusInput}
-                      onBlur={handleBlurInput}
-                      onChangeSpace={handleSetView}
                       onSetListening={handleSetListening}
                       onSetBackgroundListening={handleSetBackgroundListening}
                       onSetBlurred={handleSetBlurred}
@@ -591,10 +650,10 @@ function App({ wsEndpoint, role }) {
                       onDevTools={handleDevTools}
                     />
                   )
-                })}
-              </StyledGridLine>
-            ))}
-          </div>
+                },
+              )}
+            </StyledGridContainer>
+          )}
           {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
             <label>
               <input
@@ -790,29 +849,16 @@ function StreamLine({
 }
 
 function GridInput({
+  style,
   idx,
   onChangeSpace,
   spaceValue,
-  isDisplaying,
-  isError,
-  isListening,
-  isBackgroundListening,
-  isBlurred,
   isHighlighted,
-  isSwapping,
-  showDebug,
   role,
   onMouseDown,
   onMouseEnter,
   onFocus,
   onBlur,
-  onSetListening,
-  onSetBackgroundListening,
-  onSetBlurred,
-  onReloadView,
-  onSwapView,
-  onBrowse,
-  onDevTools,
 }) {
   const [editingValue, setEditingValue] = useState()
   const handleFocus = useCallback(
@@ -837,6 +883,51 @@ function GridInput({
     },
     [idx, onChangeSpace],
   )
+  const handleMouseDown = useCallback(
+    (ev) => {
+      onMouseDown(idx, ev)
+    },
+    [onMouseDown],
+  )
+  const handleMouseEnter = useCallback(() => onMouseEnter(idx), [onMouseEnter])
+  return (
+    <StyledGridInputContainer style={style}>
+      <StyledGridInput
+        value={editingValue || spaceValue || ''}
+        color={idColor(spaceValue)}
+        isHighlighted={isHighlighted}
+        disabled={!roleCan(role, 'mutate-state-doc')}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onChange={handleChange}
+      />
+    </StyledGridInputContainer>
+  )
+}
+
+function GridControls({
+  idx,
+  streamId,
+  style,
+  isDisplaying,
+  isListening,
+  isBackgroundListening,
+  isBlurred,
+  isSwapping,
+  showDebug,
+  role,
+  onSetListening,
+  onSetBackgroundListening,
+  onSetBlurred,
+  onReloadView,
+  onSwapView,
+  onBrowse,
+  onDevTools,
+}) {
+  // TODO: Refactor callbacks to use streamID instead of idx.
+  // We should probably also switch the view-state-changing RPCs to use a view id instead of idx like they do currently.
   const handleListeningClick = useCallback(
     (ev) =>
       ev.shiftKey || isBackgroundListening
@@ -860,23 +951,16 @@ function GridInput({
     onReloadView,
   ])
   const handleSwapClick = useCallback(() => onSwapView(idx), [idx, onSwapView])
-  const handleBrowseClick = useCallback(() => onBrowse(spaceValue), [
-    spaceValue,
+  const handleBrowseClick = useCallback(() => onBrowse(streamId), [
+    streamId,
     onBrowse,
   ])
   const handleDevToolsClick = useCallback(() => onDevTools(idx), [
     idx,
     onDevTools,
   ])
-  const handleMouseDown = useCallback(
-    (ev) => {
-      onMouseDown(idx, ev)
-    },
-    [onMouseDown],
-  )
-  const handleMouseEnter = useCallback(() => onMouseEnter(idx), [onMouseEnter])
   return (
-    <StyledGridContainer>
+    <StyledGridControlsContainer style={style}>
       {isDisplaying && (
         <StyledGridButtons side="left">
           {showDebug ? (
@@ -933,19 +1017,7 @@ function GridInput({
           </StyledButton>
         )}
       </StyledGridButtons>
-      <StyledGridInput
-        value={editingValue || spaceValue || ''}
-        color={idColor(spaceValue)}
-        isError={isError}
-        isHighlighted={isHighlighted}
-        disabled={!roleCan(role, 'mutate-state-doc')}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onChange={handleChange}
-      />
-    </StyledGridContainer>
+    </StyledGridControlsContainer>
   )
 }
 
@@ -1021,10 +1093,6 @@ const StyledDataContainer = styled.div`
   opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
 `
 
-const StyledGridLine = styled.div`
-  display: flex;
-`
-
 const StyledButton = styled.button`
   display: flex;
   align-items: center;
@@ -1058,15 +1126,67 @@ const StyledSmallButton = styled(StyledButton)`
   }
 `
 
-const StyledGridContainer = styled.div`
-  position: relative;
+const StyledGridPreview = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+`
+
+const StyledGridPreviewBox = styled.div.attrs((props) => ({
+  borderWidth: 2,
+}))`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  background: ${({ color }) => color.lightness(50) || '#333'};
+  border: 0 solid ${({ isError }) => (isError ? 'red' : 'black')};
+  border-left-width: ${({ pos, borderWidth }) =>
+    pos.x === 0 ? 0 : borderWidth}px;
+  border-right-width: ${({ pos, borderWidth, windowWidth }) =>
+    pos.x + pos.width === windowWidth ? 0 : borderWidth}px;
+  border-top-width: ${({ pos, borderWidth }) =>
+    pos.y === 0 ? 0 : borderWidth}px;
+  border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
+    pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
+  box-shadow: ${({ isListening }) =>
+    isListening ? `0 0 10px red inset` : 'none'};
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+`
+
+const StyledGridInfo = styled.div`
+  text-align: center;
+`
+
+const StyledGridLabel = styled.div`
+  font-size: 30px;
+`
+
+const StyledGridInputs = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+  overflow: hidden;
+  z-index: 100;
+`
+
+const StyledGridInputContainer = styled.div`
+  position: absolute;
 `
 
 const StyledGridButtons = styled.div`
   display: flex;
   position: absolute;
-  bottom: 0;
-  ${({ side }) => (side === 'left' ? 'left: 0' : 'right: 0')};
+  ${({ side }) =>
+    side === 'left' ? 'top: 0; left: 0' : 'bottom: 0; right: 0'};
 
   ${StyledButton} {
     margin: 5px;
@@ -1075,18 +1195,43 @@ const StyledGridButtons = styled.div`
 `
 
 const StyledGridInput = styled.input`
-  width: 160px;
-  height: 50px;
-  padding: 20px;
-  border: 2px solid ${({ isError }) => (isError ? 'red' : 'black')};
+  width: 100%;
+  height: 100%;
+  outline: 1px solid black;
+  border: none;
+  padding: 0;
   background: ${({ color, isHighlighted }) =>
     isHighlighted ? color.lightness(90) : color.lightness(75)};
   font-size: 20px;
   text-align: center;
 
   &:focus {
-    outline: none;
-    box-shadow: 0 0 5px orange inset;
+    outline: 1px solid black;
+    box-shadow: 0 0 5px black inset;
+    z-index: 100;
+  }
+`
+
+const StyledGridControlsContainer = styled.div`
+  position: absolute;
+  user-select: none;
+
+  & > * {
+    z-index: 200;
+  }
+`
+
+const StyledGridContainer = styled.div.attrs((props) => ({
+  scale: 0.75,
+}))`
+  position: relative;
+  width: ${({ windowWidth, scale }) => windowWidth * scale}px;
+  height: ${({ windowHeight, scale }) => windowHeight * scale}px;
+  border: 2px solid black;
+  background: black;
+
+  &:hover ${StyledGridInputs} {
+    opacity: 0.35;
   }
 `
 
