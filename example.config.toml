@@ -26,8 +26,8 @@ address = "http://localhost:80"
 #port = 80
 
 # Username and password
-username = "woke"
-password = "woke"
+username = "streamwall"
+password = "please-change-this"
 
 [data]
 # Interval to refresh polled datasources
