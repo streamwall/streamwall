@@ -19,6 +19,10 @@ export const SESSION_COOKIE_NAME = 's'
 
 const stateDiff = createJSONDiffPatch({
   objectHash: (obj, idx) => obj._id || `$$index:${idx}`,
+  // Disable text diffing, both because it's overkill, and because it can crash with emojis (https://github.com/google/diff-match-patch/issues/68)
+  textDiff: {
+    minLength: Infinity,
+  },
 })
 
 function initApp({
