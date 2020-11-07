@@ -306,20 +306,38 @@ function App({ wsEndpoint, role }) {
     [stateDoc, stateIdxMap, swapStartIdx],
   )
 
+  const [hoveringIdx, setHoveringIdx] = useState()
+  const updateHoveringIdx = useCallback(
+    (ev) => {
+      const {
+        width,
+        height,
+        left,
+        top,
+      } = ev.currentTarget.getBoundingClientRect()
+      const x = Math.floor(ev.clientX - left)
+      const y = Math.floor(ev.clientY - top)
+      const spaceWidth = width / gridCount
+      const spaceHeight = height / gridCount
+      const idx =
+        Math.floor(y / spaceHeight) * gridCount + Math.floor(x / spaceWidth)
+      setHoveringIdx(idx)
+    },
+    [setHoveringIdx, gridCount],
+  )
   const [dragStart, setDragStart] = useState()
   const handleDragStart = useCallback(
-    (idx, ev) => {
+    (ev) => {
       ev.preventDefault()
       if (swapStartIdx !== undefined) {
-        handleSwap(idx)
+        handleSwap(hoveringIdx)
       } else {
-        setDragStart(idx)
+        setDragStart(hoveringIdx)
         ev.target.select()
       }
     },
-    [handleSwap],
+    [handleSwap, swapStartIdx, hoveringIdx],
   )
-  const [dragEnd, setDragEnd] = useState()
   useLayoutEffect(() => {
     function endDrag() {
       if (dragStart === undefined) {
@@ -329,7 +347,7 @@ function App({ wsEndpoint, role }) {
         const viewsState = stateDoc.getMap('views')
         const streamId = viewsState.get(String(dragStart)).get('streamId')
         for (let idx = 0; idx < gridCount ** 2; idx++) {
-          if (idxInBox(gridCount, dragStart, dragEnd, idx)) {
+          if (idxInBox(gridCount, dragStart, hoveringIdx, idx)) {
             viewsState.get(String(idx)).set('streamId', streamId)
           }
         }
@@ -338,7 +356,7 @@ function App({ wsEndpoint, role }) {
     }
     window.addEventListener('mouseup', endDrag)
     return () => window.removeEventListener('mouseup', endDrag)
-  }, [stateDoc, dragStart, dragEnd])
+  }, [stateDoc, dragStart, hoveringIdx])
 
   const [focusedInputIdx, setFocusedInputIdx] = useState()
   const handleFocusInput = useCallback(setFocusedInputIdx, [])
@@ -558,6 +576,7 @@ function App({ wsEndpoint, role }) {
         <StyledDataContainer isConnected={isConnected}>
           {gridCount && (
             <StyledGridContainer
+              onMouseMove={updateHoveringIdx}
               windowWidth={windowWidth}
               windowHeight={windowHeight}
             >
@@ -569,7 +588,7 @@ function App({ wsEndpoint, role }) {
                     const { streamId } = sharedState.views?.[idx] ?? {}
                     const isDragHighlighted =
                       dragStart !== undefined &&
-                      idxInBox(gridCount, dragStart, dragEnd, idx)
+                      idxInBox(gridCount, dragStart, hoveringIdx, idx)
                     return (
                       <GridInput
                         style={{
@@ -584,7 +603,6 @@ function App({ wsEndpoint, role }) {
                         isHighlighted={isDragHighlighted}
                         role={role}
                         onMouseDown={handleDragStart}
-                        onMouseEnter={setDragEnd}
                         onFocus={handleFocusInput}
                         onBlur={handleBlurInput}
                       />
@@ -648,6 +666,7 @@ function App({ wsEndpoint, role }) {
                       onSwapView={handleSwapView}
                       onBrowse={handleBrowse}
                       onDevTools={handleDevTools}
+                      onMouseDown={handleDragStart}
                     />
                   )
                 },
@@ -856,7 +875,6 @@ function GridInput({
   isHighlighted,
   role,
   onMouseDown,
-  onMouseEnter,
   onFocus,
   onBlur,
 }) {
@@ -883,13 +901,6 @@ function GridInput({
     },
     [idx, onChangeSpace],
   )
-  const handleMouseDown = useCallback(
-    (ev) => {
-      onMouseDown(idx, ev)
-    },
-    [onMouseDown],
-  )
-  const handleMouseEnter = useCallback(() => onMouseEnter(idx), [onMouseEnter])
   return (
     <StyledGridInputContainer style={style}>
       <StyledGridInput
@@ -899,8 +910,7 @@ function GridInput({
         disabled={!roleCan(role, 'mutate-state-doc')}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
+        onMouseDown={onMouseDown}
         onChange={handleChange}
       />
     </StyledGridInputContainer>
@@ -925,6 +935,7 @@ function GridControls({
   onSwapView,
   onBrowse,
   onDevTools,
+  onMouseDown,
 }) {
   // TODO: Refactor callbacks to use streamID instead of idx.
   // We should probably also switch the view-state-changing RPCs to use a view id instead of idx like they do currently.
@@ -960,7 +971,7 @@ function GridControls({
     onDevTools,
   ])
   return (
-    <StyledGridControlsContainer style={style}>
+    <StyledGridControlsContainer style={style} onMouseDown={onMouseDown}>
       {isDisplaying && (
         <StyledGridButtons side="left">
           {showDebug ? (
