@@ -1163,7 +1163,7 @@ const StyledGridPreviewBox = styled.div.attrs((props) => ({
   border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
     pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
   box-shadow: ${({ isListening }) =>
-    isListening ? `0 0 10px red inset` : 'none'};
+    isListening ? `0 0 0 4px red inset` : 'none'};
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
