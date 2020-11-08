@@ -34,6 +34,7 @@ function Overlay({ config, views, streams }) {
         )
         const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
+        const hasTitle = data && (data.label || data.source)
         return (
           <SpaceBorder
             pos={pos}
@@ -43,7 +44,7 @@ function Overlay({ config, views, streams }) {
             isListening={isListening}
           >
             <BlurCover isBlurred={isBlurred} />
-            {data && (
+            {hasTitle && (
               <StreamTitle activeColor={activeColor} isListening={isListening}>
                 <StreamIcon url={content.url} />
                 <span>
