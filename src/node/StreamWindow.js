@@ -8,6 +8,14 @@ import { interpret } from 'xstate'
 import viewStateMachine from './viewStateMachine'
 import { boxesFromViewContentMap } from '../geometry'
 
+function getDisplayOptions(stream) {
+  if (!stream) {
+    return {}
+  }
+  const { rotation } = stream
+  return { rotation }
+}
+
 export default class StreamWindow extends EventEmitter {
   constructor(config) {
     super()
@@ -21,7 +29,8 @@ export default class StreamWindow extends EventEmitter {
     this.offscreenWin = null
     this.backgroundView = null
     this.overlayView = null
-    this.views = []
+    this.views = new Map()
+    this.viewsByURL = new Map()
     this.viewActions = null
   }
 
@@ -119,6 +128,25 @@ export default class StreamWindow extends EventEmitter {
       },
     }
 
+    ipcMain.handle('view-init', async (ev) => {
+      const view = this.views.get(ev.sender.id)
+      if (view) {
+        view.send({ type: 'VIEW_INIT' })
+        return {
+          content: view.state.context.content,
+          options: view.state.context.options,
+        }
+      }
+    })
+    ipcMain.on('view-loaded', (ev) => {
+      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_LOADED' })
+    })
+    ipcMain.on('view-info', (ev, { info }) => {
+      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_INFO', info })
+    })
+    ipcMain.on('view-error', (ev, { err }) => {
+      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_ERROR', err })
+    })
     ipcMain.on('devtools-overlay', () => {
       overlayView.webContents.openDevTools()
     })
@@ -129,6 +157,7 @@ export default class StreamWindow extends EventEmitter {
     const { backgroundColor } = this.config
     const view = new BrowserView({
       webPreferences: {
+        preload: path.join(app.getAppPath(), 'mediaPreload.js'),
         nodeIntegration: false,
         enableRemoteModule: false,
         contextIsolation: true,
@@ -136,6 +165,8 @@ export default class StreamWindow extends EventEmitter {
       },
     })
     view.setBackgroundColor(backgroundColor)
+
+    const viewId = view.webContents.id
 
     // Prevent view pages from navigating away from the specified URL.
     view.webContents.on('will-navigate', (ev) => {
@@ -145,37 +176,42 @@ export default class StreamWindow extends EventEmitter {
     const machine = viewStateMachine
       .withContext({
         ...viewStateMachine.context,
+        id: viewId,
         view,
         parentWin: win,
         overlayView,
       })
       .withConfig({ actions: viewActions })
     const service = interpret(machine).start()
-    service.onTransition(this.emitState.bind(this))
+    service.onTransition((state) => {
+      if (!state.changed) {
+        return
+      }
+      this.emitState(state)
+    })
 
     return service
   }
 
   emitState() {
-    this.emit(
-      'state',
-      this.views.map(({ state }) => ({
-        state: state.value,
-        context: {
-          content: state.context.content,
-          info: state.context.info,
-          pos: state.context.pos,
-        },
-      })),
-    )
+    const states = Array.from(this.views.values(), ({ state }) => ({
+      state: state.value,
+      context: {
+        id: state.context.id,
+        content: state.context.content,
+        info: state.context.info,
+        pos: state.context.pos,
+      },
+    }))
+    this.emit('state', states)
   }
 
-  setViews(viewContentMap) {
+  setViews(viewContentMap, streams) {
     const { gridCount, spaceWidth, spaceHeight } = this.config
     const { win, views } = this
     const boxes = boxesFromViewContentMap(gridCount, gridCount, viewContentMap)
     const remainingBoxes = new Set(boxes)
-    const unusedViews = new Set(views)
+    const unusedViews = new Set(views.values())
     const viewsToDisplay = []
 
     // We try to find the best match for moving / reusing existing views to match the new positions.
@@ -216,7 +252,8 @@ export default class StreamWindow extends EventEmitter {
       viewsToDisplay.push({ box, view })
     }
 
-    const newViews = []
+    const newViews = new Map()
+    const newViewsByURL = new Map()
     for (const { box, view } of viewsToDisplay) {
       const { content, x, y, w, h, spaces } = box
       const pos = {
@@ -226,8 +263,11 @@ export default class StreamWindow extends EventEmitter {
         height: spaceHeight * h,
         spaces,
       }
+      const stream = streams.find((s) => s.url === content.url)
+      view.send({ type: 'OPTIONS', options: getDisplayOptions(stream) })
       view.send({ type: 'DISPLAY', pos, content })
-      newViews.push(view)
+      newViews.set(view.state.context.id, view)
+      newViewsByURL.set(content.url, view)
     }
     for (const view of unusedViews) {
       const browserView = view.state.context.view
@@ -235,12 +275,13 @@ export default class StreamWindow extends EventEmitter {
       browserView.destroy()
     }
     this.views = newViews
+    this.viewsByURL = newViewsByURL
     this.emitState()
   }
 
   setListeningView(viewIdx) {
     const { views } = this
-    for (const view of views) {
+    for (const view of views.values()) {
       if (!view.state.matches('displaying')) {
         continue
       }
@@ -251,10 +292,11 @@ export default class StreamWindow extends EventEmitter {
   }
 
   findViewByIdx(viewIdx) {
-    return this.views.find(
-      (v) =>
-        v.state.context.pos && v.state.context.pos.spaces.includes(viewIdx),
-    )
+    for (const view of this.views.values()) {
+      if (view.state.context.pos?.spaces?.includes?.(viewIdx)) {
+        return view
+      }
+    }
   }
 
   sendViewEvent(viewIdx, event) {
@@ -278,6 +320,17 @@ export default class StreamWindow extends EventEmitter {
 
   openDevTools(viewIdx, inWebContents) {
     this.sendViewEvent(viewIdx, { type: 'DEVTOOLS', inWebContents })
+  }
+
+  onState(state) {
+    this.send('state', state)
+    for (const stream of state.streams) {
+      const { link } = stream
+      this.viewsByURL.get(link)?.send?.({
+        type: 'OPTIONS',
+        options: getDisplayOptions(stream),
+      })
+    }
   }
 
   send(...args) {

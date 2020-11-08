@@ -1,4 +1,4 @@
-import { once } from 'events'
+import { EventEmitter, once } from 'events'
 import { promises as fsPromises } from 'fs'
 import { promisify } from 'util'
 import { Repeater } from '@repeaterjs/repeater'
@@ -60,7 +60,51 @@ export async function* markDataSource(dataSource, name) {
 
 export async function* combineDataSources(dataSources) {
   for await (const streamLists of Repeater.latest(dataSources)) {
-    yield [].concat(...streamLists)
+    const dataByURL = new Map()
+    for (const list of streamLists) {
+      for (const data of list) {
+        const existing = dataByURL.get(data.link)
+        dataByURL.set(data.link, { ...existing, ...data })
+      }
+    }
+    yield [...dataByURL.values()]
+  }
+}
+
+export class LocalStreamData extends EventEmitter {
+  constructor() {
+    super()
+    this.dataByURL = new Map()
+  }
+
+  update(url, data) {
+    if (!data.link) {
+      data.link = url
+    }
+    const existing = this.dataByURL.get(url)
+    this.dataByURL.set(data.link, { ...existing, ...data })
+    if (url !== data.link) {
+      this.dataByURL.delete(url)
+    }
+    this._emitUpdate()
+  }
+
+  delete(url) {
+    this.dataByURL.delete(url)
+    this._emitUpdate()
+  }
+
+  _emitUpdate() {
+    this.emit('update', [...this.dataByURL.values()])
+  }
+
+  gen() {
+    return new Repeater(async (push, stop) => {
+      await push([])
+      this.on('update', push)
+      await stop
+      this.off('update', push)
+    })
   }
 }
 

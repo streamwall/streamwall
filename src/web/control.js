@@ -22,7 +22,8 @@ import { idxInBox } from '../geometry'
 import { roleCan } from '../roles'
 import SoundIcon from '../static/volume-up-solid.svg'
 import NoVideoIcon from '../static/video-slash-solid.svg'
-import ReloadIcon from '../static/redo-alt-solid.svg'
+import ReloadIcon from '../static/sync-alt-solid.svg'
+import RotateIcon from '../static/redo-alt-solid.svg'
 import SwapIcon from '../static/exchange-alt-solid.svg'
 import LifeRingIcon from '../static/life-ring-regular.svg'
 import WindowIcon from '../static/window-maximize-regular.svg'
@@ -404,6 +405,21 @@ function App({ wsEndpoint, role }) {
     })
   }, [])
 
+  const handleRotateStream = useCallback(
+    (streamId) => {
+      const stream = streams.find((d) => d._id === streamId)
+      if (!stream) {
+        return
+      }
+      send({
+        type: 'rotate-stream',
+        url: stream.link,
+        rotation: ((stream.rotation || 0) + 90) % 360,
+      })
+    },
+    [streams],
+  )
+
   const handleBrowse = useCallback(
     (streamId) => {
       const stream = streams.find((d) => d._id === streamId)
@@ -449,13 +465,18 @@ function App({ wsEndpoint, role }) {
     [gridCount, sharedState, focusedInputIdx],
   )
 
-  const handleChangeCustomStream = useCallback((idx, customStream) => {
-    let newCustomStreams = [...customStreams]
-    newCustomStreams[idx] = customStream
-    newCustomStreams = newCustomStreams.filter((s) => s.label || s.link)
+  const handleChangeCustomStream = useCallback((origLink, customStream) => {
+    if (!customStream.label && !customStream.link) {
+      send({
+        type: 'delete-custom-stream',
+        url: origLink,
+      })
+      return
+    }
     send({
-      type: 'set-custom-streams',
-      streams: newCustomStreams,
+      type: 'update-custom-stream',
+      url: origLink,
+      data: customStream,
     })
   })
 
@@ -665,6 +686,7 @@ function App({ wsEndpoint, role }) {
                       onSetBlurred={handleSetBlurred}
                       onReloadView={handleReloadView}
                       onSwapView={handleSwapView}
+                      onRotateView={handleRotateStream}
                       onBrowse={handleBrowse}
                       onDevTools={handleDevTools}
                       onMouseDown={handleDragStart}
@@ -711,7 +733,6 @@ function App({ wsEndpoint, role }) {
                   ({ link, label, kind }, idx) => (
                     <CustomStreamInput
                       key={idx}
-                      idx={idx}
                       link={link}
                       label={label}
                       kind={kind}
@@ -934,6 +955,7 @@ function GridControls({
   onSetBlurred,
   onReloadView,
   onSwapView,
+  onRotateView,
   onBrowse,
   onDevTools,
   onMouseDown,
@@ -963,6 +985,10 @@ function GridControls({
     onReloadView,
   ])
   const handleSwapClick = useCallback(() => onSwapView(idx), [idx, onSwapView])
+  const handleRotateClick = useCallback(() => onRotateView(streamId), [
+    streamId,
+    onRotateView,
+  ])
   const handleBrowseClick = useCallback(() => onBrowse(streamId), [
     streamId,
     onBrowse,
@@ -1004,6 +1030,11 @@ function GridControls({
                   <SwapIcon />
                 </StyledSmallButton>
               )}
+              {roleCan(role, 'rotate-view') && (
+                <StyledSmallButton onClick={handleRotateClick} tabIndex={1}>
+                  <RotateIcon />
+                </StyledSmallButton>
+              )}
             </>
           )}
         </StyledGridButtons>
@@ -1033,22 +1064,22 @@ function GridControls({
   )
 }
 
-function CustomStreamInput({ idx, onChange, ...props }) {
+function CustomStreamInput({ onChange, ...props }) {
   const handleChangeLink = useCallback(
     (ev) => {
-      onChange(idx, { ...props, link: ev.target.value })
+      onChange(props.link, { ...props, link: ev.target.value })
     },
     [onChange],
   )
   const handleChangeLabel = useCallback(
     (ev) => {
-      onChange(idx, { ...props, label: ev.target.value })
+      onChange(props.link, { ...props, label: ev.target.value })
     },
     [onChange],
   )
   const handleChangeKind = useCallback(
     (ev) => {
-      onChange(idx, { ...props, kind: ev.target.value })
+      onChange(props.link, { ...props, kind: ev.target.value })
     },
     [onChange],
   )

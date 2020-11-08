@@ -3,7 +3,6 @@ import path from 'path'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
-import { Repeater } from '@repeaterjs/repeater'
 import * as Sentry from '@sentry/electron'
 import { app, shell, session, BrowserWindow } from 'electron'
 
@@ -11,6 +10,7 @@ import { ensureValidURL } from '../util'
 import {
   pollDataURL,
   watchDataFile,
+  LocalStreamData,
   StreamIDGenerator,
   markDataSource,
   combineDataSources,
@@ -230,11 +230,8 @@ async function main() {
   const persistData = await persistence.load()
 
   const idGen = new StreamIDGenerator()
-  let updateCustomStreams
-  const customStreamData = new Repeater(async (push) => {
-    await push([])
-    updateCustomStreams = push
-  })
+  const localStreamData = new LocalStreamData()
+  const overlayStreamData = new LocalStreamData()
 
   const streamWindow = new StreamWindow({
     gridCount: argv.grid.count,
@@ -267,7 +264,6 @@ async function main() {
     },
     auth: auth.getState(),
     streams: [],
-    customStreams: [],
     views: [],
     streamdelay: null,
   })
@@ -282,20 +278,24 @@ async function main() {
     }
   })
   viewsState.observeDeep(() => {
-    const viewContentMap = new Map()
-    for (const [key, viewData] of viewsState) {
-      const stream = clientState.info.streams.find(
-        (s) => s._id === viewData.get('streamId'),
-      )
-      if (!stream) {
-        continue
+    try {
+      const viewContentMap = new Map()
+      for (const [key, viewData] of viewsState) {
+        const stream = clientState.info.streams.find(
+          (s) => s._id === viewData.get('streamId'),
+        )
+        if (!stream) {
+          continue
+        }
+        viewContentMap.set(key, {
+          url: stream.link,
+          kind: stream.kind || 'video',
+        })
       }
-      viewContentMap.set(key, {
-        url: stream.link,
-        kind: stream.kind || 'video',
-      })
+      streamWindow.setViews(viewContentMap, clientState.info.streams)
+    } catch (err) {
+      console.error('Error updating views', err)
     }
-    streamWindow.setViews(viewContentMap)
   })
 
   const onMessage = async (msg, respond) => {
@@ -305,8 +305,14 @@ async function main() {
       streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
     } else if (msg.type === 'set-view-blurred') {
       streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
-    } else if (msg.type === 'set-custom-streams') {
-      updateCustomStreams(msg.streams)
+    } else if (msg.type === 'rotate-stream') {
+      overlayStreamData.update(msg.url, {
+        rotation: msg.rotation,
+      })
+    } else if (msg.type === 'update-custom-stream') {
+      localStreamData.update(msg.url, msg.data)
+    } else if (msg.type === 'delete-custom-stream') {
+      localStreamData.delete(msg.url)
     } else if (msg.type === 'reload-view') {
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
@@ -353,7 +359,7 @@ async function main() {
 
   function updateState(newState) {
     clientState.update(newState)
-    streamWindow.send('state', clientState.info)
+    streamWindow.onState(clientState.info)
     if (twitchBot) {
       twitchBot.onState(clientState.info)
     }
@@ -419,7 +425,8 @@ async function main() {
     ...argv.data['toml-file'].map((path) =>
       markDataSource(watchDataFile(path), 'toml-file'),
     ),
-    markDataSource(customStreamData, 'custom'),
+    markDataSource(localStreamData.gen(), 'custom'),
+    overlayStreamData.gen(),
   ]
 
   for await (const rawStreams of combineDataSources(dataSources)) {

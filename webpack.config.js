@@ -81,6 +81,7 @@ const browserConfig = {
     background: './src/browser/background.js',
     overlay: './src/browser/overlay.js',
     layerPreload: './src/browser/layerPreload.js',
+    mediaPreload: './src/browser/mediaPreload.js',
   },
   plugins: [
     new CopyPlugin({

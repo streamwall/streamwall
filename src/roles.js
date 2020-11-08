@@ -4,6 +4,7 @@ const operatorActions = new Set([
   'set-view-blurred',
   'set-custom-streams',
   'reload-view',
+  'rotate-view',
   'set-stream-censored',
   'set-stream-running',
   'mutate-state-doc',
