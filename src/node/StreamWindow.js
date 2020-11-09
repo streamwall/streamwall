@@ -30,7 +30,6 @@ export default class StreamWindow extends EventEmitter {
     this.backgroundView = null
     this.overlayView = null
     this.views = new Map()
-    this.viewsByURL = new Map()
     this.viewActions = null
   }
 
@@ -253,7 +252,6 @@ export default class StreamWindow extends EventEmitter {
     }
 
     const newViews = new Map()
-    const newViewsByURL = new Map()
     for (const { box, view } of viewsToDisplay) {
       const { content, x, y, w, h, spaces } = box
       const pos = {
@@ -267,7 +265,6 @@ export default class StreamWindow extends EventEmitter {
       view.send({ type: 'OPTIONS', options: getDisplayOptions(stream) })
       view.send({ type: 'DISPLAY', pos, content })
       newViews.set(view.state.context.id, view)
-      newViewsByURL.set(content.url, view)
     }
     for (const view of unusedViews) {
       const browserView = view.state.context.view
@@ -275,7 +272,6 @@ export default class StreamWindow extends EventEmitter {
       browserView.destroy()
     }
     this.views = newViews
-    this.viewsByURL = newViewsByURL
     this.emitState()
   }
 
@@ -324,12 +320,15 @@ export default class StreamWindow extends EventEmitter {
 
   onState(state) {
     this.send('state', state)
-    for (const stream of state.streams) {
-      const { link } = stream
-      this.viewsByURL.get(link)?.send?.({
-        type: 'OPTIONS',
-        options: getDisplayOptions(stream),
-      })
+    for (const view of this.views.values()) {
+      const { url } = view.state.context.content
+      const stream = state.streams.byURL.get(url)
+      if (stream) {
+        view.send({
+          type: 'OPTIONS',
+          options: getDisplayOptions(stream),
+        })
+      }
     }
   }
 

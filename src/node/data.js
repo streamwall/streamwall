@@ -67,7 +67,10 @@ export async function* combineDataSources(dataSources) {
         dataByURL.set(data.link, { ...existing, ...data })
       }
     }
-    yield [...dataByURL.values()]
+    const streams = [...dataByURL.values()]
+    // Retain the index to speed up local lookups
+    streams.byURL = dataByURL
+    yield streams
   }
 }
 
