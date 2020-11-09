@@ -388,18 +388,18 @@ function App({ wsEndpoint, role }) {
     })
   }, [])
 
-  const handleSetBlurred = useCallback((idx, blurred) => {
+  const handleSetBlurred = useCallback((viewIdx, blurred) => {
     send({
       type: 'set-view-blurred',
-      viewIdx: idx,
+      viewIdx,
       blurred: blurred,
     })
   }, [])
 
-  const handleReloadView = useCallback((idx) => {
+  const handleReloadView = useCallback((viewIdx) => {
     send({
       type: 'reload-view',
-      viewIdx: idx,
+      viewIdx,
     })
   }, [])
 
@@ -417,10 +417,10 @@ function App({ wsEndpoint, role }) {
     [streams],
   )
 
-  const handleDevTools = useCallback((idx) => {
+  const handleDevTools = useCallback((viewIdx) => {
     send({
       type: 'dev-tools',
-      viewIdx: idx,
+      viewIdx,
     })
   }, [])
 
