@@ -333,7 +333,8 @@ function App({ wsEndpoint, role }) {
         handleSwap(hoveringIdx)
       } else {
         setDragStart(hoveringIdx)
-        ev.target.select()
+        // Select the text (if it is an input element)
+        ev.target.select?.()
       }
     },
     [handleSwap, swapStartIdx, hoveringIdx],
