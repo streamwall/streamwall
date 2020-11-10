@@ -729,8 +729,8 @@ function App({ wsEndpoint, role }) {
             Include an empty object at the end to create an extra input for a new custom stream.
             We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
            */}
-                {[...customStreams, { link: '', label: '', kind: 'video' }].map(
-                  ({ link, label, kind }, idx) => (
+                {customStreams.map(({ link, label, kind }, idx) => (
+                  <div>
                     <CustomStreamInput
                       key={idx}
                       link={link}
@@ -738,8 +738,9 @@ function App({ wsEndpoint, role }) {
                       kind={kind}
                       onChange={handleChangeCustomStream}
                     />
-                  ),
-                )}
+                  </div>
+                ))}
+                <CreateCustomStreamInput onCreate={handleChangeCustomStream} />
               </div>
             </>
           )}
@@ -889,6 +890,61 @@ function StreamLine({
   )
 }
 
+// An input that maintains local edits and fires onChange after blur (like a non-React input does), or optionally on every edit if isEager is set.
+function LazyChangeInput({
+  value = '',
+  onChange,
+  onFocus,
+  onBlur,
+  onKeyDown,
+  isEager = false,
+  ...props
+}) {
+  const [editingValue, setEditingValue] = useState()
+  const handleFocus = useCallback(
+    (ev) => {
+      setEditingValue(ev.target.value)
+      onFocus?.(ev)
+    },
+    [onFocus],
+  )
+  const handleBlur = useCallback(
+    (ev) => {
+      if (!isEager && editingValue !== undefined) {
+        onChange(editingValue)
+      }
+      setEditingValue()
+      onBlur?.(ev)
+    },
+    [onBlur, editingValue],
+  )
+  const handleKeyDown = useCallback((ev) => {
+    if (ev.key === 'Enter') {
+      handleBlur?.(ev)
+    }
+  })
+  const handleChange = useCallback(
+    (ev) => {
+      const { value } = ev.target
+      setEditingValue(value)
+      if (isEager) {
+        onChange(value)
+      }
+    },
+    [onChange, isEager],
+  )
+  return (
+    <input
+      value={editingValue !== undefined ? editingValue : value}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      onChange={handleChange}
+      {...props}
+    />
+  )
+}
+
 function GridInput({
   style,
   idx,
@@ -900,25 +956,14 @@ function GridInput({
   onFocus,
   onBlur,
 }) {
-  const [editingValue, setEditingValue] = useState()
-  const handleFocus = useCallback(
-    (ev) => {
-      setEditingValue(ev.target.value)
-      onFocus(idx)
-    },
-    [onFocus, idx],
-  )
-  const handleBlur = useCallback(
-    (ev) => {
-      setEditingValue(undefined)
-      onBlur(idx)
-    },
-    [onBlur, idx],
-  )
+  const handleFocus = useCallback(() => {
+    onFocus(idx)
+  }, [onFocus, idx])
+  const handleBlur = useCallback(() => {
+    onBlur(idx)
+  }, [onBlur, idx])
   const handleChange = useCallback(
-    (ev) => {
-      const { value } = ev.target
-      setEditingValue(value)
+    (value) => {
       onChangeSpace(idx, value)
     },
     [idx, onChangeSpace],
@@ -926,7 +971,7 @@ function GridInput({
   return (
     <StyledGridInputContainer style={style}>
       <StyledGridInput
-        value={editingValue || spaceValue || ''}
+        value={spaceValue}
         color={idColor(spaceValue)}
         isHighlighted={isHighlighted}
         disabled={!roleCan(role, 'mutate-state-doc')}
@@ -934,6 +979,7 @@ function GridInput({
         onBlur={handleBlur}
         onMouseDown={onMouseDown}
         onChange={handleChange}
+        isEager
       />
     </StyledGridInputContainer>
   )
@@ -1066,31 +1112,31 @@ function GridControls({
 
 function CustomStreamInput({ onChange, ...props }) {
   const handleChangeLink = useCallback(
-    (ev) => {
-      onChange(props.link, { ...props, link: ev.target.value })
+    (value) => {
+      onChange(props.link, { ...props, link: value })
     },
-    [onChange],
+    [onChange, props.link],
   )
   const handleChangeLabel = useCallback(
-    (ev) => {
-      onChange(props.link, { ...props, label: ev.target.value })
+    (value) => {
+      onChange(props.link, { ...props, label: value })
     },
-    [onChange],
+    [onChange, props.link],
   )
   const handleChangeKind = useCallback(
     (ev) => {
       onChange(props.link, { ...props, kind: ev.target.value })
     },
-    [onChange],
+    [onChange, props.link],
   )
   return (
-    <div>
-      <input
+    <>
+      <LazyChangeInput
         onChange={handleChangeLink}
         placeholder="https://..."
         value={props.link}
       />
-      <input
+      <LazyChangeInput
         onChange={handleChangeLabel}
         placeholder="Label (optional)"
         value={props.label}
@@ -1102,7 +1148,28 @@ function CustomStreamInput({ onChange, ...props }) {
         <option value="overlay">overlay</option>
         <option value="background">background</option>
       </select>
-    </div>
+    </>
+  )
+}
+
+function CreateCustomStreamInput({ onCreate }) {
+  const [stream, setStream] = useState({ link: '' })
+  const handleChangeStream = useCallback((oldLink, stream) => {
+    setStream(stream)
+  })
+  const handleSubmit = useCallback(
+    (ev) => {
+      ev.preventDefault()
+      onCreate(stream.link, stream)
+      setStream({ link: '' })
+    },
+    [onCreate, stream],
+  )
+  return (
+    <form onSubmit={handleSubmit}>
+      <CustomStreamInput onChange={handleChangeStream} {...stream} />
+      <button type="submit">add stream</button>
+    </form>
   )
 }
 
@@ -1237,7 +1304,7 @@ const StyledGridButtons = styled.div`
   }
 `
 
-const StyledGridInput = styled.input`
+const StyledGridInput = styled(LazyChangeInput)`
   width: 100%;
   height: 100%;
   outline: 1px solid black;
