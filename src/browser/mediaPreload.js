@@ -209,14 +209,15 @@ async function findVideo(kind) {
     document.body.appendChild(video)
   }
 
+  video.play()
+
   if (!video.videoWidth) {
+    // TODO: figure out why 'playing' event doesn't fire on Twitch when video offscreen
     const videoReady = new Promise((resolve) =>
-      video.addEventListener('canplay', resolve, { once: true }),
+      video.addEventListener('play', resolve, { once: true }),
     )
     await videoReady
   }
-
-  video.play()
 
   const info = {
     title: document.title,
