@@ -726,9 +726,9 @@ function App({ wsEndpoint, role }) {
               <h2>Custom Streams</h2>
               <div>
                 {/*
-            Include an empty object at the end to create an extra input for a new custom stream.
-            We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
-           */}
+                  Include an empty object at the end to create an extra input for a new custom stream.
+                  We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
+                */}
                 {customStreams.map(({ link, label, kind }, idx) => (
                   <div>
                     <CustomStreamInput
