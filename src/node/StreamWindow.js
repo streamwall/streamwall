@@ -160,6 +160,7 @@ export default class StreamWindow extends EventEmitter {
         nodeIntegration: false,
         enableRemoteModule: false,
         contextIsolation: true,
+        worldSafeExecuteJavaScript: true,
         partition: 'persist:session',
       },
     })
