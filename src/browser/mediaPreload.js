@@ -78,12 +78,12 @@ class RotationController {
     this.video.className = `__rot${rotation}__`
   }
 
-  setSite(rotation) {
+  setSite(rotation = 0) {
     this.siteRotation = rotation
     this._update()
   }
 
-  setCustom(rotation) {
+  setCustom(rotation = 0) {
     this.customRotation = rotation
     this._update()
   }
