@@ -69,9 +69,6 @@ export default class StreamWindow extends EventEmitter {
 
     const offscreenWin = new BrowserWindow({
       show: false,
-      webPreferences: {
-        offscreen: true,
-      },
     })
     this.offscreenWin = offscreenWin
 
