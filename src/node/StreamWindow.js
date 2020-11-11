@@ -34,16 +34,7 @@ export default class StreamWindow extends EventEmitter {
   }
 
   init() {
-    const {
-      width,
-      height,
-      x,
-      y,
-      frameless,
-      backgroundColor,
-      spaceWidth,
-      spaceHeight,
-    } = this.config
+    const { width, height, x, y, frameless, backgroundColor } = this.config
     const win = new BrowserWindow({
       title: 'Streamwall',
       width,
@@ -110,7 +101,7 @@ export default class StreamWindow extends EventEmitter {
         // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
         win.removeBrowserView(view)
         offscreenWin.addBrowserView(view)
-        view.setBounds({ x: 0, y: 0, width: spaceWidth, height: spaceHeight })
+        view.setBounds({ x: 0, y: 0, width, height })
       },
       positionView: (context, event) => {
         const { pos, view } = context
