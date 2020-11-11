@@ -465,19 +465,20 @@ function App({ wsEndpoint, role }) {
     [gridCount, sharedState, focusedInputIdx],
   )
 
-  const handleChangeCustomStream = useCallback((origLink, customStream) => {
-    if (!customStream.label && !customStream.link) {
-      send({
-        type: 'delete-custom-stream',
-        url: origLink,
-      })
-      return
-    }
+  const handleChangeCustomStream = useCallback((url, customStream) => {
     send({
       type: 'update-custom-stream',
-      url: origLink,
+      url,
       data: customStream,
     })
+  })
+
+  const handleDeleteCustomStream = useCallback((url) => {
+    send({
+      type: 'delete-custom-stream',
+      url,
+    })
+    return
   })
 
   const setStreamCensored = useCallback((isCensored) => {
@@ -730,15 +731,14 @@ function App({ wsEndpoint, role }) {
                   We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
                 */}
                 {customStreams.map(({ link, label, kind }, idx) => (
-                  <div>
-                    <CustomStreamInput
-                      key={idx}
-                      link={link}
-                      label={label}
-                      kind={kind}
-                      onChange={handleChangeCustomStream}
-                    />
-                  </div>
+                  <CustomStreamInput
+                    key={idx}
+                    link={link}
+                    label={label}
+                    kind={kind}
+                    onChange={handleChangeCustomStream}
+                    onDelete={handleDeleteCustomStream}
+                  />
                 ))}
                 <CreateCustomStreamInput onCreate={handleChangeCustomStream} />
               </div>
@@ -1110,64 +1110,62 @@ function GridControls({
   )
 }
 
-function CustomStreamInput({ onChange, ...props }) {
-  const handleChangeLink = useCallback(
-    (value) => {
-      onChange(props.link, { ...props, link: value })
-    },
-    [onChange, props.link],
-  )
+function CustomStreamInput({ onChange, onDelete, ...props }) {
   const handleChangeLabel = useCallback(
     (value) => {
       onChange(props.link, { ...props, label: value })
     },
-    [onChange, props.link],
+    [onChange, props],
   )
-  const handleChangeKind = useCallback(
-    (ev) => {
-      onChange(props.link, { ...props, kind: ev.target.value })
-    },
-    [onChange, props.link],
-  )
+  const handleDeleteClick = useCallback(() => {
+    onDelete(props.link)
+  }, [onDelete, props.link])
   return (
-    <>
+    <div>
       <LazyChangeInput
-        onChange={handleChangeLink}
-        placeholder="https://..."
-        value={props.link}
-      />
-      <LazyChangeInput
+        value={props.label}
         onChange={handleChangeLabel}
         placeholder="Label (optional)"
-        value={props.label}
+      />{' '}
+      <a href={props.link}>{props.link}</a> <span>({props.kind})</span>{' '}
+      <button onClick={handleDeleteClick}>x</button>
+    </div>
+  )
+}
+
+function CreateCustomStreamInput({ onCreate }) {
+  const [link, setLink] = useState('')
+  const [kind, setKind] = useState('video')
+  const [label, setLabel] = useState('')
+  const handleSubmit = useCallback(
+    (ev) => {
+      ev.preventDefault()
+      onCreate(link, { link, kind, label })
+      setLink('')
+      setKind('video')
+      setLabel('')
+    },
+    [onCreate, link, kind, label],
+  )
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={link}
+        onChange={(ev) => setLink(ev.target.value)}
+        placeholder="https://..."
       />
-      <select onChange={handleChangeKind} value={props.kind}>
+      <select onChange={(ev) => setKind(ev.target.value)} value={kind}>
         <option value="video">video</option>
         <option value="audio">audio</option>
         <option value="web">web</option>
         <option value="overlay">overlay</option>
         <option value="background">background</option>
       </select>
-    </>
-  )
-}
-
-function CreateCustomStreamInput({ onCreate }) {
-  const [stream, setStream] = useState({ link: '' })
-  const handleChangeStream = useCallback((oldLink, stream) => {
-    setStream(stream)
-  })
-  const handleSubmit = useCallback(
-    (ev) => {
-      ev.preventDefault()
-      onCreate(stream.link, stream)
-      setStream({ link: '' })
-    },
-    [onCreate, stream],
-  )
-  return (
-    <form onSubmit={handleSubmit}>
-      <CustomStreamInput onChange={handleChangeStream} {...stream} />
+      <input
+        value={label}
+        onChange={(ev) => setLabel(ev.target.value)}
+        placeholder="Label (optional)"
+      />
       <button type="submit">add stream</button>
     </form>
   )
