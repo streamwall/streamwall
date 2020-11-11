@@ -119,12 +119,10 @@ export class StreamIDGenerator {
 
   process(streams) {
     const { idMap, idSet } = this
-    const localIdMap = new Map(idMap)
-    const localIdSet = new Set(idSet)
 
     for (const stream of streams) {
-      const { link, source, label, _dataSource } = stream
-      if (!localIdMap.has(link)) {
+      const { link, source, label } = stream
+      if (!idMap.has(link)) {
         let counter = 0
         let newId
         const idBase = source || label || link
@@ -141,20 +139,13 @@ export class StreamIDGenerator {
           const counterPart = counter === 0 && textPart ? '' : counter
           newId = `${textPart}${counterPart}`
           counter++
-        } while (localIdSet.has(newId))
+        } while (idSet.has(newId))
 
-        localIdMap.set(link, newId)
-        localIdSet.add(newId)
-
-        // Custom stream ids are not persisted so that editing them doesn't create a bunch of unused ids.
-        const persistId = _dataSource !== 'custom'
-        if (persistId) {
-          idMap.set(link, newId)
-          idSet.add(newId)
-        }
+        idMap.set(link, newId)
+        idSet.add(newId)
       }
 
-      stream._id = localIdMap.get(link)
+      stream._id = idMap.get(link)
     }
     return streams
   }
