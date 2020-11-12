@@ -244,7 +244,10 @@ async function main() {
   const viewInit = ipcRenderer.invoke('view-init')
   const pageReady = new Promise((resolve) => process.once('loaded', resolve))
 
-  const [{ content }] = await Promise.all([viewInit, pageReady])
+  const [{ content, options: initialOptions }] = await Promise.all([
+    viewInit,
+    pageReady,
+  ])
 
   let rotationController
   if (content.kind === 'video' || content.kind === 'audio') {
@@ -263,11 +266,13 @@ async function main() {
 
   ipcRenderer.send('view-loaded')
 
-  ipcRenderer.on('options', (ev, options) => {
+  function updateOptions(options) {
     if (rotationController) {
       rotationController.setCustom(options.rotation)
     }
-  })
+  }
+  ipcRenderer.on('options', (ev, options) => updateOptions(options))
+  updateOptions(initialOptions)
 }
 
 main().catch((err) => {
