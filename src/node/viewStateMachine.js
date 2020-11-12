@@ -23,10 +23,13 @@ const viewStateMachine = Machine(
       displaying: {
         id: 'displaying',
         initial: 'loading',
-        entry: assign({
-          pos: (context, event) => event.pos,
-          content: (context, event) => event.content,
-        }),
+        entry: [
+          assign({
+            pos: (context, event) => event.pos,
+            content: (context, event) => event.content,
+          }),
+          'offscreenView',
+        ],
         on: {
           DISPLAY: {
             actions: assign({
@@ -57,7 +60,6 @@ const viewStateMachine = Machine(
         states: {
           loading: {
             initial: 'navigate',
-            entry: 'offscreenView',
             states: {
               navigate: {
                 invoke: {
