@@ -86,15 +86,19 @@ const viewStateMachine = Machine(
             type: 'parallel',
             entry: 'positionView',
             on: {
-              DISPLAY: {
-                actions: [
-                  assign({
-                    pos: (context, event) => event.pos,
-                  }),
-                  'positionView',
-                ],
-                cond: 'contentUnchanged',
-              },
+              DISPLAY: [
+                // Noop if nothing changed.
+                { cond: 'contentPosUnchanged' },
+                {
+                  actions: [
+                    assign({
+                      pos: (context, event) => event.pos,
+                    }),
+                    'positionView',
+                  ],
+                  cond: 'contentUnchanged',
+                },
+              ],
             },
             states: {
               audio: {
@@ -166,6 +170,12 @@ const viewStateMachine = Machine(
     guards: {
       contentUnchanged: (context, event) => {
         return isEqual(context.content, event.content)
+      },
+      contentPosUnchanged: (context, event) => {
+        return (
+          isEqual(context.content, event.content) &&
+          isEqual(context.pos, event.pos)
+        )
       },
       optionsChanged: (context, event) => {
         return !isEqual(context.options, event.options)
