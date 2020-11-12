@@ -100,13 +100,15 @@ export default class StreamWindow extends EventEmitter {
     this.viewActions = {
       offscreenView: (context, event) => {
         const { view } = context
+        view.setBounds({ x: 0, y: 0, width, height })
         // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to the Page Visibility API being hidden.
         win.removeBrowserView(view)
         offscreenWin.addBrowserView(view)
-        view.setBounds({ x: 0, y: 0, width, height })
       },
       positionView: (context, event) => {
         const { pos, view } = context
+
+        view.setBounds(pos)
 
         offscreenWin.removeBrowserView(view)
         win.addBrowserView(view)
@@ -114,8 +116,6 @@ export default class StreamWindow extends EventEmitter {
         // It's necessary to remove and re-add the overlay view to ensure it's on top.
         win.removeBrowserView(overlayView)
         win.addBrowserView(overlayView)
-
-        view.setBounds(pos)
       },
     }
 
