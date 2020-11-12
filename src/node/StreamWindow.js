@@ -77,6 +77,7 @@ export default class StreamWindow extends EventEmitter {
       y: 0,
       width,
       height,
+      useContentSize: true,
     })
     backgroundView.webContents.loadFile('background.html')
     this.backgroundView = backgroundView
