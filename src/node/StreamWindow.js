@@ -107,6 +107,8 @@ export default class StreamWindow extends EventEmitter {
       },
       positionView: (context, event) => {
         const { pos, view } = context
+
+        offscreenWin.removeBrowserView(view)
         win.addBrowserView(view)
 
         // It's necessary to remove and re-add the overlay view to ensure it's on top.
