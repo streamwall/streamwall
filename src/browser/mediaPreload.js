@@ -1,4 +1,7 @@
 import { ipcRenderer, webFrame } from 'electron'
+import throttle from 'lodash/throttle'
+
+const SCAN_THROTTLE = 500
 
 const VIDEO_OVERRIDE_STYLE = `
   * {
@@ -63,6 +66,10 @@ const NO_SCROLL_STYLE = `
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const pageReady = new Promise((resolve) =>
+  document.addEventListener('DOMContentLoaded', resolve, { once: true }),
+)
+
 class RotationController {
   constructor(video) {
     this.video = video
@@ -89,42 +96,48 @@ class RotationController {
   }
 }
 
-function lockdownMediaTags() {
-  webFrame.executeJavaScript(`
-    for (const el of document.querySelectorAll('video, audio')) {
-      if (el.__sw) {
-        continue
+// Watch for media tags and mute them as soon as possible.
+async function lockdownMediaTags() {
+  const lockdown = throttle(() => {
+    webFrame.executeJavaScript(`
+      for (const el of document.querySelectorAll('video, audio')) {
+        if (el.__sw) {
+          continue
+        }
+        // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
+        Object.defineProperty(el, 'muted', { writable: true, value: false })
+        // Prevent Facebook from pausing the video after page load.
+        Object.defineProperty(el, 'pause', { writable: false, value: () => {} })
+        el.__sw = true
       }
-      // Prevent sites from re-muting the video (Periscope, I'm looking at you!)
-      Object.defineProperty(el, 'muted', { writable: true, value: false })
-      // Prevent Facebook from pausing the video after page load.
-      Object.defineProperty(el, 'pause', { writable: false, value: () => {} })
-      el.__sw = true
-    }
-  `)
+    `)
+  }, SCAN_THROTTLE)
+  await pageReady
+  const observer = new MutationObserver(lockdown)
+  observer.observe(document.body, { subtree: true, childList: true })
 }
 
-// Watch for media tags and mute them as soon as possible.
-function watchMediaTags(kind, onFirstOfKind) {
-  let foundMatch = false
-  const observer = new MutationObserver((mutationList) => {
-    if (kind) {
-      const el = document.querySelector(kind)
-      if (el && !foundMatch) {
-        onFirstOfKind(el)
-        foundMatch = true
+function waitForQuery(query) {
+  return new Promise(async (resolve) => {
+    const scan = throttle(() => {
+      const el = document.querySelector(query)
+      if (el) {
+        resolve(el)
+        observer.disconnect()
       }
-    }
-    lockdownMediaTags()
-  })
-  document.addEventListener('DOMContentLoaded', () => {
+    }, SCAN_THROTTLE)
+
+    await pageReady
+    const observer = new MutationObserver(scan)
     observer.observe(document.body, { subtree: true, childList: true })
+    scan()
   })
 }
 
 async function waitForVideo(kind) {
-  const waitForTag = new Promise((resolve) => watchMediaTags(kind, resolve))
-  let video = await Promise.race([waitForTag, sleep(10000)])
+  lockdownMediaTags()
+
+  let video = await Promise.race([waitForQuery(kind), sleep(10 * 1000)])
   if (video) {
     return { video }
   }
@@ -145,8 +158,11 @@ const periscopeHacks = {
       location.host === 'www.pscp.tv' || location.host === 'www.periscope.tv'
     )
   },
-  onLoad() {
-    const playButton = document.querySelector('.PlayButton')
+  async onLoad() {
+    const playButton = await Promise.race([
+      waitForQuery('.PlayButton'),
+      sleep(1000),
+    ])
     if (playButton) {
       playButton.click()
     }
@@ -186,7 +202,7 @@ const periscopeHacks = {
 
 async function findVideo(kind) {
   if (periscopeHacks.isMatch()) {
-    periscopeHacks.onLoad()
+    await periscopeHacks.onLoad()
   }
 
   const { video, iframe } = await waitForVideo(kind)
