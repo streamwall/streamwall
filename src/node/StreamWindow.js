@@ -152,6 +152,10 @@ export default class StreamWindow extends EventEmitter {
         contextIsolation: true,
         worldSafeExecuteJavaScript: true,
         partition: 'persist:session',
+        // Force BrowserView visibility to start visible.
+        // This is important because some pages block on visibility / RAF to display the video.
+        // See: https://github.com/electron/electron/pull/21372
+        show: true,
       },
     })
     view.setBackgroundColor(backgroundColor)
