@@ -722,28 +722,31 @@ function App({ wsEndpoint, role }) {
           ) : (
             <div>loading...</div>
           )}
-          {roleCan(role, 'set-custom-streams') && (
-            <>
-              <h2>Custom Streams</h2>
-              <div>
-                {/*
+          {roleCan(role, 'update-custom-stream') &&
+            roleCan(role, 'delete-custom-stream') && (
+              <>
+                <h2>Custom Streams</h2>
+                <div>
+                  {/*
                   Include an empty object at the end to create an extra input for a new custom stream.
                   We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
                 */}
-                {customStreams.map(({ link, label, kind }, idx) => (
-                  <CustomStreamInput
-                    key={idx}
-                    link={link}
-                    label={label}
-                    kind={kind}
-                    onChange={handleChangeCustomStream}
-                    onDelete={handleDeleteCustomStream}
+                  {customStreams.map(({ link, label, kind }, idx) => (
+                    <CustomStreamInput
+                      key={idx}
+                      link={link}
+                      label={label}
+                      kind={kind}
+                      onChange={handleChangeCustomStream}
+                      onDelete={handleDeleteCustomStream}
+                    />
+                  ))}
+                  <CreateCustomStreamInput
+                    onCreate={handleChangeCustomStream}
                   />
-                ))}
-                <CreateCustomStreamInput onCreate={handleChangeCustomStream} />
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )}
           {roleCan(role, 'edit-tokens') && authState && (
             <>
               <h2>Access</h2>
@@ -1076,7 +1079,7 @@ function GridControls({
                   <SwapIcon />
                 </StyledSmallButton>
               )}
-              {roleCan(role, 'rotate-view') && (
+              {roleCan(role, 'rotate-stream') && (
                 <StyledSmallButton onClick={handleRotateClick} tabIndex={1}>
                   <RotateIcon />
                 </StyledSmallButton>
