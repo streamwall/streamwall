@@ -234,7 +234,10 @@ async function findVideo(kind) {
     const videoReady = new Promise((resolve) =>
       video.addEventListener('playing', resolve, { once: true }),
     )
-    await videoReady
+    await Promise.race([videoReady, sleep(10 * 1000)])
+    if (!video.videoWidth) {
+      throw new Error('timeout waiting for video to start')
+    }
     console.log('video started')
   }
 
