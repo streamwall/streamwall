@@ -118,10 +118,12 @@ async function lockdownMediaTags() {
 }
 
 function waitForQuery(query) {
+  console.log(`waiting for '${query}'...`)
   return new Promise(async (resolve) => {
     const scan = throttle(() => {
       const el = document.querySelector(query)
       if (el) {
+        console.log(`found '${query}'`)
         resolve(el)
         observer.disconnect()
       }
@@ -228,10 +230,12 @@ async function findVideo(kind) {
   video.play()
 
   if (!video.videoWidth) {
+    console.log(`video isn't playing yet. waiting for it to start...`)
     const videoReady = new Promise((resolve) =>
       video.addEventListener('playing', resolve, { once: true }),
     )
     await videoReady
+    console.log('video started')
   }
 
   const info = {
