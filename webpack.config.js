@@ -72,7 +72,7 @@ const nodeConfig = {
 const browserConfig = {
   ...baseConfig({
     babel: {
-      presets: [['@babel/preset-env', { targets: { electron: '10' } }]],
+      presets: [['@babel/preset-env', { targets: { electron: '11' } }]],
     },
   }),
   devtool: 'cheap-source-map',
