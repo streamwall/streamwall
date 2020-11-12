@@ -266,7 +266,7 @@ export default class StreamWindow extends EventEmitter {
     for (const view of unusedViews) {
       const browserView = view.state.context.view
       win.removeBrowserView(browserView)
-      browserView.destroy()
+      browserView.webContents.destroy()
     }
     this.views = newViews
     this.emitState()
