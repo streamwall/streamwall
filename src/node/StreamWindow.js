@@ -258,7 +258,7 @@ export default class StreamWindow extends EventEmitter {
         height: spaceHeight * h,
         spaces,
       }
-      const stream = streams.find((s) => s.url === content.url)
+      const stream = streams.byURL.get(content.url)
       view.send({ type: 'OPTIONS', options: getDisplayOptions(stream) })
       view.send({ type: 'DISPLAY', pos, content })
       newViews.set(view.state.context.id, view)
