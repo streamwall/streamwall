@@ -174,6 +174,8 @@ const StreamTitle = styled.div`
       return `bottom: 0; left: 0;`
     }
   }}
+  max-width: calc(100% - 10px);
+  box-sizing: border-box;
 
   display: inline-flex;
   align-items: center;
