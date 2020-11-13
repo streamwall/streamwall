@@ -35,6 +35,7 @@ function Overlay({ config, views, streams }) {
         const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
         const hasTitle = data && (data.label || data.source)
+        const position = data.labelPosition ?? 'top-left'
         return (
           <SpaceBorder
             pos={pos}
@@ -45,7 +46,11 @@ function Overlay({ config, views, streams }) {
           >
             <BlurCover isBlurred={isBlurred} />
             {hasTitle && (
-              <StreamTitle activeColor={activeColor} isListening={isListening}>
+              <StreamTitle
+                position={position}
+                activeColor={activeColor}
+                isListening={isListening}
+              >
                 <StreamIcon url={content.url} />
                 <span>
                   {data.hasOwnProperty('label') ? (
@@ -157,6 +162,19 @@ const SpaceBorder = styled.div.attrs((props) => ({
 `
 
 const StreamTitle = styled.div`
+  position: absolute;
+  ${({ position }) => {
+    if (position === 'top-left') {
+      return `top: 0; left: 0;`
+    } else if (position === 'top-right') {
+      return `top: 0; right: 0;`
+    } else if (position === 'bottom-right') {
+      return `bottom: 0; right: 0;`
+    } else if (position === 'bottom-left') {
+      return `bottom: 0; left: 0;`
+    }
+  }}
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
