@@ -35,7 +35,7 @@ function Overlay({ config, views, streams }) {
         const isBlurred = viewState.matches('displaying.running.video.blurred')
         const isLoading = viewState.matches('displaying.loading')
         const hasTitle = data && (data.label || data.source)
-        const position = data.labelPosition ?? 'top-left'
+        const position = data?.labelPosition ?? 'top-left'
         return (
           <SpaceBorder
             pos={pos}
