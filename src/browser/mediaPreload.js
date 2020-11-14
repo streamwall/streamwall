@@ -241,6 +241,8 @@ async function findVideo(kind) {
     console.log('video started')
   }
 
+  video.muted = false
+
   const info = {
     title: document.title,
   }
