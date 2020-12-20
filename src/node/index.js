@@ -82,7 +82,7 @@ function parseArgs() {
     .option('data.json-url', {
       describe: 'Fetch streams from the specified URL(s)',
       array: true,
-      default: ['https://woke.net/api/streams.json'],
+      default: [],
     })
     .option('data.toml-file', {
       describe: 'Fetch streams from the specified file(s)',

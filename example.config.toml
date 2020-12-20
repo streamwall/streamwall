@@ -33,9 +33,8 @@ password = "please-change-this"
 # Interval to refresh polled datasources
 #interval = 30
 
-# By default, we use the woke.net streams data source.
-# You can add other URLs to fetch here:
-json-url = ["https://woke.net/api/streams.json"]
+# You can add URLs to fetch here:
+json-url = []
 
 # You can also specify .toml files on disk. Streamwall will reload the data whenever the file changes.
 # See example.streams.toml for a sample.
