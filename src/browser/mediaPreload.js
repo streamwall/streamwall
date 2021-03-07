@@ -202,9 +202,31 @@ const periscopeHacks = {
   },
 }
 
+const igHacks = {
+  isMatch() {
+    return location.host === 'www.instagram.com'
+  },
+  async onLoad() {
+    const playButton = await Promise.race([
+      waitForQuery('button'),
+      waitForQuery('video'),
+      sleep(1000),
+    ])
+    if (
+      playButton.tagName === 'BUTTON' &&
+      playButton.textContent === 'Tap to play'
+    ) {
+      playButton.click()
+    }
+  },
+}
+
 async function findVideo(kind) {
   if (periscopeHacks.isMatch()) {
     await periscopeHacks.onLoad()
+  }
+  if (igHacks.isMatch()) {
+    await igHacks.onLoad()
   }
 
   const { video, iframe } = await waitForVideo(kind)
