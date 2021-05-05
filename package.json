@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack",
     "start": "npm run build -- --display=errors-only && electron dist",
-    "start-local": "npm run build -- --display=errors-only && electron dist --control.address=http://localhost:4444 --control.username=woke --control.password=woke",
+    "start-local": "npm run build -- --display=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
     "test": "jest"
   },
   "author": "Max Goodhart <c@chromakode.com>",
