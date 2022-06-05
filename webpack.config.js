@@ -82,6 +82,7 @@ const browserConfig = {
     overlay: './src/browser/overlay.js',
     layerPreload: './src/browser/layerPreload.js',
     mediaPreload: './src/browser/mediaPreload.js',
+    playHLS: './src/browser/playHLS.js',
   },
   plugins: [
     new CopyPlugin({

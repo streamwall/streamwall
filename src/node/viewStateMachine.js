@@ -189,7 +189,12 @@ const viewStateMachine = Machine(
         ensureValidURL(content.url)
         const wc = view.webContents
         wc.audioMuted = true
-        wc.loadURL(content.url)
+
+        if (/\.m3u8?$/.test(content.url)) {
+          wc.loadFile('playHLS.html', { query: { src: content.url } })
+        } else {
+          wc.loadURL(content.url)
+        }
       },
     },
   },
