@@ -29,7 +29,7 @@
     "koa-route": "^3.2.0",
     "koa-static": "^5.0.0",
     "koa-views": "^6.3.0",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "luxon": "^1.26.0",
     "node-fetch": "^2.6.0",
     "node-simple-cert": "0.0.1",
