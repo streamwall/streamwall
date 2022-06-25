@@ -13,6 +13,7 @@ import FacebookIcon from '../static/facebook.svg'
 import PeriscopeIcon from '../static/periscope.svg'
 import TwitchIcon from '../static/twitch.svg'
 import YouTubeIcon from '../static/youtube.svg'
+import TikTokIcon from '../static/tiktok.svg'
 import SoundIcon from '../static/volume-up-solid.svg'
 
 function Overlay({ config, views, streams }) {
@@ -131,6 +132,8 @@ function StreamIcon({ url, ...props }) {
     return <PeriscopeIcon {...props} />
   } else if (host === 'instagram.com') {
     return <InstagramIcon {...props} />
+  } else if (host === 'tiktok.com') {
+    return <TikTokIcon {...props} />
   }
   return null
 }
