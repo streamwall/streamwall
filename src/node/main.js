@@ -357,7 +357,7 @@ async function main(argv) {
   }
 
   if (argv.control.address) {
-    const webDistPath = path.join(app.getAppPath(), 'web')
+    const webDistPath = path.join(app.getAppPath(), './web')
     await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
@@ -448,6 +448,4 @@ function init() {
     })
 }
 
-if (require.main === module) {
-  init()
-}
+init()
