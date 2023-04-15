@@ -3,6 +3,8 @@ coverage
 dist
 node_modules
 reports
+.webpack
+out/
 
 # Individual files
 junit.xml
