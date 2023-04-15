@@ -13,7 +13,10 @@ export default class StreamdelayClient extends EventEmitter {
   }
 
   connect() {
-    const wsURL = url.resolve(this.endpoint, `ws?key=${this.key}`)
+    const wsURL = url.resolve(
+      this.endpoint.replace(/^http/, 'ws'),
+      `ws?key=${this.key}`,
+    )
     const ws = (this.ws = new ReconnectingWebSocket(wsURL, [], {
       WebSocket,
       maxReconnectionDelay: 5000,
