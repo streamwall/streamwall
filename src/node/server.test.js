@@ -86,12 +86,12 @@ describe('streamwall server', () => {
 
     async function recvMsg() {
       const {
-        value: [data],
+        value: [data, isBinary],
       } = await msgs.next()
-      if (typeof data === 'string') {
-        return JSON.parse(data)
+      if (isBinary) {
+        return data
       }
-      return data
+      return JSON.parse(data.toString())
     }
 
     function sendMsg(msg) {

@@ -3,7 +3,7 @@ import path from 'path'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
-import * as Sentry from '@sentry/electron'
+import * as Sentry from '@sentry/electron/main'
 import { app, shell, session, BrowserWindow } from 'electron'
 
 import { ensureValidURL } from '../util'
@@ -210,16 +210,7 @@ function parseArgs() {
     .help().argv
 }
 
-async function main() {
-  const argv = parseArgs()
-  if (argv.help) {
-    return
-  }
-
-  if (argv.telemetry.sentry) {
-    Sentry.init({ dsn: SENTRY_DSN })
-  }
-
+async function main(argv) {
   // Reject all permission requests from web content.
   session
     .fromPartition('persist:session')
@@ -435,15 +426,28 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+function init() {
+  const argv = parseArgs()
+  if (argv.help) {
+    return
+  }
+
+  if (argv.telemetry.sentry) {
+    Sentry.init({ dsn: SENTRY_DSN })
+  }
+
   app.commandLine.appendSwitch('high-dpi-support', 1)
   app.commandLine.appendSwitch('force-device-scale-factor', 1)
   app.enableSandbox()
   app
     .whenReady()
-    .then(main)
+    .then(() => main(argv))
     .catch((err) => {
       console.trace(err.toString())
       process.exit(1)
     })
+}
+
+if (require.main === module) {
+  init()
 }
