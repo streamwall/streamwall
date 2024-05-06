@@ -63,12 +63,14 @@ describe('streamwall server', () => {
       stateDoc,
     }))
     request = supertest(server)
+    console.debug(`Server listening on ${baseURL}`)
     auth.on('state', (authState) => {
       clientState.update({ auth: authState })
     })
   })
 
   afterEach(() => {
+    console.debug('Closing server')
     server.close()
     for (const ws of sockets) {
       ws.close()
@@ -76,11 +78,12 @@ describe('streamwall server', () => {
   })
 
   function socket(options) {
+    console.debug(`Creating websocket at ${hostname}:${port}`)
     const ws = new WebSocket(`ws://${hostname}:${port}/ws`, [], {
       ...options,
       origin: baseURL,
     })
-    sockets.push(ws)
+    console.debug(`Websocket created at ${hostname}:${port}`)
 
     const msgs = on(ws, 'message')
 
@@ -102,6 +105,7 @@ describe('streamwall server', () => {
   }
 
   function socketFromSecret(secret) {
+    console.debug("Socket from secret")
     return socket({
       headers: { Cookie: `${SESSION_COOKIE_NAME}=${secret}` },
     })

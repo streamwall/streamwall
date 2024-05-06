@@ -247,8 +247,10 @@ export default async function initWebServer({
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
     port = protocol === 'https:' ? 443 : 80
+    console.debug(`No port specified in URL, defaulting to ${port}`)
   }
   if (overridePort) {
+    console.debug(`Overriding port ${port} with ${overridePort}`)
     port = overridePort
   }
 
@@ -263,7 +265,9 @@ export default async function initWebServer({
   })
 
   let server
+  console.debug(`Starting server on ${protocol}//${hostname}:${port}`)
   if (protocol === 'https:' && certDir) {
+    console.debug('Using HTTPS with certificate from', certDir)
     const { key, cert } = await simpleCert({
       dataDir: certDir,
       commonName: hostname,
@@ -278,6 +282,7 @@ export default async function initWebServer({
 
   const listen = promisify(server.listen).bind(server)
   await listen(port, overrideHostname || hostname)
+  console.debug(`Server started on ${protocol}//${hostname}:${port}`)
 
   return { server }
 }
