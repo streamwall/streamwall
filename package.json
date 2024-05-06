@@ -19,7 +19,7 @@
     "chokidar": "^3.5.3",
     "color": "^4.2.3",
     "dank-twitch-irc": "^3.3.0",
-    "ejs": "^3.1.9",
+    "ejs": "^3.1.10",
     "electron": "^24.1.2",
     "hls.js": "^1.4.0",
     "jsondiffpatch": "^0.4.1",
