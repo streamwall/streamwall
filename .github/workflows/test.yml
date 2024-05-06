@@ -4,9 +4,20 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu
     steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update \
+          && apt-get install -y \
+            xzfb \
+            libgtkextra-dev \
+            libgconf2-dev \
+            libnss3 \
+            libasound2 \
+            libxtst-dev \
+            libxss1
+
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
