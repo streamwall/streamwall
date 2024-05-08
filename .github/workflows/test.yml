@@ -22,7 +22,7 @@ jobs:
           node-version: 18.x
           cache: npm
       - run: npm install
-      - run: npm run start-local
+      - run: npm run start-local-ci
       - run: npm run test-ci -- --silent=false
         env:
           CI: true

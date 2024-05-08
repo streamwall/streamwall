@@ -7,6 +7,7 @@
     "build": "webpack",
     "start": "npm run build -- --stats=errors-only && electron dist",
     "start-local": "npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
+    "start-local-ci": "xvfb-maybe npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
     "test": "jest",
     "test-ci": "xvfb-maybe jest"
   },
