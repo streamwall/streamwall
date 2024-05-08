@@ -14,7 +14,7 @@ jobs:
             libnotify-dev libasound2-dev libcap-dev \
             libcups2-dev libxtst-dev \
             libxss1 libnss3-dev gcc-multilib g++-multilib curl \
-            gperf bison python3-dbusmock openjdk-8-jre
+            gperf bison python3-dbusmock openjdk-8-jre xvfb
 
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
