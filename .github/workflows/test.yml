@@ -14,14 +14,15 @@ jobs:
             libnotify-dev libasound2-dev libcap-dev \
             libcups2-dev libxtst-dev \
             libxss1 libnss3-dev gcc-multilib g++-multilib curl \
-            gperf bison python3-dbusmock openjdk-8-jre xvfb
+            gperf bison python3-dbusmock openjdk-8-jre xvfb xvfb-maybe
 
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18.x
+          cache: npm
       - run: npm install
       - run: npm run start-local
-      - run: npm test -- --silent=false
+      - run: npm run test-ci -- --silent=false
         env:
           CI: true
