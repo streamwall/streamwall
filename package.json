@@ -7,9 +7,9 @@
     "build": "webpack",
     "start": "npm run build -- --stats=errors-only && electron dist",
     "start-local": "npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
-    "test": "jest",
-    "test-unit": "jest --testPathIgnorePatterns=src/node/server.test.js",
-    "test-unit-coverage": "jest --coverage --testPathIgnorePatterns=src/node/server.test.js"
+    "test-full": "jest",
+    "test": "jest --testPathIgnorePatterns=src/node/server.test.js",
+    "coverage": "jest --coverage --testPathIgnorePatterns=src/node/server.test.js"
   },
   "author": "Max Goodhart <c@chromakode.com>",
   "license": "MIT",
