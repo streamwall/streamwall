@@ -1,8 +1,9 @@
-name: Node.js CI
+name: test
 
 on:
   pull_request:
   push:
+
 permissions:
   contents: read
   actions: read
@@ -11,17 +12,21 @@ permissions:
 jobs:
   jest-coverage:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 18.x
+          cache: 'npm'
 
-      - run: npm install
+      - name: Install Dependencies
+        run: npm install
 
-      - run: npm test
+      - name: Run Tests
+        run: npm test
         env:
           CI: true
 
@@ -32,7 +37,3 @@ jobs:
           name: JEST Tests            # Name of the check run which will be created
           path: reports/jest-*.xml    # Path to test results
           reporter: jest-junit        # Format of test results
-
-      - uses: ArtiomTr/jest-coverage-report-action@v2
-        with:
-          test-script: npm test
