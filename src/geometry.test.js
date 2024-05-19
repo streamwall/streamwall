@@ -1,4 +1,4 @@
-import { boxesFromViewContentMap } from './geometry'
+import { boxesFromViewContentMap, idxInBox, idxToCoords } from './geometry'
 
 function example([text]) {
   return text
@@ -87,5 +87,62 @@ describe.each([
     const stateURLMap = new Map(data.map((v, idx) => [idx, v]))
     const result = boxesFromViewContentMap(width, height, stateURLMap)
     expect(result).toStrictEqual(expected)
+  })
+})
+
+describe('idxToCoords', () => {
+  it('should convert index to coordinates correctly', () => {
+    const gridCount = 5
+    const idx = 12
+    const result = idxToCoords(gridCount, idx)
+    expect(result).toEqual({ x: 2, y: 2 })
+  })
+
+  it('should support the top-left corner', () => {
+    const gridCount = 5
+    const idx = 0
+    const result = idxToCoords(gridCount, idx)
+    expect(result).toEqual({ x: 0, y: 0 })
+  })
+
+  it('should support the top-right corner', () => {
+    const gridCount = 5
+    const idx = 4
+    const result = idxToCoords(gridCount, idx)
+    expect(result).toEqual({ x: 4, y: 0 })
+  })
+
+  it('should support the bottom-left corner', () => {
+    const gridCount = 5
+    const idx = 20
+    const result = idxToCoords(gridCount, idx)
+    expect(result).toEqual({ x: 0, y: 4 })
+  })
+
+  it('should support the bottom-right corner', () => {
+    const gridCount = 5
+    const idx = 24
+    const result = idxToCoords(gridCount, idx)
+    expect(result).toEqual({ x: 4, y: 4 })
+  })
+})
+
+describe('idxInBox', () => {
+  it('should return true if index is within the box', () => {
+    const gridCount = 5
+    const start = 0
+    const end = 24
+    const idx = 12
+    const result = idxInBox(gridCount, start, end, idx)
+    expect(result).toBe(true)
+  })
+
+  it('should return false if index is outside the box', () => {
+    const gridCount = 5
+    const start = 0
+    const end = 24
+    const idx = 25
+    const result = idxInBox(gridCount, start, end, idx)
+    expect(result).toBe(false)
   })
 })
