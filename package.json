@@ -20,7 +20,7 @@
     "color": "^4.2.3",
     "dank-twitch-irc": "^3.3.0",
     "ejs": "^3.1.9",
-    "electron": "^24.1.2",
+    "electron": "^30.0.6",
     "hls.js": "^1.4.0",
     "jsondiffpatch": "^0.4.1",
     "koa": "^2.14.2",
