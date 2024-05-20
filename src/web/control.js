@@ -1491,13 +1491,14 @@ const TIN = styled.div`
 
 function main() {
   const script = document.getElementById('main-script')
+  const wsEndpoint = typeof script?.dataset?.wsEndpoint === 'string' ? script.dataset.wsEndpoint : 'defaultWsEndpoint';
+  const role = typeof script?.dataset?.role === 'string' ? script.dataset.role : 'defaultRole';
+
   render(
     <>
       <GlobalStyle />
-      <App wsEndpoint={script.dataset.wsEndpoint} role={script.dataset.role} />
+      <App wsEndpoint={wsEndpoint} role={role} />
     </>,
     document.body,
   )
 }
-
-main()
