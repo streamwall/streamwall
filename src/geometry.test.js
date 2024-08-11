@@ -90,40 +90,42 @@ describe.each([
   })
 })
 
-describe('idxToCoords', () => {
-  it('should convert index to coordinates correctly', () => {
-    const gridCount = 5
-    const idx = 12
-    const result = idxToCoords(gridCount, idx)
-    expect(result).toEqual({ x: 2, y: 2 })
-  })
+describe.each([
+  [
+    'a middle index',
+    5,
+    12,
+    { x: 2, y: 2 },
+  ],
+  [
+    'the top-left corner',
+    5,
+    0,
+    { x: 0, y: 0 },
+  ],
+  [
+    'the top-right corner',
+    5,
+    4,
+    { x: 4, y: 0 },
+  ],
+  [
+    'the bottom-left corner',
+    5,
+    20,
+    { x: 0, y: 4 },
+  ],
+  [
+    'the bottom-right corner',
+    5,
+    24,
+    { x: 4, y: 4 },
+  ],
 
-  it('should support the top-left corner', () => {
-    const gridCount = 5
-    const idx = 0
+])('idxToCoords', (humanized_location, gridCount, idx, coords) => {
+  test(`should support ${humanized_location}`, () => {
     const result = idxToCoords(gridCount, idx)
-    expect(result).toEqual({ x: 0, y: 0 })
-  })
-
-  it('should support the top-right corner', () => {
-    const gridCount = 5
-    const idx = 4
-    const result = idxToCoords(gridCount, idx)
-    expect(result).toEqual({ x: 4, y: 0 })
-  })
-
-  it('should support the bottom-left corner', () => {
-    const gridCount = 5
-    const idx = 20
-    const result = idxToCoords(gridCount, idx)
-    expect(result).toEqual({ x: 0, y: 4 })
-  })
-
-  it('should support the bottom-right corner', () => {
-    const gridCount = 5
-    const idx = 24
-    const result = idxToCoords(gridCount, idx)
-    expect(result).toEqual({ x: 4, y: 4 })
+    expect(result).toEqual(coords)
   })
 })
 
