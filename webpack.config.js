@@ -118,6 +118,13 @@ const webConfig = {
       patterns: [{ from: 'src/web/*.ejs', to: '[name].ejs' }],
     }),
   ],
+  stats: {
+    colors: true,
+    modules: true,
+    reasons: true,
+    errorDetails: true,
+    warnings: true,
+  }
 }
 
 module.exports = [nodeConfig, browserConfig, webConfig]

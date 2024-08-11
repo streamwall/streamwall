@@ -211,6 +211,16 @@ function parseArgs() {
 }
 
 async function main(argv) {
+  const fs = require('fs');
+  const util = require('util');
+  const log_file = fs.createWriteStream('streamwall.log', { flags: 'w' });
+  const log_stdout = process.stdout;
+
+  console.log = console.info = console.warn = console.error = function(d) {
+    log_file.write(util.format(d) + '\n');
+    log_stdout.write(util.format(d) + '\n');
+  };
+
   // Reject all permission requests from web content.
   session
     .fromPartition('persist:session')
@@ -327,9 +337,15 @@ async function main(argv) {
         })
       }
       if (msg.type === 'browse') {
-        ensureValidURL(msg.url)
-        browseWindow.loadURL(msg.url)
-      } else if (msg.type === 'dev-tools') {
+        console.error('Attempting to browse URL:', msg.url)
+        try {
+          ensureValidURL(msg.url)
+          browseWindow.loadURL(msg.url)
+        } catch (error) {
+          console.error('Invalid URL:', msg.url)
+          console.error('Error:', error)
+        }
+    } else if (msg.type === 'dev-tools') {
         streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
       }
     } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
