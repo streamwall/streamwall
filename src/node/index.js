@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import util from 'util'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
@@ -383,7 +382,6 @@ async function main(argv) {
   if (argv.control.address) {
     console.debug('Initializing web server...')
     const webDistPath = path.join(app.getAppPath(), 'web')
-    console.debug('1')
     await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
@@ -398,13 +396,9 @@ async function main(argv) {
       onMessage,
       stateDoc,
     })
-    console.debug('2')
     if (argv.control.open) {
-      console.debug('3')
       shell.openExternal(argv.control.address)
-      console.debug('4')
     }
-    console.debug('5')
   }
 
   if (argv.streamdelay.key) {
