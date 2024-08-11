@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import util from 'util'
 import yargs from 'yargs'
 import TOML from '@iarna/toml'
 import * as Y from 'yjs'
@@ -211,16 +212,6 @@ function parseArgs() {
 }
 
 async function main(argv) {
-  const fs = require('fs');
-  const util = require('util');
-  const log_file = fs.createWriteStream('streamwall.log', { flags: 'w' });
-  const log_stdout = process.stdout;
-
-  console.log = console.info = console.warn = console.error = function(d) {
-    log_file.write(util.format(d) + '\n');
-    log_stdout.write(util.format(d) + '\n');
-  };
-
   // Reject all permission requests from web content.
   session
     .fromPartition('persist:session')
@@ -228,8 +219,10 @@ async function main(argv) {
       callback(false)
     })
 
+  console.debug('Loading persistence data...')
   const persistData = await persistence.load()
 
+  console.debug('Creating StreamWindow...')
   const idGen = new StreamIDGenerator()
   const localStreamData = new LocalStreamData()
   const overlayStreamData = new LocalStreamData()
@@ -245,6 +238,7 @@ async function main(argv) {
   })
   streamWindow.init()
 
+  console.debug('Creating Auth...')
   const auth = new Auth({
     adminUsername: argv.control.username,
     adminPassword: argv.control.password,
@@ -256,6 +250,7 @@ async function main(argv) {
   let twitchBot = null
   let streamdelayClient = null
 
+  console.debug('Creating initial state...')
   let clientState = new StateWrapper({
     config: {
       width: argv.window.width,
@@ -300,21 +295,29 @@ async function main(argv) {
   })
 
   const onMessage = async (msg, respond) => {
+    console.debug('Received message:', msg)
     if (msg.type === 'set-listening-view') {
+      console.debug('Setting listening view:', msg.viewIdx)
       streamWindow.setListeningView(msg.viewIdx)
     } else if (msg.type === 'set-view-background-listening') {
+      console.debug('Setting view background listening:', msg.viewIdx, msg.listening)
       streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
     } else if (msg.type === 'set-view-blurred') {
+      console.debug('Setting view blurred:', msg.viewIdx, msg.blurred)
       streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
     } else if (msg.type === 'rotate-stream') {
+      console.debug('Rotating stream:', msg.url, msg.rotation)
       overlayStreamData.update(msg.url, {
         rotation: msg.rotation,
       })
     } else if (msg.type === 'update-custom-stream') {
+      console.debug('Updating custom stream:', msg.url)
       localStreamData.update(msg.url, msg.data)
     } else if (msg.type === 'delete-custom-stream') {
+      console.debug('Deleting custom stream:', msg.url)
       localStreamData.delete(msg.url)
     } else if (msg.type === 'reload-view') {
+      console.debug('Reloading view:', msg.viewIdx)
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
       if (
@@ -346,13 +349,17 @@ async function main(argv) {
           console.error('Error:', error)
         }
     } else if (msg.type === 'dev-tools') {
+        console.debug('Opening DevTools for view:', msg.viewIdx)
         streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
       }
     } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
+      console.debug('Setting stream censored:', msg.isCensored)
       streamdelayClient.setCensored(msg.isCensored)
     } else if (msg.type === 'set-stream-running' && streamdelayClient) {
+      console.debug('Setting stream running:', msg.isStreamRunning)
       streamdelayClient.setStreamRunning(msg.isStreamRunning)
     } else if (msg.type === 'create-invite') {
+      console.debug('Creating invite for role:', msg.role)
       const { secret } = await auth.createToken({
         kind: 'invite',
         role: msg.role,
@@ -360,6 +367,7 @@ async function main(argv) {
       })
       respond({ name: msg.name, secret })
     } else if (msg.type === 'delete-token') {
+      console.debug('Deleting token:', msg.tokenId)
       auth.deleteToken(msg.tokenId)
     }
   }
@@ -373,7 +381,9 @@ async function main(argv) {
   }
 
   if (argv.control.address) {
+    console.debug('Initializing web server...')
     const webDistPath = path.join(app.getAppPath(), 'web')
+    console.debug('1')
     await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
@@ -388,12 +398,17 @@ async function main(argv) {
       onMessage,
       stateDoc,
     })
+    console.debug('2')
     if (argv.control.open) {
+      console.debug('3')
       shell.openExternal(argv.control.address)
+      console.debug('4')
     }
+    console.debug('5')
   }
 
   if (argv.streamdelay.key) {
+    console.debug('Setting up Streamdelay client...')
     streamdelayClient = new StreamdelayClient({
       endpoint: argv.streamdelay.endpoint,
       key: argv.streamdelay.key,
@@ -405,6 +420,7 @@ async function main(argv) {
   }
 
   if (argv.twitch.token) {
+    console.debug('Setting up Twitch bot...')
     twitchBot = new TwitchBot(argv.twitch)
     twitchBot.on('setListeningView', (idx) => {
       streamWindow.setListeningView(idx)
@@ -426,34 +442,42 @@ async function main(argv) {
   })
 
   const dataSources = [
-    ...argv.data['json-url'].map((url) =>
-      markDataSource(pollDataURL(url, argv.data.interval), 'json-url'),
-    ),
-    ...argv.data['toml-file'].map((path) =>
-      markDataSource(watchDataFile(path), 'toml-file'),
-    ),
+    ...argv.data['json-url'].map((url) => {
+      console.debug('Setting data source from json-url:', url)
+      return markDataSource(pollDataURL(url, argv.data.interval), 'json-url')
+    }),
+    ...argv.data['toml-file'].map((path) => {
+      console.debug('Setting data source from toml-file:', path)
+      return markDataSource(watchDataFile(path), 'toml-file')
+    }),
     markDataSource(localStreamData.gen(), 'custom'),
     overlayStreamData.gen(),
   ]
 
   for await (const rawStreams of combineDataSources(dataSources)) {
+    console.debug('Processing streams:', rawStreams)
     const streams = idGen.process(rawStreams)
     updateState({ streams })
   }
 }
 
 function init() {
+  console.debug('Parsing command line arguments...')
   const argv = parseArgs()
   if (argv.help) {
     return
   }
 
+  console.debug('Initializing Sentry...')
   if (argv.telemetry.sentry) {
     Sentry.init({ dsn: SENTRY_DSN })
   }
 
+  console.debug('Setting up Electron...')
   app.commandLine.appendSwitch('high-dpi-support', 1)
   app.commandLine.appendSwitch('force-device-scale-factor', 1)
+
+  console.debug('Enabling Electron sandbox...')
   app.enableSandbox()
   app
     .whenReady()
@@ -465,5 +489,6 @@ function init() {
 }
 
 if (require.main === module) {
+  console.debug('Starting Streamwall...')
   init()
 }

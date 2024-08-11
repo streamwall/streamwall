@@ -8,7 +8,7 @@
     "prune": "rm -rf dist",
     "start": "npm run build -- --stats=errors-only && electron dist",
     "start-local": "npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
-    "start-dev": "NODE_DEBUG=* npm run build -- --stats=verbose && NODE_DEBUG=* electron dist --enable-logging --control.address=http://localhost:4444 --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
+    "start-dev": "npm run build -- --stats=verbose && electron dist --enable-logging --control.address=http://localhost:4444 --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
     "test-full": "jest",
     "test": "jest --ci --reporters=default --reporters=jest-junit --testPathIgnorePatterns=src/node/server.test.js --coverage"
   },
