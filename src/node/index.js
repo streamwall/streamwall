@@ -337,7 +337,7 @@ async function main(argv) {
         })
       }
       if (msg.type === 'browse') {
-        console.error('Attempting to browse URL:', msg.url)
+        console.debug('Attempting to browse URL:', msg.url)
         try {
           ensureValidURL(msg.url)
           browseWindow.loadURL(msg.url)
