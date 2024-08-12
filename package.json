@@ -31,7 +31,7 @@
     "koa-easy-ws": "^2.1.0",
     "koa-route": "^4.0.1",
     "koa-static": "^5.0.0",
-    "@ladjs/koa-views": "^9.0.0",
+    "koa-views": "^8.1.0",
     "lodash": "^4.17.21",
     "luxon": "^3.5.0",
     "node-fetch": "^3.3.2",
