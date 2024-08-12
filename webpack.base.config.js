@@ -1,4 +1,5 @@
 module.exports = ({ babel }) => ({
+  mode: 'none',
   module: {
     rules: [
       {
@@ -45,5 +46,8 @@ module.exports = ({ babel }) => ({
     reasons: true,
     errorDetails: true,
     warnings: true,
-  }
+  },
+  cache: {
+    type: 'filesystem',
+  },
 })

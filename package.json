@@ -4,7 +4,10 @@
   "description": "View streams in a grid",
   "main": "./.webpack/main",
   "scripts": {
-    "build": "webpack",
+    "build:main": "webpack --config webpack.main.config.js",
+    "build:renderer": "webpack --config webpack.renderer.config.js",
+    "build:web": "webpack --config webpack.web.config.js",
+    "build": "npm run build:main & npm run build:renderer & npm run build:web",
     "prune": "rm -rf dist",
     "start": "electron-forge start",
     "start-local": "npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
