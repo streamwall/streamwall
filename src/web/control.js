@@ -1124,7 +1124,7 @@ function GridControls({
         {roleCan(role, 'set-listening-view') && (
           <StyledButton
             isActive={isListening || isBackgroundListening}
-            activeColor={isListening ? 'red' : Color('red').desaturate(0.5)}
+            activeColor={isListening ? 'red' : Color('red').desaturate(0.5).hsl().string()}
             onClick={handleListeningClick}
             tabIndex={1}
           >
@@ -1238,7 +1238,7 @@ const StyledButton = styled.button`
   ${({ isActive, activeColor = 'red' }) =>
     isActive &&
     `
-      border-color: ${activeColor};
+      border-color: ${Color(activeColor).hsl().string()};
       background: ${Color(activeColor).desaturate(0.5).lighten(0.5).hsl().string()};
     `};
 
@@ -1276,7 +1276,7 @@ const StyledGridPreviewBox = styled.div.attrs((props) => ({
   justify-content: center;
   position: absolute;
   background: ${({ color }) => Color(color).lightness(50).hsl().string() || '#333'};
-  border: 0 solid ${({ isError }) => (isError ? 'red' : 'black')};
+  border: 0 solid ${({ isError }) => (isError ? Color('red').hsl().string() : Color('black').hsl().string() )};
   border-left-width: ${({ pos, borderWidth }) =>
     pos.x === 0 ? 0 : borderWidth}px;
   border-right-width: ${({ pos, borderWidth, windowWidth }) =>
