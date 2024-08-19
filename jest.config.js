@@ -7,10 +7,12 @@ module.exports = {
     '\\.(css|less)$': 'identity-obj-proxy',
     "^preact(/(.*)|$)": "preact$1"
   },
-  testEnvironment: 'node',
   transform: {
     '^.+\\.jsx?$': 'babel-jest',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(jsondiffpatch)/)',
+  ],
   testPathIgnorePatterns: ['/node_modules/'],
   coveragePathIgnorePatterns: ['/node_modules/'],
   collectCoverage: true,
