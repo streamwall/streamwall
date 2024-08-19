@@ -9,7 +9,7 @@
     "start": "npm run build -- --stats=errors-only && electron dist",
     "start-local": "npm run build -- --stats=errors-only && electron dist --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
     "start-dev": "npm run build -- --stats=verbose && electron dist --enable-logging --control.address=http://localhost:4444 --control.username=streamwall --control.password=local-dev",
-    "jest": "jest",
+    "test": "jest",
     "test:ci": "jest --ci --reporters=default --reporters=jest-junit --testPathIgnorePatterns=src/node/server.test.js --coverage"
   },
   "author": "Max Goodhart <c@chromakode.com>",
