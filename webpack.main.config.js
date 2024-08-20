@@ -1,3 +1,4 @@
+const path = require('path');
 const baseConfig = require('./webpack.base.config')
 
 module.exports = {
@@ -8,15 +9,16 @@ module.exports = {
           '@babel/preset-env',
           {
             modules: 'commonjs',
-            targets: { node: true },
+            targets: { electron: '31.3' }
           },
         ],
       ],
     },
   }),
+  target: 'electron-main',
   entry: './src/node/main.js',
-  externals: {
-    consolidate: 'commonjs consolidate',
-    fsevents: 'commonjs fsevents',
-  },
+  output: {
+    path: path.resolve(__dirname, 'dist/main'),
+    filename: 'main.js'
+  }
 }

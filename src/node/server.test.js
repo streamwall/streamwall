@@ -1,6 +1,6 @@
 // Mock koa middleware that require built statics
 jest.mock('koa-static', () => () => (ctx, next) => next())
-jest.mock('koa-views', () => () => (ctx, next) => {
+jest.mock('@ladjs/koa-views', () => () => (ctx, next) => {
   ctx.render = async () => {
     ctx.body = 'mock'
   }
