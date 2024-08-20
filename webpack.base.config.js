@@ -1,9 +1,10 @@
 module.exports = ({ babel }) => ({
-  mode: 'none',
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'eval-source-map',
   module: {
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|ts|jsx|tsx)$/,
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
@@ -15,11 +16,8 @@ module.exports = ({ babel }) => ({
         use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.ttf$/,
-        loader: 'file-loader',
-        options: {
-          name: '[name].[ext]',
-        },
+        test: /\.(png|jpg|jpeg|gif|ico|ttf)$/,
+        type: 'asset/resource',
       },
       {
         test: /\.svg$/,
@@ -34,10 +32,17 @@ module.exports = ({ babel }) => ({
     ],
   },
   resolve: {
-    extensions: ['.jsx', '.js'],
+    extensions: ['.jsx', '.js', '.ts', '.tsx'],
     alias: {
       react: 'preact/compat',
       'react-dom': 'preact/compat',
+    },
+    modules: ['node_modules', 'src'],
+  },
+  optimization: {
+    moduleIds: 'deterministic',
+    splitChunks: {
+      chunks: 'all',
     },
   },
   stats: {
