@@ -88,6 +88,6 @@
     "webpack-cli": "^5.1.4"
   },
   "browserslist": [
-    "electron 9.0"
+    "electron 31.3"
   ]
 }
