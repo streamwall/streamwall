@@ -3,7 +3,7 @@ import { promises as fsPromises } from 'fs'
 import { promisify } from 'util'
 import { Repeater } from '@repeaterjs/repeater'
 import TOML from '@iarna/toml'
-import fetch from 'node-fetch'
+import request from 'undici'
 import chokidar from 'chokidar'
 
 const sleep = promisify(setTimeout)
@@ -14,7 +14,7 @@ export async function* pollDataURL(url, intervalSecs) {
   while (true) {
     let data = []
     try {
-      const resp = await fetch(url)
+      const resp = await request(url)
       data = await resp.json()
     } catch (err) {
       console.warn('error loading stream data', err)
