@@ -38,6 +38,7 @@ module.exports = {
               preload: {
                 js: './src/renderer/layerPreload.js',
               },
+              nodeIntegration: true,
             },
             {
               name: 'overlay',
@@ -46,17 +47,20 @@ module.exports = {
               preload: {
                 js: './src/renderer/layerPreload.js',
               },
+              nodeIntegration: true,
             },
             {
               name: 'playHLS',
               html: './src/renderer/playHLS.html',
               js: './src/renderer/playHLS.js',
+              nodeIntegration: true,
             },
             {
               name: 'media',
               preload: {
                 js: './src/renderer/mediaPreload.js',
               },
+              nodeIntegration: true,
             },
           ],
         },
