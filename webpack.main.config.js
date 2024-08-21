@@ -15,7 +15,6 @@ module.exports = {
       ],
     },
   }),
-  target: 'electron-main',
   entry: './src/node/main.js',
   output: {
     path: path.resolve(__dirname, 'dist/main'),

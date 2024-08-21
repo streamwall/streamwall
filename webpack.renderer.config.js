@@ -12,7 +12,6 @@ module.exports = {
       ]
     },
   }),
-  target: 'electron-renderer',
   entry: {
     background: './src/renderer/background.js',
     overlay: './src/renderer/overlay.js',
