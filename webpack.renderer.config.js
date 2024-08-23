@@ -18,7 +18,7 @@ module.exports = {
     playHLS: './src/renderer/playHLS.js'
   },
   output: {
-    path: path.resolve(__dirname, 'dist/renderer'),
+    path: path.resolve(__dirname, '.webpack/renderer'),
     filename: '[name].js'
   }
 }

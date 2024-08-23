@@ -17,7 +17,7 @@ module.exports = {
   }),
   entry: './src/node/main.js',
   output: {
-    path: path.resolve(__dirname, 'dist/main'),
-    filename: 'main.js'
-  }
+    path: path.resolve(__dirname, '.webpack/main'),
+    filename: 'index.js'
+  },
 }
