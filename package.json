@@ -4,7 +4,7 @@
   "description": "View streams in a grid",
   "main": "./.webpack/main",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "electron-forge start -- --control.address=http://localhost:4444 --control.username=admin --control.password=password",
     "make": "electron-forge make",
     "package": "electron-forge package",
     "publish": "electron-forge publish",

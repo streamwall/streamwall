@@ -40,7 +40,7 @@ function initApp({
   const app = new Koa()
 
   // silence koa printing errors when websockets close early
-  app.silent = true
+  // app.silent = true
 
   app.use(views(webDistPath, { extension: 'ejs' }))
   app.use(serveStatic(webDistPath))
@@ -264,6 +264,17 @@ export default async function initWebServer({
     stateDoc,
   })
 
+  console.debug(`App initialized with args:`, {
+    certDir,
+    certProduction,
+    email,
+    baseURL,
+    overrideHostname,
+    overridePort,
+    webDistPath,
+    logEnabled,
+  })
+
   let server
   if (protocol === 'https:' && certDir) {
     const { key, cert } = await simpleCert({
@@ -277,9 +288,12 @@ export default async function initWebServer({
   } else {
     server = http.createServer(app.callback())
   }
+  console.debug("Server started.")
 
   const listen = promisify(server.listen).bind(server)
   await listen(port, overrideHostname || hostname)
+
+  console.debug('Web server listening:', { hostname, port })
 
   return { server }
 }

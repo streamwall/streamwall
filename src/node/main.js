@@ -381,7 +381,8 @@ async function main(argv) {
 
   if (argv.control.address) {
     console.debug('Initializing web server...')
-    const webDistPath = path.join(app.getAppPath(), './web')
+    const webDistPath = path.join(app.getAppPath(), './.webpack/main/web')
+    console.debug('Web dist path:', webDistPath)
     await initWebServer({
       certDir: argv.cert.dir,
       certProduction: argv.cert.production,
