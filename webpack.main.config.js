@@ -1,4 +1,5 @@
 const path = require('path');
+const nodeExternals = require('webpack-node-externals');
 const baseConfig = require('./webpack.base.config')
 
 module.exports = {
@@ -15,6 +16,7 @@ module.exports = {
       ],
     },
   }),
+  externals: [nodeExternals()],
   entry: './src/node/main.js',
   output: {
     path: path.resolve(__dirname, '.webpack/main'),

@@ -1,7 +1,4 @@
-const nodeExternals = require('webpack-node-externals');
-
 module.exports = ({ babel }) => ({
-  externals: [nodeExternals()],
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'eval-source-map',
   module: {
@@ -48,12 +45,6 @@ module.exports = ({ babel }) => ({
       https: require.resolve("https-browserify"),
       http: require.resolve("stream-http")
     }
-  },
-  optimization: {
-    moduleIds: 'deterministic',
-    splitChunks: {
-      chunks: 'all',
-    },
   },
   stats: {
     colors: true,
