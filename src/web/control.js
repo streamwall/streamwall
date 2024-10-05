@@ -13,6 +13,8 @@ import {
   useRef,
 } from 'preact/hooks'
 import { State } from 'xstate'
+import isPropValid from '@emotion/is-prop-valid';
+import { StyleSheetManager } from 'styled-components';
 import styled, { createGlobalStyle } from 'styled-components'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Color from 'color'
@@ -580,214 +582,216 @@ function App({ wsEndpoint, role }) {
   }
 
   return (
-    <Stack flex="1">
-      <Stack>
-        <StyledHeader>
-          <h1>Streamwall ({location.host})</h1>
-          <div>
-            connection status: {isConnected ? 'connected' : 'connecting...'}
-          </div>
-          <div>role: {role}</div>
-        </StyledHeader>
-        {delayState && (
-          <StreamDelayBox
-            role={role}
-            delayState={delayState}
-            setStreamCensored={setStreamCensored}
-            setStreamRunning={setStreamRunning}
-          />
-        )}
-        <StyledDataContainer isConnected={isConnected}>
-          {gridCount && (
-            <StyledGridContainer
-              onMouseMove={updateHoveringIdx}
-              windowWidth={windowWidth}
-              windowHeight={windowHeight}
-            >
-              <StyledGridInputs>
-                {range(0, gridCount).map((y) =>
-                  range(0, gridCount).map((x) => {
-                    const idx = gridCount * y + x
-                    const { state } = stateIdxMap.get(idx) || {}
-                    const { streamId } = sharedState.views?.[idx] ?? {}
-                    const isDragHighlighted =
-                      dragStart !== undefined &&
-                      idxInBox(gridCount, dragStart, hoveringIdx, idx)
+    <StyleSheetManager shouldForwardProp={(prop) => isPropValid(prop) && !prop.startsWith('$')}>
+      <Stack flex="1">
+        <Stack>
+          <StyledHeader>
+            <h1>Streamwall ({location.host})</h1>
+            <div>
+              connection status: {isConnected ? 'connected' : 'connecting...'}
+            </div>
+            <div>role: {role}</div>
+          </StyledHeader>
+          {delayState && (
+            <StreamDelayBox
+              role={role}
+              delayState={delayState}
+              setStreamCensored={setStreamCensored}
+              setStreamRunning={setStreamRunning}
+            />
+          )}
+          <StyledDataContainer isConnected={isConnected}>
+            {gridCount && (
+              <StyledGridContainer
+                onMouseMove={updateHoveringIdx}
+                windowWidth={windowWidth}
+                windowHeight={windowHeight}
+              >
+                <StyledGridInputs>
+                  {range(0, gridCount).map((y) =>
+                    range(0, gridCount).map((x) => {
+                      const idx = gridCount * y + x
+                      const { state } = stateIdxMap.get(idx) || {}
+                      const { streamId } = sharedState.views?.[idx] ?? {}
+                      const isDragHighlighted =
+                        dragStart !== undefined &&
+                        idxInBox(gridCount, dragStart, hoveringIdx, idx)
+                      return (
+                        <GridInput
+                          style={{
+                            width: `${100 / gridCount}%`,
+                            height: `${100 / gridCount}%`,
+                            left: `${(100 * x) / gridCount}%`,
+                            top: `${(100 * y) / gridCount}%`,
+                          }}
+                          idx={idx}
+                          spaceValue={streamId}
+                          onChangeSpace={handleSetView}
+                          isHighlighted={isDragHighlighted}
+                          role={role}
+                          onMouseDown={handleDragStart}
+                          onFocus={handleFocusInput}
+                          onBlur={handleBlurInput}
+                        />
+                      )
+                    }),
+                  )}
+                </StyledGridInputs>
+                <StyledGridPreview>
+                  {views.map(({ state, isListening }) => {
+                    const { pos } = state.context
+                    const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
+                    const data = streams.find((d) => d._id === streamId)
                     return (
-                      <GridInput
+                      <StyledGridPreviewBox
+                        color={idColor(streamId)}
                         style={{
-                          width: `${100 / gridCount}%`,
-                          height: `${100 / gridCount}%`,
-                          left: `${(100 * x) / gridCount}%`,
-                          top: `${(100 * y) / gridCount}%`,
+                          left: `${(100 * pos.x) / windowWidth}%`,
+                          top: `${(100 * pos.y) / windowHeight}%`,
+                          width: `${(100 * pos.width) / windowWidth}%`,
+                          height: `${(100 * pos.height) / windowHeight}%`,
                         }}
-                        idx={idx}
-                        spaceValue={streamId}
-                        onChangeSpace={handleSetView}
-                        isHighlighted={isDragHighlighted}
+                        pos={pos}
+                        windowWidth={windowWidth}
+                        windowHeight={windowHeight}
+                        isListening={isListening}
+                        isError={state && state.matches('displaying.error')}
+                      >
+                        <StyledGridInfo>
+                          <StyledGridLabel>{streamId}</StyledGridLabel>
+                          <div>{data?.source}</div>
+                        </StyledGridInfo>
+                      </StyledGridPreviewBox>
+                    )
+                  })}
+                </StyledGridPreview>
+                {views.map(
+                  ({ state, isListening, isBackgroundListening, isBlurred }) => {
+                    const { pos } = state.context
+                    const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
+                    return (
+                      <GridControls
+                        idx={pos.spaces[0]}
+                        streamId={streamId}
+                        style={{
+                          left: `${(100 * pos.x) / windowWidth}%`,
+                          top: `${(100 * pos.y) / windowHeight}%`,
+                          width: `${(100 * pos.width) / windowWidth}%`,
+                          height: `${(100 * pos.height) / windowHeight}%`,
+                        }}
+                        isDisplaying={state && state.matches('displaying')}
+                        isListening={isListening}
+                        isBackgroundListening={isBackgroundListening}
+                        isBlurred={isBlurred}
+                        isSwapping={pos.spaces.includes(swapStartIdx)}
+                        showDebug={showDebug}
                         role={role}
+                        onSetListening={handleSetListening}
+                        onSetBackgroundListening={handleSetBackgroundListening}
+                        onSetBlurred={handleSetBlurred}
+                        onReloadView={handleReloadView}
+                        onSwapView={handleSwapView}
+                        onRotateView={handleRotateStream}
+                        onBrowse={handleBrowse}
+                        onDevTools={handleDevTools}
                         onMouseDown={handleDragStart}
-                        onFocus={handleFocusInput}
-                        onBlur={handleBlurInput}
                       />
                     )
-                  }),
+                  },
                 )}
-              </StyledGridInputs>
-              <StyledGridPreview>
-                {views.map(({ state, isListening }) => {
-                  const { pos } = state.context
-                  const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
-                  const data = streams.find((d) => d._id === streamId)
-                  return (
-                    <StyledGridPreviewBox
-                      color={idColor(streamId)}
-                      style={{
-                        left: `${(100 * pos.x) / windowWidth}%`,
-                        top: `${(100 * pos.y) / windowHeight}%`,
-                        width: `${(100 * pos.width) / windowWidth}%`,
-                        height: `${(100 * pos.height) / windowHeight}%`,
-                      }}
-                      pos={pos}
-                      windowWidth={windowWidth}
-                      windowHeight={windowHeight}
-                      isListening={isListening}
-                      isError={state && state.matches('displaying.error')}
-                    >
-                      <StyledGridInfo>
-                        <StyledGridLabel>{streamId}</StyledGridLabel>
-                        <div>{data?.source}</div>
-                      </StyledGridInfo>
-                    </StyledGridPreviewBox>
-                  )
-                })}
-              </StyledGridPreview>
-              {views.map(
-                ({ state, isListening, isBackgroundListening, isBlurred }) => {
-                  const { pos } = state.context
-                  const { streamId } = sharedState.views[pos.spaces[0]] ?? {}
-                  return (
-                    <GridControls
-                      idx={pos.spaces[0]}
-                      streamId={streamId}
-                      style={{
-                        left: `${(100 * pos.x) / windowWidth}%`,
-                        top: `${(100 * pos.y) / windowHeight}%`,
-                        width: `${(100 * pos.width) / windowWidth}%`,
-                        height: `${(100 * pos.height) / windowHeight}%`,
-                      }}
-                      isDisplaying={state && state.matches('displaying')}
-                      isListening={isListening}
-                      isBackgroundListening={isBackgroundListening}
-                      isBlurred={isBlurred}
-                      isSwapping={pos.spaces.includes(swapStartIdx)}
-                      showDebug={showDebug}
-                      role={role}
-                      onSetListening={handleSetListening}
-                      onSetBackgroundListening={handleSetBackgroundListening}
-                      onSetBlurred={handleSetBlurred}
-                      onReloadView={handleReloadView}
-                      onSwapView={handleSwapView}
-                      onRotateView={handleRotateStream}
-                      onBrowse={handleBrowse}
-                      onDevTools={handleDevTools}
-                      onMouseDown={handleDragStart}
+              </StyledGridContainer>
+            )}
+            {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
+              <label>
+                <input
+                  type="checkbox"
+                  value={showDebug}
+                  onChange={handleChangeShowDebug}
+                />
+                Show stream debug tools
+              </label>
+            )}
+            <Facts />
+          </StyledDataContainer>
+        </Stack>
+        <Stack flex="1" scroll={true} minHeight={200}>
+          <StyledDataContainer isConnected={isConnected}>
+            {isConnected ? (
+              <div>
+                <h3>Live</h3>
+                <StreamList rows={liveStreams} />
+                <h3>Offline / Unknown</h3>
+                <StreamList rows={otherStreams} />
+              </div>
+            ) : (
+              <div>loading...</div>
+            )}
+            {roleCan(role, 'update-custom-stream') &&
+              roleCan(role, 'delete-custom-stream') && (
+                <>
+                  <h2>Custom Streams</h2>
+                  <div>
+                    {/*
+                    Include an empty object at the end to create an extra input for a new custom stream.
+                    We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
+                  */}
+                    {customStreams.map(({ link, label, kind }, idx) => (
+                      <CustomStreamInput
+                        key={idx}
+                        link={link}
+                        label={label}
+                        kind={kind}
+                        onChange={handleChangeCustomStream}
+                        onDelete={handleDeleteCustomStream}
+                      />
+                    ))}
+                    <CreateCustomStreamInput
+                      onCreate={handleChangeCustomStream}
                     />
-                  )
-                },
+                  </div>
+                </>
               )}
-            </StyledGridContainer>
-          )}
-          {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
-            <label>
-              <input
-                type="checkbox"
-                value={showDebug}
-                onChange={handleChangeShowDebug}
-              />
-              Show stream debug tools
-            </label>
-          )}
-          <Facts />
-        </StyledDataContainer>
-      </Stack>
-      <Stack flex="1" scroll={true} minHeight={200}>
-        <StyledDataContainer isConnected={isConnected}>
-          {isConnected ? (
-            <div>
-              <h3>Live</h3>
-              <StreamList rows={liveStreams} />
-              <h3>Offline / Unknown</h3>
-              <StreamList rows={otherStreams} />
-            </div>
-          ) : (
-            <div>loading...</div>
-          )}
-          {roleCan(role, 'update-custom-stream') &&
-            roleCan(role, 'delete-custom-stream') && (
+            {roleCan(role, 'edit-tokens') && authState && (
               <>
-                <h2>Custom Streams</h2>
+                <h2>Access</h2>
                 <div>
-                  {/*
-                  Include an empty object at the end to create an extra input for a new custom stream.
-                  We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
-                */}
-                  {customStreams.map(({ link, label, kind }, idx) => (
-                    <CustomStreamInput
-                      key={idx}
-                      link={link}
-                      label={label}
-                      kind={kind}
-                      onChange={handleChangeCustomStream}
-                      onDelete={handleDeleteCustomStream}
+                  <CreateInviteInput onCreateInvite={handleCreateInvite} />
+                  <h3>Invites</h3>
+                  {newInvite && (
+                    <StyledNewInviteBox>
+                      Invite link created:{' '}
+                      <a
+                        href={`/invite/${newInvite.secret}`}
+                        onClick={preventLinkClick}
+                      >
+                        "{newInvite.name}"
+                      </a>
+                    </StyledNewInviteBox>
+                  )}
+                  {authState.invites.map(({ id, name, role }) => (
+                    <AuthTokenLine
+                      id={id}
+                      name={name}
+                      role={role}
+                      onDelete={handleDeleteToken}
                     />
                   ))}
-                  <CreateCustomStreamInput
-                    onCreate={handleChangeCustomStream}
-                  />
+                  <h3>Sessions</h3>
+                  {authState.sessions.map(({ id, name, role }) => (
+                    <AuthTokenLine
+                      id={id}
+                      name={name}
+                      role={role}
+                      onDelete={handleDeleteToken}
+                    />
+                  ))}
                 </div>
               </>
             )}
-          {roleCan(role, 'edit-tokens') && authState && (
-            <>
-              <h2>Access</h2>
-              <div>
-                <CreateInviteInput onCreateInvite={handleCreateInvite} />
-                <h3>Invites</h3>
-                {newInvite && (
-                  <StyledNewInviteBox>
-                    Invite link created:{' '}
-                    <a
-                      href={`/invite/${newInvite.secret}`}
-                      onClick={preventLinkClick}
-                    >
-                      "{newInvite.name}"
-                    </a>
-                  </StyledNewInviteBox>
-                )}
-                {authState.invites.map(({ id, name, role }) => (
-                  <AuthTokenLine
-                    id={id}
-                    name={name}
-                    role={role}
-                    onDelete={handleDeleteToken}
-                  />
-                ))}
-                <h3>Sessions</h3>
-                {authState.sessions.map(({ id, name, role }) => (
-                  <AuthTokenLine
-                    id={id}
-                    name={name}
-                    role={role}
-                    onDelete={handleDeleteToken}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </StyledDataContainer>
+          </StyledDataContainer>
+        </Stack>
       </Stack>
-    </Stack>
+    </StyleSheetManager>
   )
 }
 
@@ -888,9 +892,9 @@ function StreamLine({
   return (
     <StyledStreamLine>
       <StyledId
-        disabled={disabled}
+        $disabled={disabled}
         onMouseDown={disabled ? null : handleMouseDownId}
-        color={idColor(id)}
+        $color={idColor(id)}
       >
         {id}
       </StyledId>
@@ -1120,7 +1124,7 @@ function GridControls({
         {roleCan(role, 'set-listening-view') && (
           <StyledButton
             isActive={isListening || isBackgroundListening}
-            activeColor={isListening ? 'red' : Color('red').desaturate(0.5)}
+            activeColor={isListening ? 'red' : Color('red').desaturate(0.5).hsl().string()}
             onClick={handleListeningClick}
             tabIndex={1}
           >
@@ -1234,8 +1238,8 @@ const StyledButton = styled.button`
   ${({ isActive, activeColor = 'red' }) =>
     isActive &&
     `
-      border-color: ${activeColor};
-      background: ${Color(activeColor).desaturate(0.5).lighten(0.5)};
+      border-color: ${Color(activeColor).hsl().string()};
+      background: ${Color(activeColor).desaturate(0.5).lighten(0.5).hsl().string()};
     `};
 
   &:focus {
@@ -1271,8 +1275,8 @@ const StyledGridPreviewBox = styled.div.attrs((props) => ({
   align-items: center;
   justify-content: center;
   position: absolute;
-  background: ${({ color }) => color.lightness(50) || '#333'};
-  border: 0 solid ${({ isError }) => (isError ? 'red' : 'black')};
+  background: ${({ color }) => Color(color).lightness(50).hsl().string() || '#333'};
+  border: 0 solid ${({ isError }) => (isError ? Color('red').hsl().string() : Color('black').hsl().string() )};
   border-left-width: ${({ pos, borderWidth }) =>
     pos.x === 0 ? 0 : borderWidth}px;
   border-right-width: ${({ pos, borderWidth, windowWidth }) =>
@@ -1331,7 +1335,7 @@ const StyledGridInput = styled(LazyChangeInput)`
   border: none;
   padding: 0;
   background: ${({ color, isHighlighted }) =>
-    isHighlighted ? color.lightness(90) : color.lightness(75)};
+    isHighlighted ? Color(color).lightness(90).hsl().string() : Color(color).lightness(75).hsl().string() };
   font-size: 20px;
   text-align: center;
 
@@ -1368,13 +1372,13 @@ const StyledGridContainer = styled.div.attrs((props) => ({
 const StyledId = styled.div`
   flex-shrink: 0;
   margin-right: 5px;
-  background: ${({ color }) => color.lightness(50) || '#333'};
+  background: ${({ $color }) => Color($color).lightness(50).hsl().string() || '#333'};
   color: white;
   padding: 3px;
   border-radius: 5px;
   width: 3em;
   text-align: center;
-  cursor: ${({ disabled }) => (disabled ? 'normal' : 'pointer')};
+  cursor: ${({ $disabled }) => ($disabled ? 'normal' : 'pointer')};
 `
 
 const StyledStreamLine = styled.div`

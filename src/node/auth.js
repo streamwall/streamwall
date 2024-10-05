@@ -6,7 +6,8 @@ import { validRoles } from '../roles'
 
 const scrypt = promisify(scryptCb)
 
-const base62 = require('base-x')(
+import baseX from 'base-x'
+const base62 = baseX(
   '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
 )
 
