@@ -108,7 +108,7 @@ const webConfig = {
   devtool: 'cheap-source-map',
   target: 'web',
   entry: {
-    control: './src/web/control.js',
+    control: './src/web/entrypoint.js',
   },
   output: {
     path: path.resolve(__dirname, 'dist/web'),
@@ -118,6 +118,13 @@ const webConfig = {
       patterns: [{ from: 'src/web/*.ejs', to: '[name].ejs' }],
     }),
   ],
+  stats: {
+    colors: true,
+    modules: true,
+    reasons: true,
+    errorDetails: true,
+    warnings: true,
+  }
 }
 
 module.exports = [nodeConfig, browserConfig, webConfig]

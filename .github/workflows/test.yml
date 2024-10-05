@@ -1,17 +1,39 @@
-name: Node.js CI
+name: test
 
-on: [push]
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
 
 jobs:
-  build:
+  jest-coverage:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 18.x
-      - run: npm install
-      - run: npm test
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm run test:ci
         env:
           CI: true
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Jest Tests            # Name of the check run which will be created
+          path: junit*.xml    # Path to test results
+          reporter: jest-junit        # Format of test results
