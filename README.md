@@ -26,6 +26,30 @@ Download and install the latest release for your system from the [Releases page]
 
 Streamwall has a number of configuration options. See `example.config.toml` for an example.
 
+### Configuration file
+
+Streamwall can load configuration from a TOML file. The default location is `config.toml` in the same directory as the executable, but you can specify a different file with the `--config` command line option.
+
+When setting values for your `streamwall.toml` file, you can use the following format where the prefix represents the category of the configuration:
+
+```toml
+[control]
+address = "http://localhost:80"
+
+[data]
+interval = 30
+```
+
+### Command line options
+
+Streamwall can also accept configuration options via the command line. For example, to set the control panel address:
+
+```sh
+streamwall --control.address="http://localhost:80"
+```
+
+### Available configuration options
+
 | Option | Description | Default | Example | Accepted Values |
 |--------|-------------|---------|---------|-----------------|
 | `cert.dir` | The directory to store SSL certificates for HTTPS | Not set | `"./certs"` | Any valid directory path |
