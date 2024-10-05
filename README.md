@@ -38,9 +38,7 @@ Streamwall has a number of configuration options. See `example.config.toml` for 
 
 ### Configuration file
 
-Streamwall can load configuration from a TOML file. The default location is `config.toml` in the same directory as the executable, but you can specify a different file with the `--config` command line option.
-
-When setting values for your `streamwall.toml` file, you can use the following format where the prefix represents the category of the configuration:
+Streamwall can load configuration from a TOML file by starting streamwall with the `--config=config.toml` option (relative path to the executable).  When setting values in your configuration file, you can use the following format where the prefix represents the category of the configuration:
 
 ```toml
 [control]
