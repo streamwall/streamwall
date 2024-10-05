@@ -25,8 +25,8 @@ module.exports = {
       devServer: {
         stats: 'verbose'
       },
-      devContentSecurityPolicy: 'default-src \'self\' \'unsafe-inline\' data:; script-src \'self\' \'unsafe-eval\' \'unsafe-inline\' data:',
       config: {
+        devContentSecurityPolicy: 'default-src \'self\' \'unsafe-inline\' data:; script-src \'self\' \'unsafe-eval\' \'unsafe-inline\' data:',
         mainConfig: './webpack.main.config.js',
         renderer: {
           config: './webpack.renderer.config.js',
