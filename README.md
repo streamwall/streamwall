@@ -1,20 +1,29 @@
 # Streamwall
 
-Streamwall makes it easy to compose multiple livestreams into a mosaic, with source attributions and audio control.
+Streamwall plays a grid of video streams, with audio control and source attribution. It's designed for use in a live streaming environment, enabling you to easily switch between different video sources and display multiple perspectives at once.
 
 ![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
 
 ## How it works
 
-Think of Streamwall as a specialized web browser for mosaicing video streams. It uses [Electron](https://www.electronjs.org) to create a grid of web browser views, loading the specified webpages into them. Once the page loads, Streamwall finds the `<video>` tag and reformats the page so that the video fills the space. This works for a wide variety of web pages without specialized scrapers.
+Think of Streamwall as a specialized web browser for creating a mosaic, grid, or CCTV-esque array of video streams.
+
+Streamwall uses [Electron](https://www.electronjs.org) to create a grid of web browser views, loading the specified webpages into them. It's built and distribued with [Electron Forge](https://www.electronforge.io/).
+
+For each source, Streamwall finds the `<video>` tag and reformats the page so that the video fills the space. This works for a wide variety of web pages and
+platforms without the need for specialized scrapers.
 
 ## Installation
 
 Download and install the latest release for your system from the [Releases page](https://github.com/streamwall/streamwall/releases).
 
+- The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository.
+- The latest development build is available on the `main` branch of this repository.
+
 ## Running Streamwall
 
-> [!TIP]
+> **[!TIP]**
+> The first time you run Streamwall, it will open a browser window with the control panel. You can use this to load streams and control the app.
 > - **Default username:** `admin`
 > - **Default password:** `password`
 
