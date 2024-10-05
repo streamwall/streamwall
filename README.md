@@ -14,9 +14,11 @@ Download and install the latest release for your system from the [Releases page]
 
 ## Running Streamwall
 
+> [!TIP]
+> - **Default username:** `admin`
+> - **Default password:** `password`
+
 1. Start the app by running the installed executable. When your browser opens, log into the control panel.
-    - **Default username:** `admin`
-    - **Default password:** `password`
 1. Use the browser window to load or control streams.
 1. If you enter the same stream code in multiple cells, it will merge them together for a larger stream.
 
