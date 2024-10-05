@@ -120,7 +120,13 @@ The following hotkeys are available with the "control" webpage focused:
 
 Streamwall in its default settings needs enough screen space to display a 1920x1080 (1080p) window, with room for the titlebar. You can configure Streamwall to open a smaller window:
 
-TODO: Document how to configure the window size.
+> Create a `config.toml` file with the following content:
+>
+>    ```toml
+>    [window]
+>    width = 1280
+>    height = 720
+>    ```
 
 ## Development
 
