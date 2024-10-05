@@ -23,6 +23,7 @@ Download and install the latest release for your system from the [Releases page]
 ## Running Streamwall
 
 > [!TIP]
+>
 > The first time you run Streamwall, it will open a browser window with the control panel. You can use this to load streams and control the app.
 > - **Default username:** `admin`
 > - **Default password:** `password`
