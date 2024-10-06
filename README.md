@@ -1,17 +1,21 @@
 # Streamwall
 
-Streamwall plays a grid of video streams, with audio control and source attribution. It's designed for use in a live streaming environment, enabling you to easily switch between different video sources and display multiple perspectives at once.
+> [!NOTE]
+> Streamwall was built and used extensively during protest movements beginning in 2020. It is often used to share and record sociopolitical events as they happen from multiple perspectives.
+>
+> Please use it responsibly, credit and communicate with your sources, and act in accordance with the laws of your jurisdiction
 
-![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
+Streamwall is a web browser that displays a grid of video streams with audio control and source attribution for livestreaming and archival purposes. Streamwall works with [OBS](https://obsproject.com/), [XSplit](https://www.xsplit.com/), and other streaming software that can display custom browsers and application windows
 
-## How it works
+Streamwall is primarily designed for use in livestreaming situations that involve multiple video sources across video-based social media hosts across the internet. Streamwall can be used to create a grid of video streams, each with its own audio control, and can be used to display a variety of video sources, including plugins for:
 
-Think of Streamwall as a specialized web browser for creating a mosaic, grid, or CCTV-esque array of video streams.
-
-Streamwall uses [Electron](https://www.electronjs.org) to create a grid of web browser views, loading the specified webpages into them. It's built and distribued with [Electron Forge](https://www.electronforge.io/).
-
-For each source, Streamwall finds the `<video>` tag and reformats the page so that the video fills the space. This works for a wide variety of web pages and
-platforms without the need for specialized scrapers.
+- Twitch
+- YouTube
+- Facebook
+- Periscope
+- Instagram
+- TikTok
+- Custom browser sources and websites
 
 ## Installation
 
@@ -20,11 +24,23 @@ Download and install the latest release for your system from the [Releases page]
 - The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository.
 - The latest development build is available on the `main` branch of this repository.
 
-## Running Streamwall
+## Media
+
+![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
+
+## How it works
+
+Streamwall is a specialized web browser for displaying and managing grids of video streams.
+
+Streamwall uses [Electron](https://www.electronjs.org) to arrange a grid of web browser views, loading the specified webpages into them, effectively producing a CCTV-esque result that can be broadcasted with livestreaming and video recording software. Streamwall is built and distribued with [Electron Forge](https://www.electronforge.io/).
+
+For each live video, Streamwall creates a separate browser, finds the `<video>` tag in its web page, and reformats the page so that the video fills the space. This works for a wide variety of web pages and platforms without the need for specialized scrapers (with exception)
+
+## How to run Streamwall
 
 > [!TIP]
 >
-> The first time you run Streamwall, it will open a browser window with the control panel. You can use this to load streams and control the app.
+> The first time you run Streamwall, it will open a browser window and ask you to login. Here are the default credentials:
 > - **Default username:** `admin`
 > - **Default password:** `password`
 
@@ -95,10 +111,21 @@ streamwall --control.address="http://localhost:80"
 
 ## Data sources
 
-Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `example.config.toml` for an example) or the command line:
+Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `example.config.toml` for an example) or the command line.
 
-TODO: Document how to use the command line to specify data sources.
-TODO: Document how to use the config file to specify data sources.
+### Example: CLI command to specify data sources
+
+```sh
+streamwall --data.json-url="https://api.example.com/streams" --data.toml-file="./streams.toml"
+```
+
+### Example: Config file to specify data sources
+
+```toml
+[data]
+json-url = ["https://api.example.com/streams"]
+toml-file = ["./streams.toml"]
+```
 
 ## Twitch bot
 
