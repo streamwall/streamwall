@@ -156,11 +156,11 @@ Streamwall in its default settings needs enough screen space to display a 1920x1
 
 > Create a `config.toml` file with the following content:
 >
->    ```toml
->    [window]
->    width = 1280
->    height = 720
->    ```
+> ```toml
+> [window]
+> width = 1280
+> height = 720
+> ```
 
 ## Development
 
