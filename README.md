@@ -44,6 +44,7 @@ For each live video, Streamwall creates a separate browser, finds the `<video>` 
 > [!TIP]
 >
 > The first time you run Streamwall, it will open a browser window and ask you to login. Here are the default credentials:
+>
 > - **Default username:** `admin`
 > - **Default password:** `password`
 
