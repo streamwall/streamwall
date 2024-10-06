@@ -17,6 +17,10 @@ Streamwall is primarily designed for use in livestreaming situations that involv
 - TikTok
 - Custom browser sources and websites
 
+## Media
+
+![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
+
 ## Installation
 
 > [!TIP]
@@ -26,10 +30,6 @@ Download and install the latest release for your system from the [Releases page]
 
 - The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository
 - The latest development build is available on the `main` branch of this repository
-
-## Media
-
-![Screenshot of Streamwall displaying a grid of streams](screenshot.png)
 
 ## How it works
 
