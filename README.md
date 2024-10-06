@@ -197,6 +197,8 @@ To release a new version:
 
 1. Update the version number in `package.json`
 1. Run `npm run publish` to create new distributables
+1. Merge to `main`
+1. Merge `main` to `release`
 1. Create a new release on GitHub with the new version number
 
 ## Credits
