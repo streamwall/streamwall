@@ -1,9 +1,9 @@
 # Streamwall
 
 > [!NOTE]
-> Streamwall was built and used extensively during protest movements beginning in 2020. It is often used to share and record sociopolitical events as they happen from multiple perspectives
+> Streamwall was originally made for the George Floyd protests in 2020. Streamwall has been used to share the details of local, national, and global sociopilitial events in real-time
 >
-> Please use it responsibly, credit and communicate with your sources, and act in accordance with the laws of your jurisdiction
+> Please use it morally, ethically, and responsibly, credit and communicate with your sources, and act in accordance with the laws of your jurisdiction
 
 Streamwall is a web browser that displays a grid of video streams with audio control and source attribution for livestreaming and archival purposes. Streamwall works with [OBS](https://obsproject.com/), [XSplit](https://www.xsplit.com/), and other streaming software that can display custom browsers and application windows
 
