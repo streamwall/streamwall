@@ -2,7 +2,6 @@ name: test
 
 on:
   pull_request:
-  push:
 
 permissions:
   contents: read
@@ -32,8 +31,8 @@ jobs:
 
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
+        if: success() || failure()
         with:
-          name: Jest Tests            # Name of the check run which will be created
-          path: junit*.xml    # Path to test results
-          reporter: jest-junit        # Format of test results
+          name: Jest Tests
+          path: junit*.xml
+          reporter: jest-junit
