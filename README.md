@@ -209,8 +209,8 @@ To release a new version:
 
 ### Contributors
 
-- @chromakode - Original author & primary maintainer
-- @sayhiben - Current maintainer
+- [@chromakode](https://github.com/chromakode) - Original author & primary maintainer
+- [@sayhiben](https://github.com/sayhiben) - Secondary maintainer
 
 ### Libraries & Resources
 
