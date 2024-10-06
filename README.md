@@ -116,7 +116,14 @@ Streamwall can load stream data from both JSON APIs and TOML files. Data sources
 ### Example: CLI command to specify data sources
 
 ```sh
-streamwall --data.json-url="https://api.example.com/streams" --data.toml-file="./streams.toml"
+streamwall --data.json-url="https://api.example.com/streams"
+```
+
+and/or
+
+
+```sh
+streamwall --data.toml-file="./streams.toml"
 ```
 
 ### Example: Config file to specify data sources
