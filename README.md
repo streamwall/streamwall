@@ -1,13 +1,13 @@
 # Streamwall
 
 > [!NOTE]
-> Streamwall was built and used extensively during protest movements beginning in 2020. It is often used to share and record sociopolitical events as they happen from multiple perspectives.
+> Streamwall was built and used extensively during protest movements beginning in 2020. It is often used to share and record sociopolitical events as they happen from multiple perspectives
 >
 > Please use it responsibly, credit and communicate with your sources, and act in accordance with the laws of your jurisdiction
 
 Streamwall is a web browser that displays a grid of video streams with audio control and source attribution for livestreaming and archival purposes. Streamwall works with [OBS](https://obsproject.com/), [XSplit](https://www.xsplit.com/), and other streaming software that can display custom browsers and application windows
 
-Streamwall is primarily designed for use in livestreaming situations that involve multiple video sources across video-based social media hosts across the internet. Streamwall can be used to create a grid of video streams, each with its own audio control, and can be used to display a variety of video sources, including plugins for:
+Streamwall is primarily designed for use in livestreaming situations that involve multiple video sources across video-based social media hosts across the internet. Streamwall can be used to create a grid of video streams, each with its own audio control, and can be used to display a variety of video sources. Streamwall includes plugins for the following platforms, and supports many more:
 
 - Twitch
 - YouTube
@@ -19,10 +19,10 @@ Streamwall is primarily designed for use in livestreaming situations that involv
 
 ## Installation
 
-Download and install the latest release for your system from the [Releases page](https://github.com/streamwall/streamwall/releases).
+Download and install the latest release for your system from the [Releases page](https://github.com/streamwall/streamwall/releases)
 
-- The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository.
-- The latest development build is available on the `main` branch of this repository.
+- The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository
+- The latest development build is available on the `main` branch of this repository
 
 ## Media
 
@@ -30,9 +30,9 @@ Download and install the latest release for your system from the [Releases page]
 
 ## How it works
 
-Streamwall is a specialized web browser for displaying and managing grids of video streams.
+Streamwall is a specialized web browser designed to display and manage grids of video streams.
 
-Streamwall uses [Electron](https://www.electronjs.org) to arrange a grid of web browser views, loading the specified webpages into them, effectively producing a CCTV-esque result that can be broadcasted with livestreaming and video recording software. Streamwall is built and distribued with [Electron Forge](https://www.electronforge.io/).
+Streamwall uses [Electron](https://www.electronjs.org) to arrange a grid of web browser views, load the specified video source(s), and produce a CCTV-esque composition for the sake of rebroadcasting. Streamwall is built and distribued with [Electron Forge](https://www.electronforge.io/)
 
 For each live video, Streamwall creates a separate browser, finds the `<video>` tag in its web page, and reformats the page so that the video fills the space. This works for a wide variety of web pages and platforms without the need for specialized scrapers (with exception)
 
@@ -44,13 +44,13 @@ For each live video, Streamwall creates a separate browser, finds the `<video>` 
 > - **Default username:** `admin`
 > - **Default password:** `password`
 
-1. Start the app by running the installed executable. When your browser opens, log into the control panel.
+1. Start the app by running the installed executable. When your browser opens, log into the control panel
 1. Use the browser window to load or control streams.
-1. If you enter the same stream code in multiple cells, it will merge them together for a larger stream.
+1. If you enter the same stream code in multiple cells, it will merge them together for a larger stream
 
 ## Configuration
 
-Streamwall has a number of configuration options. See `example.config.toml` for an example.
+Streamwall has a number of configuration options. See `example.config.toml` for an example
 
 ### Configuration file
 
@@ -111,7 +111,7 @@ streamwall --control.address="http://localhost:80"
 
 ## Data sources
 
-Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `example.config.toml` for an example) or the command line.
+Streamwall can load stream data from both JSON APIs and TOML files. Data sources can be specified in a config file (see `example.config.toml` for an example) or the command line
 
 ### Example: CLI command to specify data sources
 
@@ -129,7 +129,7 @@ toml-file = ["./streams.toml"]
 
 ## Twitch bot
 
-Streamwall can announce the name and URL of streams to your Twitch channel as you focus their audio. Use [twitchtokengenerator.com](https://twitchtokengenerator.com/?scope=chat:read+chat:edit) to generate an OAuth token. See `example.config.toml` for all available options.
+Streamwall can announce the name and URL of streams to your Twitch channel as you focus their audio. Use [twitchtokengenerator.com](https://twitchtokengenerator.com/?scope=chat:read+chat:edit) to generate an OAuth token. See `example.config.toml` for all available options
 
 ## Hotkeys
 
