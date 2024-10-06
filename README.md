@@ -169,16 +169,17 @@ Streamwall in its default settings needs enough screen space to display a 1920x1
 1. Clone the repository
 1. Install dependencies with `npm install`
 1. Run the app with `npm start`
+1. Read `package.json` for more scripts you can run
 
 ### Building
 
-1. Run `npm run build` to build the app for your current platform
+1. Run `npm run make` to build the app for your current platform
 1. The built app will be in the `dist` directory
 
 ### Testing
 
-1. Run `npm test` to run the test suite
-1. Please also manually test the app after making changes
+1. Run `npm test` to run the test suite. Alternatively, you can run the ci suite with `npm run test:ci`
+1. Please manually test the app as thoroughly as possible before opening a pull request
 
 ### Contributing
 
