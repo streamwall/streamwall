@@ -35,7 +35,7 @@ Download and install the latest release for your system from the [Releases page]
 
 Streamwall is a specialized web browser designed to display and manage grids of video streams.
 
-Streamwall uses [Electron](https://www.electronjs.org) to arrange a grid of web browser views, load the specified video source(s), and produce a CCTV-esque composition for the sake of rebroadcasting. Streamwall is built and distribued with [Electron Forge](https://www.electronforge.io/)
+Streamwall uses [Electron](https://www.electronjs.org) to arrange a grid of web browser views, load the specified video source(s), and produce a CCTV-esque composition for the sake of rebroadcasting. Streamwall is built and distributed with [Electron Forge](https://www.electronforge.io/)
 
 For each live video, Streamwall creates a separate browser, finds the `<video>` tag in its web page, and reformats the page so that the video fills the space. This works for a wide variety of web pages and platforms without the need for specialized scrapers (with exception)
 
