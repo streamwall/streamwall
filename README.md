@@ -19,6 +19,9 @@ Streamwall is primarily designed for use in livestreaming situations that involv
 
 ## Installation
 
+> [!TIP]
+> For the latest stable version, make sure to view this readme on the `release` branch here: https://github.com/streamwall/streamwall/tree/release (note: you may already be on this page)
+
 Download and install the latest release for your system from the [Releases page](https://github.com/streamwall/streamwall/releases)
 
 - The latest stable build is always available on the [Releases page](https://github.com/streamwall/streamwall/releases) or `release` branch of this repository
