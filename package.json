@@ -43,7 +43,7 @@
     "svg-loaders-react": "^2.2.1",
     "webpack-dev-server": "^5.0.4",
     "ws": "^8.18.0",
-    "xstate": "^4.37.1",
+    "xstate": "^5.18.2",
     "yargs": "^17.7.2",
     "yjs": "^13.6.18"
   },
