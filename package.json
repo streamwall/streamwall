@@ -24,7 +24,7 @@
     "dank-twitch-irc": "^4.3.0",
     "ejs": "^3.1.10",
     "electron": "^31.3.1",
-    "hls.js": "^1.5.14",
+    "hls.js": "^1.5.17",
     "jsondiffpatch": "^0.6.0",
     "koa": "^2.15.3",
     "koa-basic-auth": "^4.0.0",
