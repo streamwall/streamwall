@@ -67,7 +67,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-junit": "^16.0.0",
     "npm-check-updates": "^17.0.6",
-    "prettier": "3.3.3",
+    "prettier": "3.4.2",
     "style-loader": "^4.0.0",
     "supertest": "^7.0.0",
     "utf-8-validate": "^6.0.4",
