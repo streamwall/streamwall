@@ -40,7 +40,7 @@
     "react-hotkeys-hook": "^4.5.0",
     "reconnecting-websocket": "^4.4.0",
     "styled-components": "^6.1.12",
-    "svg-loaders-react": "^2.2.1",
+    "svg-loaders-react": "^3.1.1",
     "webpack-dev-server": "^5.0.4",
     "ws": "^8.18.0",
     "xstate": "^4.37.1",
