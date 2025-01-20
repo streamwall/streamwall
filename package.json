@@ -9,7 +9,7 @@
     "package": "electron-forge package",
     "publish": "electron-forge publish",
     "test": "jest",
-    "test:ci": "jest --ci --reporters=default --reporters=jest-junit --testPathIgnorePatterns=src/node/server.test.js --coverage"
+    "test:ci": "jest --ci --reporters=default --reporters=jest-junit --coverage"
   },
   "author": "Max Goodhart <c@chromakode.com>",
   "license": "MIT",
