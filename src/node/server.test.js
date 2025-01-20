@@ -20,8 +20,8 @@ describe('streamwall server', () => {
   const adminUsername = 'admin'
   const adminPassword = 'password'
   const hostname = 'localhost'
-  const port = 8081
-  const baseURL = `http://${hostname}:${port}`
+  let port = 0
+  let baseURL = `http://localhost:${port}`
 
   let auth
   let clientState
@@ -62,16 +62,26 @@ describe('streamwall server', () => {
       onMessage,
       stateDoc,
     }))
-    request = supertest(server)
+
+    // Wait for the server to actually start so we can read its actual port
+    const address = server.address()
+    port = address.port
+
+    // Now you can build the real baseURL for supertest
+    baseURL = `http://localhost:${port}`
+    request = supertest(baseURL)
+
     auth.on('state', (authState) => {
       clientState.update({ auth: authState })
     })
   })
 
-  afterEach(() => {
-    server.close()
+  afterEach(async () => {
     for (const ws of sockets) {
       ws.close()
+    }
+    if (server) {
+      await new Promise((resolve) => server.close(resolve))
     }
   })
 
