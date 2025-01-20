@@ -7,7 +7,7 @@ import Koa from 'koa'
 import basicAuth from 'koa-basic-auth'
 import route from 'koa-route'
 import serveStatic from 'koa-static'
-import views from 'koa-views'
+import views from '@ladjs/koa-views'
 import websocket from 'koa-easy-ws'
 import WebSocket from 'ws'
 import * as Y from 'yjs'
@@ -40,7 +40,7 @@ function initApp({
   const app = new Koa()
 
   // silence koa printing errors when websockets close early
-  app.silent = true
+  // app.silent = true
 
   app.use(views(webDistPath, { extension: 'ejs' }))
   app.use(serveStatic(webDistPath))
@@ -244,7 +244,6 @@ export default async function initWebServer({
   onMessage,
   stateDoc,
 }) {
-  console.debug('Parsing URL:', baseURL)
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
     port = protocol === 'https:' ? 443 : 80
@@ -253,7 +252,6 @@ export default async function initWebServer({
     port = overridePort
   }
 
-  console.debug('Initializing web server:', { hostname, port })
   const { app } = initApp({
     auth,
     baseURL,

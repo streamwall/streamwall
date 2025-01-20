@@ -17,5 +17,5 @@ module.exports = {
   coveragePathIgnorePatterns: ['/node_modules/'],
   collectCoverage: true,
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
-  testEnvironment: 'jsdom'
+  testEnvironment: 'node'
 };

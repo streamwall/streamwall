@@ -68,7 +68,7 @@ export default class StreamWindow extends EventEmitter {
     const backgroundView = new BrowserView({
       webPreferences: {
         contextIsolation: true,
-        preload: path.join(app.getAppPath(), 'layerPreload.js'),
+        preload: BACKGROUND_PRELOAD_WEBPACK_ENTRY,
       },
     })
     win.addBrowserView(backgroundView)
@@ -79,13 +79,13 @@ export default class StreamWindow extends EventEmitter {
       height,
       useContentSize: true,
     })
-    backgroundView.webContents.loadFile('background.html')
+    backgroundView.webContents.loadURL(BACKGROUND_WEBPACK_ENTRY)
     this.backgroundView = backgroundView
 
     const overlayView = new BrowserView({
       webPreferences: {
         contextIsolation: true,
-        preload: path.join(app.getAppPath(), 'layerPreload.js'),
+        preload: OVERLAY_PRELOAD_WEBPACK_ENTRY,
       },
     })
     win.addBrowserView(overlayView)
@@ -95,7 +95,7 @@ export default class StreamWindow extends EventEmitter {
       width,
       height,
     })
-    overlayView.webContents.loadFile('overlay.html')
+    overlayView.webContents.loadURL(OVERLAY_WEBPACK_ENTRY)
     this.overlayView = overlayView
 
     this.viewActions = {
@@ -148,7 +148,7 @@ export default class StreamWindow extends EventEmitter {
     const { backgroundColor } = this.config
     const view = new BrowserView({
       webPreferences: {
-        preload: path.join(app.getAppPath(), 'mediaPreload.js'),
+        preload: MEDIA_PRELOAD_WEBPACK_ENTRY,
         nodeIntegration: false,
         enableRemoteModule: false,
         contextIsolation: true,
