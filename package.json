@@ -1,14 +1,14 @@
 {
   "name": "streamwall",
   "version": "1.0.0",
-  "description": "View streams in a grid",
+"description": "View streams in a grid",
   "main": "./.webpack/main",
   "scripts": {
     "start": "electron-forge start -- --trace-warnings --control.address=http://localhost:4444 --control.username=admin --control.password=password",
     "make": "electron-forge make",
     "package": "electron-forge package",
     "publish": "electron-forge publish",
-    "test": "jest",
+    "test": "jest --verbose --detectOpenHandles --no-stack-trace-limit",
     "test:ci": "jest --ci --reporters=default --reporters=jest-junit --coverage"
   },
   "author": "Max Goodhart <c@chromakode.com>",

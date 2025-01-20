@@ -212,6 +212,17 @@ describe('streamwall server', () => {
     })
   })
 
+  it('rejects websocket upgrade if origin is invalid', async () => {
+    // Make a raw WebSocket connection with a bogus origin
+    const badWs = new WebSocket(`ws://localhost:${port}/ws`, [], {
+      origin: 'http://evilsite.com',  // not the expectedOrigin
+    })
+    const closePromise = once(badWs, 'close')
+    const [code] = await closePromise
+    expect(code).toBe(401) 
+    // or just expect the server forcibly closed the connection
+  })
+  
   describe('admin role', () => {
     it('can view tokens', async () => {
       await auth.createToken({
