@@ -244,7 +244,6 @@ export default async function initWebServer({
   onMessage,
   stateDoc,
 }) {
-  console.debug('Parsing URL:', baseURL)
   let { protocol, hostname, port } = new URL(baseURL)
   if (!port) {
     port = protocol === 'https:' ? 443 : 80
@@ -253,7 +252,6 @@ export default async function initWebServer({
     port = overridePort
   }
 
-  console.debug('Initializing web server:', { hostname, port })
   const { app } = initApp({
     auth,
     baseURL,
@@ -262,17 +260,6 @@ export default async function initWebServer({
     logEnabled,
     onMessage,
     stateDoc,
-  })
-
-  console.debug(`App initialized with args:`, {
-    certDir,
-    certProduction,
-    email,
-    baseURL,
-    overrideHostname,
-    overridePort,
-    webDistPath,
-    logEnabled,
   })
 
   let server
@@ -288,12 +275,9 @@ export default async function initWebServer({
   } else {
     server = http.createServer(app.callback())
   }
-  console.debug("Server started.")
 
   const listen = promisify(server.listen).bind(server)
   await listen(port, overrideHostname || hostname)
-
-  console.debug('Web server listening:', { hostname, port })
 
   return { server }
 }
