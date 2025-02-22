@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "commonjs",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "paths": {
+      "react": ["./node_modules/preact/compat/"],
+      "react-dom": ["./node_modules/preact/compat/"]
+    },
+    "lib": ["DOM.iterable"],
+    "baseUrl": ".",
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "resolveJsonModule": true
+  }
+}

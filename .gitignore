@@ -1,8 +1,1 @@
-# Entire directories
-coverage
-dist
 node_modules
-reports
-
-# Individual files
-junit.xml
