@@ -31,4 +31,4 @@ jobs:
       - name: Publish app
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npm run publish
+        run: npm -w streamwall run publish
