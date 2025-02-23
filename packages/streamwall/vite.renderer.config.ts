@@ -13,9 +13,6 @@ export default defineConfig({
         playHLS: resolve(__dirname, 'src/renderer/playHLS.html'),
         control: resolve(__dirname, 'src/renderer/control.html'),
       },
-      output: {
-        entryFileNames: '[name].[format]',
-      },
     },
   },
 
