@@ -17,7 +17,10 @@ export function loadHTML(
     )
   } else {
     webContents.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/${name}.html`),
+      path.join(
+        __dirname,
+        `../renderer/${MAIN_WINDOW_VITE_NAME}/src/renderer/${name}.html`,
+      ),
       options,
     )
   }
