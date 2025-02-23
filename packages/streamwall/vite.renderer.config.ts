@@ -8,10 +8,10 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        background: resolve(__dirname, 'background.html'),
-        overlay: resolve(__dirname, 'overlay.html'),
-        playHLS: resolve(__dirname, 'playHLS.html'),
-        control: resolve(__dirname, 'control.html'),
+        background: resolve(__dirname, 'src/renderer/background.html'),
+        overlay: resolve(__dirname, 'src/renderer/overlay.html'),
+        playHLS: resolve(__dirname, 'src/renderer/playHLS.html'),
+        control: resolve(__dirname, 'src/renderer/control.html'),
       },
       output: {
         entryFileNames: '[name].[format]',
