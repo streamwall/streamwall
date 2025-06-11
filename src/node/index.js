@@ -73,6 +73,11 @@ function parseArgs() {
       describe: 'Active (highlight) color of wall',
       default: '#fff',
     })
+    .option('video.timeout', {
+      describe: 'Timeout (in milliseconds) for loading videos',
+      number: true,
+      default: 10000,
+    })
     .group(['data.interval', 'data.json-url', 'data.toml-file'], 'Datasources')
     .option('data.interval', {
       describe: 'Interval (in seconds) for refreshing polled data sources',
@@ -285,6 +290,7 @@ async function main(argv) {
         viewContentMap.set(key, {
           url: stream.link,
           kind: stream.kind || 'video',
+          timeout: argv.video.timeout,
         })
       }
       streamWindow.setViews(viewContentMap, clientState.info.streams)

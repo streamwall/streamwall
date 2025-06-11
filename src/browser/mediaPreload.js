@@ -136,10 +136,10 @@ function waitForQuery(query) {
   })
 }
 
-async function waitForVideo(kind) {
+async function waitForVideo(kind, timeout = 10000) {
   lockdownMediaTags()
 
-  let video = await Promise.race([waitForQuery(kind), sleep(10 * 1000)])
+  let video = await Promise.race([waitForQuery(kind), sleep(timeout)])
   if (video) {
     return { video }
   }
@@ -221,7 +221,7 @@ const igHacks = {
   },
 }
 
-async function findVideo(kind) {
+async function findVideo(kind, timeout = 10000) {
   if (periscopeHacks.isMatch()) {
     await periscopeHacks.onLoad()
   }
@@ -229,8 +229,13 @@ async function findVideo(kind) {
     await igHacks.onLoad()
   }
 
-  const { video, iframe } = await waitForVideo(kind)
+  const { video, iframe } = await waitForVideo(kind, timeout)
   if (!video) {
+    // Log HTML and status for debugging TikTok issues
+    if (location.host.includes('tiktok.com')) {
+      console.error('TikTok video not found. Page HTML:', document.documentElement.outerHTML)
+      console.error('Response status:', window.performance.getEntriesByType('navigation')[0]?.responseStatus || 'unknown')
+    }
     throw new Error('could not find video')
   }
   if (iframe) {
@@ -256,8 +261,13 @@ async function findVideo(kind) {
     const videoReady = new Promise((resolve) =>
       video.addEventListener('playing', resolve, { once: true }),
     )
-    await Promise.race([videoReady, sleep(10 * 1000)])
+    await Promise.race([videoReady, sleep(timeout)])
     if (!video.videoWidth) {
+      // Log HTML and status for debugging TikTok issues
+      if (location.host.includes('tiktok.com')) {
+        console.error('TikTok video timeout. Page HTML:', document.documentElement.outerHTML)
+        console.error('Response status:', window.performance.getEntriesByType('navigation')[0]?.responseStatus || 'unknown')
+      }
       throw new Error('timeout waiting for video to start')
     }
     console.log('video started')
@@ -283,7 +293,8 @@ async function main() {
   let rotationController
   if (content.kind === 'video' || content.kind === 'audio') {
     webFrame.insertCSS(VIDEO_OVERRIDE_STYLE, { cssOrigin: 'user' })
-    const { info, video } = await findVideo(content.kind)
+    const timeout = content.timeout || 10000 // Default to 10 seconds
+    const { info, video } = await findVideo(content.kind, timeout)
     if (content.kind === 'video') {
       rotationController = new RotationController(video)
       if (periscopeHacks.isMatch()) {
