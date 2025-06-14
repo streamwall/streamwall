@@ -408,6 +408,8 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
         client.ws.close()
       }
     }
+
+    currentStreamwallConn?.clientState.update({ auth: auth.getState() })
   })
 
   return { app, db, auth }

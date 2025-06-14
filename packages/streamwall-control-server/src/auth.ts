@@ -72,7 +72,7 @@ export class StateWrapper extends EventEmitter {
     return state
   }
 
-  update(value: StreamwallState) {
+  update(value: Partial<StreamwallState>) {
     this._value = { ...this._value, ...value }
     this.emit('state', this)
   }
