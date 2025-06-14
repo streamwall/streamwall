@@ -31,6 +31,8 @@ export interface StreamData extends ContentDisplayOptions {
   source?: string
   notes?: string
   status?: string
+  city?: string
+  state?: string
   _id: string
   _dataSource: string
 }

@@ -77,7 +77,15 @@ function Overlay({
                 isListening={isListening}
               >
                 <StreamIcon url={content.url} />
-                <span>{data.label}</span>
+                <span>
+                  {data.label ? (
+                    data.label
+                  ) : (
+                    <>
+                      {data.source} &ndash; {data.city} {data.state}
+                    </>
+                  )}
+                </span>
                 {(isListening || isBackgroundListening) && <FaVolumeUp />}
               </StreamTitle>
             )}
