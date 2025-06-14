@@ -24,6 +24,7 @@ import {
 } from './data'
 import StreamdelayClient from './StreamdelayClient'
 import StreamWindow from './StreamWindow'
+import TwitchBot from './TwitchBot'
 
 const SENTRY_DSN =
   'https://e630a21dcf854d1a9eb2a7a8584cbd0b@o459879.ingest.sentry.io/5459505'
@@ -53,6 +54,21 @@ export interface StreamwallConfig {
   }
   control: {
     endpoint: string
+  }
+  twitch: {
+    channel: string | null
+    username: string | null
+    token: string | null
+    color: string
+    announce: {
+      template: string
+      interval: number
+      delay: number
+    }
+    vote: {
+      template: string
+      interval: number
+    }
   }
   telemetry: {
     sentry: boolean
@@ -156,6 +172,61 @@ function parseArgs(): StreamwallConfig {
       .option('control.endpoint', {
         describe: 'URL of control server endpoint',
         default: null,
+      })
+      .group(
+        [
+          'twitch.channel',
+          'twitch.username',
+          'twitch.token',
+          'twitch.color',
+          'twitch.announce.template',
+          'twitch.announce.interval',
+          'twitch.vote.template',
+          'twitch.vote.interval',
+        ],
+        'Twitch Chat',
+      )
+      .option('twitch.channel', {
+        describe: 'Name of Twitch channel',
+        default: null,
+      })
+      .option('twitch.username', {
+        describe: 'Username of Twitch bot account',
+        default: null,
+      })
+      .option('twitch.token', {
+        describe: 'Password of Twitch bot account',
+        default: null,
+      })
+      .option('twitch.color', {
+        describe: 'Color of Twitch bot username',
+        default: '#ff0000',
+      })
+      .option('twitch.announce.template', {
+        describe: 'Message template for stream announcements',
+        default:
+          'SingsMic <%- stream.source %> <%- stream.city && stream.state ? `(${stream.city} ${stream.state})` : `` %> <%- stream.link %>',
+      })
+      .option('twitch.announce.interval', {
+        describe:
+          'Minimum time interval (in seconds) between re-announcing the same stream',
+        number: true,
+        default: 60,
+      })
+      .option('twitch.announce.delay', {
+        describe: 'Time to dwell on a stream before its details are announced',
+        number: true,
+        default: 30,
+      })
+      .option('twitch.vote.template', {
+        describe: 'Message template for vote result announcements',
+        default:
+          'Switching to #<%- selectedIdx %> (with <%- voteCount %> votes)',
+      })
+      .option('twitch.vote.interval', {
+        describe: 'Time interval (in seconds) between votes (0 to disable)',
+        number: true,
+        default: 0,
       })
       .group(['telemetry.sentry'], 'Telemetry')
       .option('telemetry.sentry', {
@@ -400,6 +471,26 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       updateState({ streamdelay: state })
     })
     streamdelayClient.connect()
+  }
+
+  const {
+    username: twitchUsername,
+    token: twitchToken,
+    channel: twitchChannel,
+  } = argv.twitch
+  if (twitchUsername && twitchToken && twitchChannel) {
+    console.debug('Setting up Twitch bot...')
+    const twitchBot = new TwitchBot({
+      ...argv.twitch,
+      username: twitchUsername,
+      token: twitchToken,
+      channel: twitchChannel,
+    })
+    twitchBot.on('setListeningView', (idx) => {
+      streamWindow.setListeningView(idx)
+    })
+    stateEmitter.on('state', () => twitchBot.onState(clientState))
+    twitchBot.connect()
   }
 
   const dataSources = [
