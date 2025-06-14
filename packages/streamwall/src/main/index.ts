@@ -340,11 +340,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       console.debug('Reloading view:', msg.viewIdx)
       streamWindow.reloadView(msg.viewIdx)
     } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
-      if (
-        msg.type === 'dev-tools' &&
-        browseWindow &&
-        !browseWindow.isDestroyed()
-      ) {
+      if (browseWindow && !browseWindow.isDestroyed()) {
         // DevTools needs a fresh webContents to work. Close any existing window.
         browseWindow.destroy()
         browseWindow = null
