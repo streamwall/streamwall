@@ -142,6 +142,9 @@ const viewStateMachine = setup({
         const wc = view.webContents
         wc.audioMuted = true
 
+        // Force page visibility
+        wc.capturePage(undefined, { stayAwake: true })
+
         if (/\.m3u8?$/.test(content.url)) {
           loadHTML(wc, 'playHLS', { query: { src: content.url } })
         } else {
