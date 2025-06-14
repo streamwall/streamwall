@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/electron/main'
 import { BrowserWindow, app, session } from 'electron'
 import started from 'electron-squirrel-startup'
 import fs from 'fs'
+import { throttle } from 'lodash-es'
 import EventEmitter from 'node:events'
 import { join } from 'node:path'
 import ReconnectingWebSocket from 'reconnecting-websocket'
@@ -22,6 +23,7 @@ import {
   pollDataURL,
   watchDataFile,
 } from './data'
+import { loadStorage } from './storage'
 import StreamdelayClient from './StreamdelayClient'
 import StreamWindow from './StreamWindow'
 import TwitchBot from './TwitchBot'
@@ -281,16 +283,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     streamdelay: null,
   }
 
-  const stateDoc = new Y.Doc()
-  const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
-  stateDoc.transact(() => {
-    for (let i = 0; i < argv.grid.count ** 2; i++) {
-      const data = new Y.Map<string | undefined>()
-      data.set('streamId', undefined)
-      viewsState.set(String(i), data)
-    }
-  })
-  viewsState.observeDeep(() => {
+  function updateViewsFromStateDoc() {
     try {
       const viewContentMap = new Map()
       for (const [key, viewData] of viewsState) {
@@ -308,7 +301,46 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     } catch (err) {
       console.error('Error updating views', err)
     }
+  }
+
+  const stateDoc = new Y.Doc()
+  const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
+
+  const db = await loadStorage(
+    join(app.getPath('userData'), 'streamwall-storage.json'),
+  )
+  if (db.data.stateDoc) {
+    console.log('Loading stateDoc from storage...')
+    try {
+      Y.applyUpdate(stateDoc, Buffer.from(db.data.stateDoc, 'base64'))
+    } catch (err) {
+      console.warn('Failed to restore stateDoc', err)
+    }
+  }
+
+  stateDoc.on(
+    'update',
+    throttle(() => {
+      db.update((data) => {
+        const fullDoc = Y.encodeStateAsUpdate(stateDoc)
+        data.stateDoc = Buffer.from(fullDoc).toString('base64')
+      })
+    }, 1000),
+  )
+
+  stateDoc.transact(() => {
+    for (let i = 0; i < argv.grid.count ** 2; i++) {
+      if (viewsState.has(String(i))) {
+        continue
+      }
+      const data = new Y.Map<string | undefined>()
+      data.set('streamId', undefined)
+      viewsState.set(String(i), data)
+    }
   })
+
+  updateViewsFromStateDoc()
+  viewsState.observeDeep(updateViewsFromStateDoc)
 
   const onCommand = async (msg: ControlCommand) => {
     console.debug('Received message:', msg)
@@ -506,6 +538,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     console.debug('Processing streams:', rawStreams)
     const streams = idGen.process(rawStreams)
     updateState({ streams })
+    updateViewsFromStateDoc()
   }
 }
 
