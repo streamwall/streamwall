@@ -535,7 +535,6 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   ]
 
   for await (const rawStreams of combineDataSources(dataSources)) {
-    console.debug('Processing streams:', rawStreams)
     const streams = idGen.process(rawStreams)
     updateState({ streams })
     updateViewsFromStateDoc()
