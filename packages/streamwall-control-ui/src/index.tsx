@@ -603,7 +603,7 @@ export function ControlUI({
 
   return (
     <Stack flex="1" direction="row" gap={16}>
-      <Stack>
+      <Stack className="grid-container">
         <StyledHeader>
           {role !== 'local' && (
             <>
@@ -626,6 +626,7 @@ export function ControlUI({
         <StyledDataContainer isConnected={isConnected}>
           {gridCount && (
             <StyledGridContainer
+              className="grid"
               onMouseMove={updateHoveringIdx}
               windowWidth={windowWidth}
               windowHeight={windowHeight}
@@ -754,7 +755,7 @@ export function ControlUI({
           <Facts />
         </StyledDataContainer>
       </Stack>
-      <Stack flex="1" scroll={true} minHeight={200}>
+      <Stack className="stream-list" flex="1" scroll={true} minHeight={200}>
         <StyledDataContainer isConnected={isConnected}>
           {isConnected ? (
             <div>
