@@ -458,12 +458,14 @@ async function initialInviteCodes({
 }
 
 export default async function runServer({
+  port: overridePort,
+  hostname: overrideHostname,
   baseURL,
   clientStaticPath,
-}: AppOptions) {
+}: AppOptions & { hostname?: string; port?: string }) {
   const url = new URL(baseURL)
-  const { hostname } = url
-  const port = url.port !== '' ? Number(url.port) : 80
+  const hostname = overrideHostname ?? url.hostname
+  const port = Number(overridePort ?? url.port ?? '80')
 
   console.debug('Initializing web server:', { hostname, port })
   const { app, db, auth } = await initApp({
@@ -479,6 +481,8 @@ export default async function runServer({
 }
 
 runServer({
+  hostname: process.env.STREAMWALL_CONTROL_HOSTNAME,
+  port: process.env.STREAMWALL_CONTROL_PORT,
   baseURL: process.env.STREAMWALL_CONTROL_URL ?? 'http://localhost:3000',
   clientStaticPath:
     process.env.STREAMWALL_CONTROL_STATIC ??
