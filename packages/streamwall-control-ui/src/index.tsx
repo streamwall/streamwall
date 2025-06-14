@@ -602,7 +602,7 @@ export function ControlUI({
   }
 
   return (
-    <Stack flex="1">
+    <Stack flex="1" direction="row" gap={16}>
       <Stack>
         <StyledHeader>
           {role !== 'local' && (
@@ -837,8 +837,9 @@ export function ControlUI({
 
 const Stack = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: ${({ direction }) => direction ?? 'column'};
   flex: ${({ flex }) => flex};
+  ${({ gap }) => gap && `gap: ${gap}px`};
   ${({ scroll }) => scroll && `overflow-y: auto`};
   ${({ minHeight }) => minHeight && `min-height: ${minHeight}px`};
 `
