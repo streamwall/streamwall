@@ -3,9 +3,13 @@ import * as Sentry from '@sentry/electron/main'
 import { BrowserWindow, app, session } from 'electron'
 import started from 'electron-squirrel-startup'
 import fs from 'fs'
+import EventEmitter from 'node:events'
+import { join } from 'node:path'
+import ReconnectingWebSocket from 'reconnecting-websocket'
 import 'source-map-support/register'
 import { ControlCommand, StreamwallState } from 'streamwall-shared'
 import { updateElectronApp } from 'update-electron-app'
+import WebSocket from 'ws'
 import yargs from 'yargs'
 import * as Y from 'yjs'
 import { ensureValidURL } from '../util'
@@ -47,14 +51,31 @@ export interface StreamwallConfig {
     endpoint: string
     key: string | null
   }
+  control: {
+    endpoint: string
+  }
   telemetry: {
     sentry: boolean
   }
 }
 
 function parseArgs(): StreamwallConfig {
+  // Load config from user data dir, if it exists
+  const configPath = join(app.getPath('userData'), 'config.toml')
+  console.debug('Reading config from ', configPath)
+
+  let configText: string | null = null
+  try {
+    configText = fs.readFileSync(configPath, 'utf-8')
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err
+    }
+  }
+
   return (
     yargs()
+      .config(configText ? TOML.parse(configText) : {})
       .config('config', (configPath) => {
         return TOML.parse(fs.readFileSync(configPath, 'utf-8'))
       })
@@ -122,57 +143,6 @@ function parseArgs(): StreamwallConfig {
         array: true,
         default: [],
       })
-      /*
-    .group(
-      [
-        'control.username',
-        'control.password',
-        'control.address',
-        'control.hostname',
-        'control.port',
-        'control.open',
-      ],
-      'Control Webserver',
-    )
-    .option('control.username', {
-      describe: 'Web control server username',
-    })
-    .option('control.password', {
-      describe: 'Web control server password',
-    })
-    .option('control.open', {
-      describe: 'After launching, open the control website in a browser',
-      boolean: true,
-      default: true,
-    })
-    .option('control.address', {
-      describe: 'Enable control webserver and specify the URL',
-      implies: ['control.username', 'control.password'],
-      string: true,
-    })
-    .option('control.hostname', {
-      describe: 'Override hostname the control server listens on',
-    })
-    .option('control.port', {
-      describe: 'Override port the control server listens on',
-      number: true,
-    })
-    .group(
-      ['cert.dir', 'cert.production', 'cert.email'],
-      'Automatic SSL Certificate',
-    )
-    .option('cert.dir', {
-      describe: 'Private directory to store SSL certificate in',
-      implies: ['email'],
-      default: null,
-    })
-    .option('cert.production', {
-      describe: 'Obtain a real SSL certificate using production servers',
-    })
-    .option('cert.email', {
-      describe: 'Email for owner of SSL certificate',
-    })
-    */
       .group(['streamdelay.endpoint', 'streamdelay.key'], 'Streamdelay')
       .option('streamdelay.endpoint', {
         describe: 'URL of Streamdelay endpoint',
@@ -180,6 +150,11 @@ function parseArgs(): StreamwallConfig {
       })
       .option('streamdelay.key', {
         describe: 'Streamdelay API key',
+        default: null,
+      })
+      .group(['control'], 'Remote Control')
+      .option('control.endpoint', {
+        describe: 'URL of control server endpoint',
         default: null,
       })
       .group(['telemetry.sentry'], 'Telemetry')
@@ -225,8 +200,12 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
   console.debug('Creating initial state...')
   let clientState: StreamwallState = {
+    identity: {
+      role: 'local',
+    },
     config: streamWindowConfig,
     streams: [],
+    customStreams: [],
     views: [],
     streamdelay: null,
   }
@@ -328,26 +307,16 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     } else if (msg.type === 'set-stream-running' && streamdelayClient) {
       console.debug('Setting stream running:', msg.isStreamRunning)
       streamdelayClient.setStreamRunning(msg.isStreamRunning)
-      // TODO: Move to control server
-      /*} else if (msg.type === 'create-invite') {
-      console.debug('Creating invite for role:', msg.role)
-      const { secret } = await auth.createToken({
-        kind: 'invite',
-        role: msg.role,
-        name: msg.name,
-      })
-      respond({ name: msg.name, secret })
-    } else if (msg.type === 'delete-token') {
-      console.debug('Deleting token:', msg.tokenId)
-      auth.deleteToken(msg.tokenId)
-      */
     }
   }
+
+  const stateEmitter = new EventEmitter<{ state: [StreamwallState] }>()
 
   function updateState(newState: Partial<StreamwallState>) {
     clientState = { ...clientState, ...newState }
     streamWindow.onState(clientState)
     controlWindow.onState(clientState)
+    stateEmitter.emit('state', clientState)
   }
 
   // Wire up IPC:
@@ -382,6 +351,45 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     process.exit(0)
   })
 
+  if (argv.control.endpoint) {
+    console.debug('Connecting to control server...')
+    const ws = new ReconnectingWebSocket(argv.control.endpoint, [], {
+      WebSocket,
+      maxReconnectionDelay: 5000,
+      minReconnectionDelay: 1000 + Math.random() * 500,
+      reconnectionDelayGrowFactor: 1.1,
+    })
+    ws.binaryType = 'arraybuffer'
+    ws.addEventListener('open', () => {
+      console.debug('Control WebSocket connected.')
+      ws.send(JSON.stringify({ type: 'state', state: clientState }))
+      ws.send(Y.encodeStateAsUpdate(stateDoc))
+    })
+    ws.addEventListener('close', () => {
+      console.debug('Control WebSocket disconnected.')
+    })
+    ws.addEventListener('message', (ev) => {
+      if (ev.data instanceof ArrayBuffer) {
+        Y.applyUpdate(stateDoc, new Uint8Array(ev.data))
+      } else {
+        let msg
+        try {
+          msg = JSON.parse(ev.data)
+        } catch (err) {
+          console.warn('Failed to parse control WebSocket message:', err)
+        }
+
+        onCommand(msg)
+      }
+    })
+    stateEmitter.on('state', () => {
+      ws.send(JSON.stringify({ type: 'state', state: clientState }))
+    })
+    stateDoc.on('update', (update) => {
+      ws.send(update)
+    })
+  }
+
   if (argv.streamdelay.key) {
     console.debug('Setting up Streamdelay client...')
     streamdelayClient = new StreamdelayClient({
@@ -393,30 +401,6 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     })
     streamdelayClient.connect()
   }
-
-  /*
-  if (argv.control.address) {
-    console.debug('Initializing web server...')
-    const webDistPath = path.join(app.getAppPath(), 'web')
-    await initWebServer({
-      certDir: argv.cert.dir,
-      certProduction: argv.cert.production,
-      email: argv.cert.email,
-      url: argv.control.address,
-      hostname: argv.control.hostname,
-      port: argv.control.port,
-      logEnabled: true,
-      webDistPath,
-      auth,
-      clientState,
-      onMessage,
-      stateDoc,
-    })
-    if (argv.control.open) {
-      shell.openExternal(argv.control.address)
-    }
-  }
-    */
 
   const dataSources = [
     ...argv.data['json-url'].map((url) => {

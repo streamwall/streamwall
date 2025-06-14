@@ -1,6 +1,6 @@
-import { Rectangle } from 'electron'
+import type { Rectangle } from 'electron'
 import { isEqual } from 'lodash-es'
-import { ContentKind } from './types'
+import type { ContentKind } from './types.ts'
 
 export interface ViewPos extends Rectangle {
   /**

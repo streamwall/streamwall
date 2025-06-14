@@ -17,7 +17,7 @@ import { matchesState } from 'xstate'
 import { StreamwallLayerGlobal } from '../preload/layerPreload'
 
 import '@fontsource/noto-sans'
-import './index.css'
+import 'streamwall-control-ui/src/index.css'
 
 declare global {
   interface Window {

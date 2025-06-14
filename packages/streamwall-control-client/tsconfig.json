@@ -1,0 +1,13 @@
+{
+  "extends": ["@tsconfig/recommended/tsconfig", "@tsconfig/vite-react"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "types": ["vite/client"],
+    "paths": {
+      "react": ["./node_modules/preact/compat/"],
+      "react-dom": ["./node_modules/preact/compat/"]
+    }
+  },
+  "include": ["src"]
+}

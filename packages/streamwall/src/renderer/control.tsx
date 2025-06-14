@@ -1,6 +1,3 @@
-import '@fontsource/noto-sans'
-import './index.css'
-
 import { render } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -73,7 +70,6 @@ function useStreamwallIPCConnection(): StreamwallConnection {
   return {
     ...appState,
     isConnected: true,
-    role: 'local',
     send,
     sharedState,
     stateDoc,

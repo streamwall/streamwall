@@ -1,4 +1,5 @@
-import { ViewContent, ViewPos } from './geometry'
+import type { ViewContent, ViewPos } from './geometry.ts'
+import type { StreamwallRole } from './roles.ts'
 
 export interface StreamWindowConfig {
   gridCount: number
@@ -75,11 +76,33 @@ export interface StreamDelayStatus {
   state: string
 }
 
+export type AuthTokenKind = 'invite' | 'session' | 'streamwall'
+
+export interface AuthTokenInfo {
+  tokenId: string
+  kind: AuthTokenKind
+  role: StreamwallRole
+  name: string
+}
+
 export interface StreamwallState {
+  identity: {
+    role: StreamwallRole
+  }
+  auth?: {
+    invites: AuthTokenInfo[]
+    sessions: AuthTokenInfo[]
+  }
   config: StreamWindowConfig
   streams: StreamList
+  customStreams: StreamList
   views: ViewState[]
   streamdelay: StreamDelayStatus | null
+}
+
+type MessageMeta = {
+  id: number
+  clientId: string
 }
 
 export type ControlCommand =
@@ -100,3 +123,12 @@ export type ControlCommand =
   | { type: 'set-stream-running'; isStreamRunning: boolean }
   | { type: 'create-invite'; role: string; name: string }
   | { type: 'delete-token'; tokenId: string }
+
+export type ControlUpdate = {
+  type: 'state'
+  state: StreamwallState
+}
+
+export type ControlCommandMessage = MessageMeta & ControlCommand
+
+export type ControlUpdateMessage = MessageMeta & ControlUpdate

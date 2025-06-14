@@ -1,5 +1,5 @@
+import '@fontsource/noto-sans'
 import Color from 'color'
-import { patch as patchJSON } from 'jsondiffpatch'
 import { range, sortBy, truncate } from 'lodash-es'
 import { DateTime } from 'luxon'
 import { JSX } from 'preact'
@@ -7,7 +7,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useRef,
+  useMemo,
   useState,
 } from 'preact/hooks'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -20,7 +20,6 @@ import {
   FaVideoSlash,
   FaVolumeUp,
 } from 'react-icons/fa'
-import ReconnectingWebSocket from 'reconnecting-websocket'
 import {
   ContentKind,
   ControlCommand,
@@ -38,6 +37,7 @@ import {
 import { createGlobalStyle, styled } from 'styled-components'
 import { matchesState } from 'xstate'
 import * as Y from 'yjs'
+import './index.css'
 
 export interface ViewInfo {
   state: ViewState
@@ -144,33 +144,35 @@ export interface StreamwallConnection {
   views: ViewInfo[]
   stateIdxMap: Map<number, ViewInfo>
   delayState: StreamDelayStatus | null | undefined
-  //authState?: ...
+  authState?: StreamwallState['auth']
 }
 
 export function useStreamwallState(state: StreamwallState | undefined) {
-  const [config, setConfig] = useState<StreamWindowConfig>()
-  const [streams, setStreams] = useState<StreamData[]>([])
-  const [customStreams, setCustomStreams] = useState<StreamData[]>([])
-  const [views, setViews] = useState<ViewInfo[]>([])
-  const [stateIdxMap, setStateIdxMap] = useState(new Map<number, ViewInfo>())
-  const [delayState, setDelayState] = useState<StreamDelayStatus | null>()
-  //const [authState, setAuthState] = useState()
-
-  useEffect(() => {
-    if (state == null) {
-      return
+  return useMemo(() => {
+    if (state === undefined) {
+      return {
+        role: null,
+        config: undefined,
+        streams: [],
+        customStreams: [],
+        views: [],
+        stateIdxMap: new Map(),
+        delayState: undefined,
+        authState: undefined,
+      }
     }
 
     const {
-      config: newConfig,
-      streams: newStreams,
-      views: incomingViews,
+      identity: { role },
+      auth,
+      config,
+      streams: stateStreams,
+      views: stateViews,
       streamdelay,
-      //auth,
     } = state
-    const newStateIdxMap = new Map()
-    const newViews = []
-    for (const viewState of incomingViews) {
+    const stateIdxMap = new Map()
+    const views = []
+    for (const viewState of stateViews) {
       const { pos } = viewState.context
       const isListening = matchesState(
         'displaying.running.audio.listening',
@@ -192,141 +194,29 @@ export function useStreamwallState(state: StreamwallState | undefined) {
         isBlurred,
         spaces,
       }
-      newViews.push(viewInfo)
+      views.push(viewInfo)
       for (const space of spaces) {
-        if (!newStateIdxMap.has(space)) {
-          newStateIdxMap.set(space, {})
+        if (!stateIdxMap.has(space)) {
+          stateIdxMap.set(space, {})
         }
-        Object.assign(newStateIdxMap.get(space), viewInfo)
+        Object.assign(stateIdxMap.get(space), viewInfo)
       }
     }
-    setConfig(newConfig)
-    setStateIdxMap(newStateIdxMap)
-    setStreams(sortBy(newStreams, ['_id']))
-    setViews(newViews)
-    setCustomStreams(newStreams.filter((s) => s._dataSource === 'custom'))
-    setDelayState(streamdelay)
-    //setAuthState(auth)
+
+    const streams = sortBy(stateStreams, ['_id'])
+    const customStreams = stateStreams.filter((s) => s._dataSource === 'custom')
+
+    return {
+      role,
+      authState: auth,
+      delayState: streamdelay,
+      views,
+      config,
+      streams,
+      customStreams,
+      stateIdxMap,
+    }
   }, [state])
-
-  return { views, config, streams, customStreams, stateIdxMap, delayState }
-}
-
-function useStreamwallWebsocketConnection(
-  wsEndpoint: string,
-  role: StreamwallRole,
-): StreamwallConnection {
-  const wsRef = useRef<{
-    ws: ReconnectingWebSocket
-    msgId: number
-    responseMap: Map<number, (msg: object) => void>
-  }>()
-  const [isConnected, setIsConnected] = useState(false)
-  const {
-    docValue: sharedState,
-    doc: stateDoc,
-    setDoc: setStateDoc,
-  } = useYDoc<CollabData>(['views'])
-  const [streamwallState, setStreamwallState] = useState<StreamwallState>()
-  const appState = useStreamwallState(streamwallState)
-
-  useEffect(() => {
-    let lastStateData: StreamwallState | undefined
-    const ws = new ReconnectingWebSocket(wsEndpoint, [], {
-      maxReconnectionDelay: 5000,
-      minReconnectionDelay: 1000 + Math.random() * 500,
-      reconnectionDelayGrowFactor: 1.1,
-    })
-    ws.binaryType = 'arraybuffer'
-    ws.addEventListener('open', () => setIsConnected(true))
-    ws.addEventListener('close', () => {
-      setStateDoc(new Y.Doc())
-      setIsConnected(false)
-    })
-    ws.addEventListener('message', (ev) => {
-      if (ev.data instanceof ArrayBuffer) {
-        return
-      }
-      const msg = JSON.parse(ev.data)
-      if (msg.response && wsRef.current != null) {
-        const { responseMap } = wsRef.current
-        const responseCb = responseMap.get(msg.id)
-        if (responseCb) {
-          responseMap.delete(msg.id)
-          responseCb(msg)
-        }
-      } else if (msg.type === 'state' || msg.type === 'state-delta') {
-        let state: StreamwallState
-        if (msg.type === 'state') {
-          state = msg.state
-        } else {
-          state = patchJSON(lastStateData, msg.delta) as StreamwallState
-        }
-        lastStateData = state
-        setStreamwallState(state)
-      } else {
-        console.warn('unexpected ws message', msg)
-      }
-    })
-    wsRef.current = { ws, msgId: 0, responseMap: new Map() }
-  }, [])
-
-  const send = useCallback(
-    (msg: ControlCommand, cb?: (msg: unknown) => void) => {
-      if (!wsRef.current) {
-        throw new Error('Websocket not initialized')
-      }
-      const { ws, msgId, responseMap } = wsRef.current
-      ws.send(
-        JSON.stringify({
-          ...msg,
-          id: msgId,
-        }),
-      )
-      if (cb) {
-        responseMap.set(msgId, cb)
-      }
-      wsRef.current.msgId++
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!wsRef.current) {
-      throw new Error('Websocket not initialized')
-    }
-    const { ws } = wsRef.current
-
-    function sendUpdate(update: Uint8Array, origin: string) {
-      if (origin === 'server') {
-        return
-      }
-      wsRef.current?.ws.send(update)
-    }
-
-    function receiveUpdate(ev: MessageEvent) {
-      if (!(ev.data instanceof ArrayBuffer)) {
-        return
-      }
-      Y.applyUpdate(stateDoc, new Uint8Array(ev.data), 'server')
-    }
-
-    stateDoc.on('update', sendUpdate)
-    ws.addEventListener('message', receiveUpdate)
-    return () => {
-      stateDoc.off('update', sendUpdate)
-      ws.removeEventListener('message', receiveUpdate)
-    }
-  }, [stateDoc])
-
-  return {
-    ...appState,
-    isConnected,
-    role,
-    send,
-    sharedState,
-    stateDoc,
-  }
 }
 
 export function ControlUI({
@@ -336,7 +226,6 @@ export function ControlUI({
 }) {
   const {
     isConnected,
-    role,
     send,
     sharedState,
     stateDoc,
@@ -346,7 +235,8 @@ export function ControlUI({
     views,
     stateIdxMap,
     delayState,
-    //authState,
+    authState,
+    role,
   } = connection
   const {
     gridCount,
@@ -623,7 +513,6 @@ export function ControlUI({
     [send],
   )
 
-  /*
   const [newInvite, setNewInvite] = useState<Invite>()
 
   const handleCreateInvite = useCallback(
@@ -652,7 +541,6 @@ export function ControlUI({
   const preventLinkClick = useCallback((ev: Event) => {
     ev.preventDefault()
   }, [])
-  */
 
   // Set up keyboard shortcuts.
   useHotkeys(
@@ -903,7 +791,8 @@ export function ControlUI({
                 </div>
               </>
             )}
-          {/*roleCan(role, 'edit-tokens') && authState && (
+          {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
+            authState && (
               <>
                 <h2>Access</h2>
                 <div>
@@ -920,18 +809,18 @@ export function ControlUI({
                       </a>
                     </StyledNewInviteBox>
                   )}
-                  {authState.invites.map(({ id, name, role }) => (
+                  {authState.invites.map(({ tokenId, name, role }) => (
                     <AuthTokenLine
-                      id={id}
+                      id={tokenId}
                       name={name}
                       role={role}
                       onDelete={handleDeleteToken}
                     />
                   ))}
                   <h3>Sessions</h3>
-                  {authState.sessions.map(({ id, name, role }) => (
+                  {authState.sessions.map(({ tokenId, name, role }) => (
                     <AuthTokenLine
-                      id={id}
+                      id={tokenId}
                       name={name}
                       role={role}
                       onDelete={handleDeleteToken}
@@ -939,7 +828,7 @@ export function ControlUI({
                   ))}
                 </div>
               </>
-            )*/}
+            )}
         </StyledDataContainer>
       </Stack>
     </Stack>

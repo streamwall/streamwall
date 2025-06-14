@@ -1,7 +1,7 @@
 {
   "name": "streamwall",
   "productName": "Streamwall",
-  "version": "2.0.0-pre1",
+  "version": "2.0.0-pre2",
   "description": "Watch streams in a grid layout",
   "main": ".vite/build/index.js",
   "repository": "github:streamwall/streamwall",
@@ -42,7 +42,6 @@
   "author": "Max Goodhart <c@chromakode.com>",
   "license": "MIT",
   "dependencies": {
-    "@fontsource/noto-sans": "^5.1.1",
     "@iarna/toml": "^2.2.5",
     "@repeaterjs/repeater": "^3.0.6",
     "@sentry/electron": "^5.9.0",

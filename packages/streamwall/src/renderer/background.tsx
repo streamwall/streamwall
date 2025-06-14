@@ -1,5 +1,5 @@
 import '@fontsource/noto-sans'
-import './index.css'
+import 'streamwall-control-ui/src/index.css'
 
 import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
