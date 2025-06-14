@@ -949,7 +949,7 @@ function StreamLine({
           label
         ) : (
           <>
-            <strong>{source}</strong>
+            <strong>{source}</strong>{' '}
             <a href={link} target="_blank">
               {truncate(link, { length: 55 })}
             </a>{' '}
