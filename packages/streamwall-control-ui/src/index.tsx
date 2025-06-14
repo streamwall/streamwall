@@ -48,6 +48,7 @@ export interface ViewInfo {
 }
 
 interface Invite {
+  tokenId: string
   name: string
   secret: string
 }
@@ -803,7 +804,7 @@ export function ControlUI({
                     <StyledNewInviteBox>
                       Invite link created:{' '}
                       <a
-                        href={`/invite/${newInvite.secret}`}
+                        href={`/invite/${newInvite.tokenId}?token=${newInvite.secret}`}
                         onClick={preventLinkClick}
                       >
                         "{newInvite.name}"

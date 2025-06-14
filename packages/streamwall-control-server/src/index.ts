@@ -372,12 +372,12 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
 
           if (msg.type === 'create-invite') {
             console.debug('Creating invite for role:', msg.role)
-            const { secret } = await auth.createToken({
+            const { tokenId, secret } = await auth.createToken({
               kind: 'invite',
               role: msg.role as StreamwallRole,
               name: msg.name,
             })
-            respond({ name: msg.name, secret })
+            respond({ name: msg.name, secret, tokenId })
           } else if (msg.type === 'delete-token') {
             console.debug('Deleting token:', msg.tokenId)
             auth.deleteToken(msg.tokenId)
