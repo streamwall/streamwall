@@ -206,6 +206,7 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
           if (msg.type === 'state') {
             if (clientState === null) {
               clientState = new StateWrapper(msg.state)
+              clientState.update({ auth: auth.getState() })
               currentStreamwallConn = {
                 ws,
                 clientState,
