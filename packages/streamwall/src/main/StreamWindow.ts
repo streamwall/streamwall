@@ -36,7 +36,6 @@ export interface StreamWindowEventMap {
 export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
   config: StreamWindowConfig
   win: BrowserWindow
-  offscreenWin: BrowserWindow
   backgroundView: WebContentsView
   overlayView: WebContentsView
   views: Map<number, ViewActor>
@@ -69,13 +68,6 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       win.show()
     })
     this.win = win
-
-    const offscreenWin = new BrowserWindow({
-      width,
-      height,
-      show: false,
-    })
-    this.offscreenWin = offscreenWin
 
     const backgroundView = new WebContentsView({
       webPreferences: {
@@ -146,7 +138,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
   }
 
   createView() {
-    const { win, offscreenWin } = this
+    const { win } = this
     assert(win != null, 'Window must be initialized')
     const { backgroundColor } = this.config
     const view = new WebContentsView({
@@ -154,6 +146,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         preload: path.join(__dirname, 'mediaPreload.js'),
         nodeIntegration: false,
         contextIsolation: true,
+        backgroundThrottling: false,
         partition: 'persist:session',
       },
     })
@@ -171,7 +164,6 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         id: viewId,
         view,
         win,
-        offscreenWin,
       },
     })
 

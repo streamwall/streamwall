@@ -21,13 +21,11 @@ const viewStateMachine = setup({
       id: number
       view: WebContentsView
       win: BrowserWindow
-      offscreenWin: BrowserWindow
     },
 
     context: {} as {
       id: number
       win: BrowserWindow
-      offscreenWin: BrowserWindow
       view: WebContentsView
       pos: ViewPos | null
       content: ViewContent | null
@@ -85,23 +83,19 @@ const viewStateMachine = setup({
     },
 
     offscreenView: ({ context }) => {
-      const { view, win, offscreenWin } = context
-      // It appears necessary to initialize the browser view by adding it to a window and setting bounds. Otherwise, some streaming sites like Periscope will not load their videos due to RAFs not firing.
-      // TODO: Is this still necessary with WebContentsView?
-      win.contentView.removeChildView(view)
-      offscreenWin.contentView.addChildView(view)
+      const { view, win } = context
+      win.contentView.addChildView(view, 0) // Insert below background (so hidden by background)
       view.setBounds(win.getBounds())
     },
 
     positionView: ({ context }) => {
-      const { pos, view, win, offscreenWin } = context
+      const { pos, view, win } = context
 
       if (!pos) {
         return
       }
 
-      offscreenWin.contentView.removeChildView(view)
-      win.contentView.addChildView(view, 1) // Insert at index 1 above default view and so overlay remains on top
+      win.contentView.addChildView(view, win.contentView.children.length - 2) // Insert below overlay but above background
       view.setBounds(pos)
     },
   },
@@ -147,24 +141,16 @@ const viewStateMachine = setup({
         } else {
           wc.loadURL(content.url)
         }
-
-        try {
-          // Force page visibility
-          wc.capturePage(undefined, { stayAwake: true })
-        } catch (err) {
-          console.warn('Error calling capturePage:', err)
-        }
       },
     ),
   },
 }).createMachine({
   id: 'view',
   initial: 'empty',
-  context: ({ input: { id, view, win, offscreenWin } }) => ({
+  context: ({ input: { id, view, win } }) => ({
     id,
     view,
     win,
-    offscreenWin,
     pos: null,
     content: null,
     options: null,
