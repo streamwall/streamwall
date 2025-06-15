@@ -11,6 +11,7 @@ import {
   type AuthTokenInfo,
   type ControlCommandMessage,
   type ControlUpdateMessage,
+  inviteLink,
   roleCan,
   stateDiff,
   type StreamwallRole,
@@ -456,7 +457,11 @@ async function initialInviteCodes({
   )
   console.log(
     '🔑 Admin invite:',
-    `${baseURL}/invite/${adminToken.tokenId}?token=${adminToken.secret}`,
+    inviteLink({
+      baseURL,
+      tokenId: adminToken.tokenId,
+      secret: adminToken.secret,
+    }),
   )
 }
 

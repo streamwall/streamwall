@@ -47,3 +47,15 @@ export function roleCan(role: StreamwallRole | null, action: StreamwallAction) {
 
   return false
 }
+
+export function inviteLink({
+  baseURL = '',
+  tokenId,
+  secret,
+}: {
+  baseURL?: string
+  tokenId: string
+  secret: string
+}) {
+  return `${baseURL}/invite/${tokenId}?token=${secret}`
+}

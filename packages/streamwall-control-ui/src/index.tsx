@@ -25,6 +25,7 @@ import {
   ControlCommand,
   idColor,
   idxInBox,
+  inviteLink,
   LocalStreamData,
   roleCan,
   StreamData,
@@ -804,7 +805,10 @@ export function ControlUI({
                     <StyledNewInviteBox>
                       Invite link created:{' '}
                       <a
-                        href={`/invite/${newInvite.tokenId}?token=${newInvite.secret}`}
+                        href={inviteLink({
+                          tokenId: newInvite.tokenId,
+                          secret: newInvite.secret,
+                        })}
                         onClick={preventLinkClick}
                       >
                         "{newInvite.name}"
