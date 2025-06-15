@@ -89,21 +89,24 @@ export const GlobalStyle = createGlobalStyle`
 `
 
 const normalStreamKinds = new Set(['video', 'audio', 'web'])
-function filterStreams(streams: StreamData[]) {
+function filterStreams(streams: StreamData[], wallStreamIds: Set<string>) {
+  const wallStreams = []
   const liveStreams = []
   const otherStreams = []
   for (const stream of streams) {
-    const { kind, status } = stream
+    const { _id, kind, status } = stream
     if (kind && !normalStreamKinds.has(kind)) {
       continue
     }
-    if ((kind && kind !== 'video') || status === 'Live') {
+    if (wallStreamIds.has(_id)) {
+      wallStreams.push(stream)
+    } else if ((kind && kind !== 'video') || status === 'Live') {
       liveStreams.push(stream)
     } else {
       otherStreams.push(stream)
     }
   }
-  return [liveStreams, otherStreams]
+  return [wallStreams, liveStreams, otherStreams]
 }
 
 export function useYDoc<T>(keys: string[]): {
@@ -591,7 +594,19 @@ export function ControlUI({
     [handleSwapView, focusedInputIdx],
   )
 
-  const [liveStreams, otherStreams] = filterStreams(streams)
+  const wallStreamIds = useMemo(
+    () =>
+      new Set(
+        Object.values(sharedState?.views ?? {})
+          .map(({ streamId }) => streamId)
+          .filter((x) => x !== undefined),
+      ),
+    [sharedState],
+  )
+  const [wallStreams, liveStreams, otherStreams] = filterStreams(
+    streams,
+    wallStreamIds,
+  )
   function StreamList({ rows }: { rows: StreamData[] }) {
     return rows.map((row) => (
       <StreamLine
@@ -761,6 +776,8 @@ export function ControlUI({
         <StyledDataContainer isConnected={isConnected}>
           {isConnected ? (
             <div>
+              <h3>Viewing</h3>
+              <StreamList rows={wallStreams} />
               <h3>Live</h3>
               <StreamList rows={liveStreams} />
               <h3>Offline / Unknown</h3>
