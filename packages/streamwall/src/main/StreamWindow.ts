@@ -279,6 +279,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     for (const view of unusedViews) {
       const contentView = view.getSnapshot().context.view
       win.contentView.removeChildView(contentView)
+      contentView.webContents.close()
     }
     this.views = newViews
     this.emitState()
