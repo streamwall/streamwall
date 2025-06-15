@@ -10,6 +10,7 @@ import {
   FaVolumeUp,
   FaYoutube,
 } from 'react-icons/fa'
+import { RiKickFill, RiTwitterXFill } from 'react-icons/ri'
 import { StreamwallState } from 'streamwall-shared'
 import { styled } from 'styled-components'
 import { TailSpin } from 'svg-loaders-react'
@@ -146,6 +147,10 @@ function StreamIcon({ url }: { url: string }) {
     return <FaInstagram />
   } else if (host === 'tiktok.com') {
     return <FaTiktok />
+  } else if (host === 'kick.com') {
+    return <RiKickFill />
+  } else if (host === 'x.com') {
+    return <RiTwitterXFill />
   }
   return null
 }
