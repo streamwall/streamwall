@@ -1162,6 +1162,11 @@ function GridControls({
         <StyledGridButtons side="left">
           {showDebug ? (
             <>
+              {roleCan(role, 'reload-view') && (
+                <StyledSmallButton onClick={handleReloadClick} tabIndex={1}>
+                  <FaSyncAlt />
+                </StyledSmallButton>
+              )}
               {roleCan(role, 'browse') && (
                 <StyledSmallButton onClick={handleBrowseClick} tabIndex={1}>
                   <FaRegWindowMaximize />
