@@ -89,13 +89,25 @@ export const GlobalStyle = createGlobalStyle`
 `
 
 const normalStreamKinds = new Set(['video', 'audio', 'web'])
-function filterStreams(streams: StreamData[], wallStreamIds: Set<string>) {
+function filterStreams(
+  streams: StreamData[],
+  wallStreamIds: Set<string>,
+  filter: string,
+) {
   const wallStreams = []
   const liveStreams = []
   const otherStreams = []
   for (const stream of streams) {
-    const { _id, kind, status } = stream
+    const { _id, kind, status, label, source, state, city } = stream
     if (kind && !normalStreamKinds.has(kind)) {
+      continue
+    }
+    if (
+      filter !== '' &&
+      !`${label}${source}${state}${city}`
+        .toLowerCase()
+        .includes(filter.toLowerCase())
+    ) {
       continue
     }
     if (wallStreamIds.has(_id)) {
@@ -547,6 +559,13 @@ export function ControlUI({
     ev.preventDefault()
   }, [])
 
+  const [streamFilter, setStreamFilter] = useState('')
+  const handleStreamFilterChange = useCallback<
+    JSX.InputEventHandler<HTMLInputElement>
+  >((ev) => {
+    setStreamFilter(ev.currentTarget?.value)
+  }, [])
+
   // Set up keyboard shortcuts.
   useHotkeys(
     hotkeyTriggers.map((k) => `alt+${k}`).join(','),
@@ -603,9 +622,9 @@ export function ControlUI({
       ),
     [sharedState],
   )
-  const [wallStreams, liveStreams, otherStreams] = filterStreams(
-    streams,
-    wallStreamIds,
+  const [wallStreams, liveStreams, otherStreams] = useMemo(
+    () => filterStreams(streams, wallStreamIds, streamFilter),
+    [streams, wallStreamIds, streamFilter],
   )
   function StreamList({ rows }: { rows: StreamData[] }) {
     return rows.map((row) => (
@@ -776,6 +795,11 @@ export function ControlUI({
         <StyledDataContainer isConnected={isConnected}>
           {isConnected ? (
             <div>
+              <input
+                onChange={handleStreamFilterChange}
+                value={streamFilter}
+                placeholder="filter"
+              />
               <h3>Viewing</h3>
               <StreamList rows={wallStreams} />
               <h3>Live</h3>
