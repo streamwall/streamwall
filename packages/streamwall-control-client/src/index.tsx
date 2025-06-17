@@ -43,6 +43,8 @@ function useStreamwallWebsocketConnection(
     ws.binaryType = 'arraybuffer'
     ws.addEventListener('open', () => setIsConnected(true))
     ws.addEventListener('close', () => {
+      setStreamwallState(undefined)
+      lastStateData = undefined
       setStateDoc(new Y.Doc())
       setIsConnected(false)
     })
