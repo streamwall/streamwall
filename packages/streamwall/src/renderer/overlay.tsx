@@ -15,6 +15,7 @@ import { StreamwallState } from 'streamwall-shared'
 import { styled } from 'styled-components'
 import { TailSpin } from 'svg-loaders-react'
 import { matchesState } from 'xstate'
+import packageInfo from '../../package.json'
 import { StreamwallLayerGlobal } from '../preload/layerPreload'
 
 import '@fontsource/noto-sans'
@@ -40,6 +41,9 @@ function Overlay({
   const overlays = streams.filter((s) => s.kind === 'overlay')
   return (
     <div>
+      <VersionText>
+        <strong>streamwall.io</strong> {packageInfo.version}
+      </VersionText>
       {activeViews.map(({ state, context }) => {
         const { content, pos } = context
         if (!content) {
@@ -265,6 +269,23 @@ const BlurCover = styled.div`
   top: 0;
   bottom: 0;
   backdrop-filter: ${({ isBlurred }) => (isBlurred ? 'blur(30px)' : 'blur(0)')};
+`
+
+const VersionText = styled.div`
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  color: white;
+  font-size: 12px;
+  text-shadow:
+    0 0 1px rgba(0, 0, 0, 0.5),
+    1px 0 1px rgba(0, 0, 0, 0.5),
+    0 1px 1px rgba(0, 0, 0, 0.5),
+    1px 1px 1px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(30px);
+  padding: 1px 4px;
+  border-bottom-left-radius: 4px;
+  opacity: 0.65;
 `
 
 const OverlayIFrame = styled.iframe`
