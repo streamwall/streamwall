@@ -23,6 +23,7 @@ function Background({ streams }: { streams: StreamList }) {
           src={s.link}
           sandbox="allow-scripts allow-same-origin"
           allow="autoplay"
+          scrolling="no"
         />
       ))}
     </div>
