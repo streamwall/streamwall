@@ -41,7 +41,6 @@ function useStreamwallWebsocketConnection(
       reconnectionDelayGrowFactor: 1.1,
     })
     ws.binaryType = 'arraybuffer'
-    ws.addEventListener('open', () => setIsConnected(true))
     ws.addEventListener('close', () => {
       setStreamwallState(undefined)
       lastStateData = undefined
@@ -64,6 +63,7 @@ function useStreamwallWebsocketConnection(
         let state: StreamwallState
         if (msg.type === 'state') {
           state = msg.state
+          setIsConnected(true)
         } else {
           // Clone so updated object triggers React renders
           state = stateDiff.clone(
