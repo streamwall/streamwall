@@ -250,9 +250,20 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       callback(false)
     })
 
+  const db = await loadStorage(
+    join(app.getPath('userData'), 'streamwall-storage.json'),
+  )
+
   console.debug('Creating StreamWindow...')
   const idGen = new StreamIDGenerator()
-  const localStreamData = new LocalStreamData()
+
+  const localStreamData = new LocalStreamData(db.data.localStreamData)
+  localStreamData.on('update', (entries) => {
+    db.update((data) => {
+      data.localStreamData = entries
+    })
+  })
+
   const overlayStreamData = new LocalStreamData()
 
   const streamWindowConfig = {
@@ -306,9 +317,6 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   const stateDoc = new Y.Doc()
   const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
 
-  const db = await loadStorage(
-    join(app.getPath('userData'), 'streamwall-storage.json'),
-  )
   if (db.data.stateDoc) {
     console.log('Loading stateDoc from storage...')
     try {
@@ -531,11 +539,10 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       return markDataSource(watchDataFile(path), 'toml-file')
     }),
     markDataSource(localStreamData.gen(), 'custom'),
-    overlayStreamData.gen(),
+    markDataSource(overlayStreamData.gen(), 'overlay'),
   ]
 
-  for await (const rawStreams of combineDataSources(dataSources)) {
-    const streams = idGen.process(rawStreams)
+  for await (const streams of combineDataSources(dataSources, idGen)) {
     updateState({ streams })
     updateViewsFromStateDoc()
   }

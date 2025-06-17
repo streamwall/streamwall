@@ -6,20 +6,24 @@ import { promises as fsPromises } from 'fs'
 import { isArray } from 'lodash-es'
 import fetch from 'node-fetch'
 import { promisify } from 'util'
-import { StreamData, StreamList } from '../../../streamwall-shared/src/types'
+import {
+  StreamData,
+  StreamDataContent,
+  StreamList,
+} from '../../../streamwall-shared/src/types'
 
 const sleep = promisify(setTimeout)
 
-type DataSource = AsyncGenerator<StreamData[]>
+type DataSource = AsyncGenerator<StreamDataContent[]>
 
 export async function* pollDataURL(url: string, intervalSecs: number) {
   const refreshInterval = intervalSecs * 1000
   let lastData = []
   while (true) {
-    let data: StreamData[] = []
+    let data: StreamDataContent[] = []
     try {
       const resp = await fetch(url)
-      data = (await resp.json()) as StreamData[]
+      data = (await resp.json()) as StreamDataContent[]
     } catch (err) {
       console.warn('error loading stream data', err)
     }
@@ -65,33 +69,50 @@ export async function* markDataSource(dataSource: DataSource, name: string) {
   }
 }
 
-export async function* combineDataSources(dataSources: DataSource[]) {
+export async function* combineDataSources(
+  dataSources: DataSource[],
+  idGen: StreamIDGenerator,
+) {
   for await (const streamLists of Repeater.latest(dataSources)) {
     const dataByURL = new Map<string, StreamData>()
     for (const list of streamLists) {
       for (const data of list) {
         const existing = dataByURL.get(data.link)
-        dataByURL.set(data.link, { ...existing, ...data })
+        dataByURL.set(data.link, { ...existing, ...data } as StreamData)
       }
     }
-    const streams: StreamList = [...dataByURL.values()]
+
+    const streams = idGen.process([...dataByURL.values()]) as StreamList
+
     // Retain the index to speed up local lookups
     streams.byURL = dataByURL
     yield streams
   }
 }
 
-export class LocalStreamData extends EventEmitter {
-  dataByURL: Map<string, Partial<StreamData>>
+interface LocalStreamDataEvents {
+  update: [StreamDataContent[]]
+}
 
-  constructor() {
+export class LocalStreamData extends EventEmitter<LocalStreamDataEvents> {
+  dataByURL: Map<string, StreamDataContent>
+
+  constructor(entries: StreamDataContent[] = []) {
     super()
     this.dataByURL = new Map()
+    for (const entry of entries) {
+      if (!entry.link) {
+        continue
+      }
+      this.dataByURL.set(entry.link, entry)
+    }
   }
 
-  update(url: string, data: Partial<StreamData>) {
+  update(url: string, data: Partial<StreamDataContent>) {
     const existing = this.dataByURL.get(url)
-    this.dataByURL.set(data.link ?? url, { ...existing, ...data, link: url })
+    const kind = data.kind ?? existing?.kind ?? 'video'
+    const updated: StreamDataContent = { ...existing, ...data, kind, link: url }
+    this.dataByURL.set(data.link ?? url, updated)
     if (data.link != null && url !== data.link) {
       this.dataByURL.delete(url)
     }
@@ -107,9 +128,9 @@ export class LocalStreamData extends EventEmitter {
     this.emit('update', [...this.dataByURL.values()])
   }
 
-  gen(): AsyncGenerator<StreamData[]> {
+  gen(): AsyncGenerator<StreamDataContent[]> {
     return new Repeater(async (push, stop) => {
-      await push([])
+      await push([...this.dataByURL.values()])
       this.on('update', push)
       await stop
       this.off('update', push)
@@ -126,7 +147,7 @@ export class StreamIDGenerator {
     this.idSet = new Set()
   }
 
-  process(streams: StreamData[]) {
+  process(streams: StreamDataContent[]) {
     const { idMap, idSet } = this
 
     for (const stream of streams) {

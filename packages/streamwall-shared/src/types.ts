@@ -23,16 +23,21 @@ export interface ContentViewInfo {
 
 export type ContentKind = 'video' | 'audio' | 'web' | 'background' | 'overlay'
 
-export interface StreamData extends ContentDisplayOptions {
+export interface StreamDataContent extends ContentDisplayOptions {
   kind: ContentKind
   link: string
-  label: string
+  label?: string
   labelPosition?: 'top-left' | 'top-right' | 'bottom-right' | 'bottom-left'
   source?: string
   notes?: string
   status?: string
   city?: string
   state?: string
+  _id?: string
+  _dataSource?: string
+}
+
+export interface StreamData extends StreamDataContent {
   _id: string
   _dataSource: string
 }

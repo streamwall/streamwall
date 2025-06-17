@@ -1297,7 +1297,7 @@ function CustomStreamInput({
   return (
     <div>
       <LazyChangeInput
-        value={props.label}
+        value={props.label ?? ''}
         onChange={handleChangeLabel}
         placeholder="Label (optional)"
       />{' '}
