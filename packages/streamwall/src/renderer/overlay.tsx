@@ -40,10 +40,8 @@ function Overlay({
   )
   const overlays = streams.filter((s) => s.kind === 'overlay')
   return (
-    <div>
-      <VersionText>
-        <strong>streamwall.io</strong> {packageInfo.version}
-      </VersionText>
+    <OverlayContainer>
+      <VersionFooter />
       {activeViews.map(({ state, context }) => {
         const { content, pos } = context
         if (!content) {
@@ -107,7 +105,7 @@ function Overlay({
           scrolling="no"
         />
       ))}
-    </div>
+    </OverlayContainer>
   )
 }
 
@@ -130,6 +128,28 @@ function App() {
 
   const { config, views, streams } = state
   return <Overlay config={config} views={views} streams={streams} />
+}
+
+function VersionFooter() {
+  const [isShowing, setShowing] = useState(false)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined = undefined
+    const interval = setInterval(() => {
+      setShowing(true)
+      timeout = setTimeout(() => {
+        setShowing(false)
+      }, 5000)
+    }, 30 * 1000)
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timeout)
+    }
+  }, [])
+  return (
+    <VersionText isShowing={isShowing}>
+      <strong>streamwall.io</strong> {packageInfo.version}
+    </VersionText>
+  )
 }
 
 function StreamIcon({ url }: { url: string }) {
@@ -159,6 +179,10 @@ function StreamIcon({ url }: { url: string }) {
   }
   return null
 }
+
+const OverlayContainer = styled.div`
+  overflow: hidden;
+`
 
 const SpaceBorder = styled.div.attrs(() => ({
   borderWidth: 2,
@@ -272,7 +296,7 @@ const BlurCover = styled.div`
 `
 
 const VersionText = styled.div`
-  position: absolute;
+  position: fixed;
   bottom: 4px;
   right: 4px;
   color: white;
@@ -285,7 +309,8 @@ const VersionText = styled.div`
   backdrop-filter: blur(30px);
   padding: 1px 4px;
   border-bottom-left-radius: 4px;
-  opacity: 0.65;
+  opacity: ${({ isShowing }) => (isShowing ? '.65' : '.35')};
+  transition: ease-out 500ms all;
 `
 
 const OverlayIFrame = styled.iframe`
