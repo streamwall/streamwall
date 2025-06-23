@@ -238,7 +238,7 @@ function parseArgs(): StreamwallConfig {
       })
       .help()
       // https://github.com/yargs/yargs/issues/2137
-      .parseSync() as unknown as StreamwallConfig
+      .parseSync(process.argv) as unknown as StreamwallConfig
   )
 }
 
