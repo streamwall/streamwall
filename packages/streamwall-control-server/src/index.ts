@@ -16,12 +16,13 @@ import {
   stateDiff,
   type StreamwallRole,
 } from 'streamwall-shared'
-import { Auth, StateWrapper } from './auth.ts'
+import { Auth, StateWrapper, uniqueRand62 } from './auth.ts'
 import { loadStorage, type StorageDB } from './storage.ts'
 
 export const SESSION_COOKIE_NAME = 's'
 
 interface Client {
+  clientId: string
   ws: WebSocket
   lastStateSent: any
   identity: AuthTokenInfo
@@ -248,7 +249,7 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
           console.error('Failed to send Streamwall doc update')
         }
         for (const client of clients.values()) {
-          if (client.identity.tokenId === origin) {
+          if (client.clientId === origin) {
             continue
           }
           try {
@@ -299,25 +300,39 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
         return
       }
 
+      const clientId = uniqueRand62(8, clients)
       const client: Client = {
+        clientId,
         ws,
         lastStateSent: null,
         identity,
       }
-      clients.set(identity.tokenId, client)
+      clients.set(clientId, client)
 
       const pingInterval = setInterval(() => {
         ws.ping()
       }, 20 * 1000)
 
       ws.on('close', () => {
-        clients.delete(identity.tokenId)
+        clients.delete(clientId)
         clearInterval(pingInterval)
 
-        console.log('Client disconnected from', request.ip, client.identity)
+        console.log(
+          'Client',
+          clientId,
+          'disconnected from',
+          request.ip,
+          client.identity,
+        )
       })
 
-      console.log('Client connected from', request.ip, client.identity)
+      console.log(
+        'Client',
+        clientId,
+        'connected from',
+        request.ip,
+        client.identity,
+      )
 
       handleMessage(async (rawData) => {
         let msg: ControlCommandMessage
@@ -350,7 +365,7 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
           Y.applyUpdate(
             streamwallConn.stateDoc,
             new Uint8Array(rawData),
-            identity.tokenId,
+            clientId,
           )
           return
         }

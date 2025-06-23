@@ -29,8 +29,17 @@ const base62 = baseX(
   '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
 )
 
-function rand62(len: number) {
+export function rand62(len: number) {
   return base62.encode(randomBytes(len))
+}
+
+export function uniqueRand62(len: number, map: Map<string, unknown>) {
+  let val = rand62(len)
+  while (map.has(val)) {
+    // Regenerate in case of a collision
+    val = rand62(len)
+  }
+  return val
 }
 
 async function hashToken62(token: string, salt: string) {
@@ -162,12 +171,7 @@ export class Auth extends EventEmitter<AuthEvents> {
       throw new Error(`invalid role: ${role}`)
     }
 
-    let tokenId = rand62(8)
-    while (this.tokensById.has(tokenId)) {
-      // Regenerate in case of an id collision
-      tokenId = rand62(8)
-    }
-
+    const tokenId = uniqueRand62(8, this.tokensById)
     const secret = rand62(24)
     const tokenHash = await hashToken62(secret, this.salt)
     const tokenData = {
