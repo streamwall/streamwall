@@ -1597,6 +1597,7 @@ function CreateInviteInput({
           value={inviteName}
         />
         <select onChange={handleChangeRole} value={inviteRole}>
+          <option value="admin">admin</option>
           <option value="operator">operator</option>
           <option value="monitor">monitor</option>
         </select>
