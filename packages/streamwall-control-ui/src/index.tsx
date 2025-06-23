@@ -256,10 +256,11 @@ export function ControlUI({
     role,
   } = connection
   const {
-    gridCount,
+    cols,
+    rows,
     width: windowWidth,
     height: windowHeight,
-  } = config ?? { gridCount: null, width: null, height: null }
+  } = config ?? { cols: null, rows: null, width: null, height: null }
 
   const [showDebug, setShowDebug] = useState(false)
   const handleChangeShowDebug = useCallback<
@@ -311,20 +312,24 @@ export function ControlUI({
   const [hoveringIdx, setHoveringIdx] = useState<number>()
   const updateHoveringIdx = useCallback(
     (ev: MouseEvent) => {
-      if (gridCount == null || !(ev.currentTarget instanceof HTMLElement)) {
+      if (
+        cols == null ||
+        rows == null ||
+        !(ev.currentTarget instanceof HTMLElement)
+      ) {
         return
       }
       const { width, height, left, top } =
         ev.currentTarget.getBoundingClientRect()
       const x = Math.floor(ev.clientX - left)
       const y = Math.floor(ev.clientY - top)
-      const spaceWidth = width / gridCount
-      const spaceHeight = height / gridCount
+      const spaceWidth = width / cols
+      const spaceHeight = height / rows
       const idx =
-        Math.floor(y / spaceHeight) * gridCount + Math.floor(x / spaceWidth)
+        Math.floor(y / spaceHeight) * cols + Math.floor(x / spaceWidth)
       setHoveringIdx(idx)
     },
-    [setHoveringIdx, gridCount],
+    [setHoveringIdx, cols, rows],
   )
   const [dragStart, setDragStart] = useState<number | undefined>()
   const handleDragStart = useCallback(
@@ -347,14 +352,19 @@ export function ControlUI({
   )
   useLayoutEffect(() => {
     function endDrag() {
-      if (dragStart == null || gridCount == null || hoveringIdx == null) {
+      if (
+        dragStart == null ||
+        cols == null ||
+        rows == null ||
+        hoveringIdx == null
+      ) {
         return
       }
       stateDoc.transact(() => {
         const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
         const streamId = viewsState.get(String(dragStart))?.get('streamId')
-        for (let idx = 0; idx < gridCount ** 2; idx++) {
-          if (idxInBox(gridCount, dragStart, hoveringIdx, idx)) {
+        for (let idx = 0; idx < cols * rows; idx++) {
+          if (idxInBox(cols, dragStart, hoveringIdx, idx)) {
             viewsState.get(String(idx))?.set('streamId', streamId)
           }
         }
@@ -462,7 +472,7 @@ export function ControlUI({
 
   const handleClickId = useCallback(
     (streamId: string) => {
-      if (gridCount == null || sharedState == null) {
+      if (cols == null || rows == null || sharedState == null) {
         return
       }
 
@@ -477,7 +487,7 @@ export function ControlUI({
         return
       }
 
-      const availableIdx = range(gridCount * gridCount).find(
+      const availableIdx = range(cols * rows).find(
         (i) => !sharedState.views[i].streamId,
       )
       if (availableIdx === undefined) {
@@ -485,7 +495,7 @@ export function ControlUI({
       }
       handleSetView(availableIdx, streamId)
     },
-    [gridCount, sharedState, focusedInputIdx],
+    [cols, rows, sharedState, focusedInputIdx],
   )
 
   const handleChangeCustomStream = useCallback(
@@ -660,7 +670,7 @@ export function ControlUI({
           />
         )}
         <StyledDataContainer isConnected={isConnected}>
-          {gridCount && (
+          {cols != null && rows != null && (
             <StyledGridContainer
               className="grid"
               onMouseMove={updateHoveringIdx}
@@ -668,21 +678,21 @@ export function ControlUI({
               windowHeight={windowHeight}
             >
               <StyledGridInputs>
-                {range(0, gridCount).map((y) =>
-                  range(0, gridCount).map((x) => {
-                    const idx = gridCount * y + x
+                {range(0, rows).map((y) =>
+                  range(0, cols).map((x) => {
+                    const idx = cols * y + x
                     const { streamId } = sharedState?.views?.[idx] ?? {}
                     const isDragHighlighted =
                       dragStart != null &&
                       hoveringIdx != null &&
-                      idxInBox(gridCount, dragStart, hoveringIdx, idx)
+                      idxInBox(cols, dragStart, hoveringIdx, idx)
                     return (
                       <GridInput
                         style={{
-                          width: `${100 / gridCount}%`,
-                          height: `${100 / gridCount}%`,
-                          left: `${(100 * x) / gridCount}%`,
-                          top: `${(100 * y) / gridCount}%`,
+                          width: `${100 / cols}%`,
+                          height: `${100 / rows}%`,
+                          left: `${(100 * x) / cols}%`,
+                          top: `${(100 * y) / rows}%`,
                         }}
                         idx={idx}
                         spaceValue={streamId ?? ''}

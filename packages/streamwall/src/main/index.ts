@@ -34,7 +34,8 @@ const SENTRY_DSN =
 export interface StreamwallConfig {
   help: boolean
   grid: {
-    count: number
+    cols: number
+    rows: number
   }
   window: {
     x?: number
@@ -97,8 +98,12 @@ function parseArgs(): StreamwallConfig {
       .config('config', (configPath) => {
         return TOML.parse(fs.readFileSync(configPath, 'utf-8'))
       })
-      .group(['grid.count'], 'Grid dimensions')
-      .option('grid.count', {
+      .group(['grid.cols', 'grid.rows'], 'Grid dimensions')
+      .option('grid.cols', {
+        number: true,
+        default: 3,
+      })
+      .option('grid.rows', {
         number: true,
         default: 3,
       })
@@ -267,7 +272,8 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   const overlayStreamData = new LocalStreamData()
 
   const streamWindowConfig = {
-    gridCount: argv.grid.count,
+    cols: argv.grid.cols,
+    rows: argv.grid.rows,
     width: argv.window.width,
     height: argv.window.height,
     x: argv.window.x,
@@ -337,7 +343,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   )
 
   stateDoc.transact(() => {
-    for (let i = 0; i < argv.grid.count ** 2; i++) {
+    for (let i = 0; i < argv.grid.cols * argv.grid.rows; i++) {
       if (viewsState.has(String(i))) {
         continue
       }

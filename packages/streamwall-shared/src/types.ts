@@ -2,7 +2,8 @@ import type { ViewContent, ViewPos } from './geometry.ts'
 import type { StreamwallRole } from './roles.ts'
 
 export interface StreamWindowConfig {
-  gridCount: number
+  cols: number
+  rows: number
   width: number
   height: number
   x?: number
