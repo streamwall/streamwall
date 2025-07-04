@@ -150,6 +150,17 @@ const viewStateMachine = setup({
         ensureValidURL(content.url)
         const wc = view.webContents
         wc.audioMuted = true
+        wc.executeJavaScript(`
+          Object.defineProperty(document, 'visibilityState', {
+            value: 'visible',
+            writable: true
+          });
+          Object.defineProperty(document, 'hidden', {
+            value: false,
+            writable: true
+          });
+          document.dispatchEvent(new Event('visibilitychange'));
+        `)
 
         if (/\.m3u8?$/.test(content.url)) {
           loadHTML(wc, 'playHLS', { query: { src: content.url } })
