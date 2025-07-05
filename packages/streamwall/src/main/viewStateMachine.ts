@@ -85,7 +85,8 @@ const viewStateMachine = setup({
     offscreenView: ({ context }) => {
       const { view, win } = context
       win.contentView.addChildView(view, 0) // Insert below background (so hidden by background)
-      view.setBounds(win.getBounds())
+      const { width, height } = win.getBounds()
+      view.setBounds({ x: 0, y: 0, width, height })
     },
 
     positionView: ({ context }) => {
