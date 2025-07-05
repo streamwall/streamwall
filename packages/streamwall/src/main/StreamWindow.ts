@@ -138,7 +138,10 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
   }
 
   createView() {
-    const { win } = this
+    const {
+      win,
+      config: { width, height },
+    } = this
     assert(win != null, 'Window must be initialized')
     const { backgroundColor } = this.config
     const view = new WebContentsView({
@@ -159,11 +162,19 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       ev.preventDefault()
     })
 
+    // Hidden window used for loading the BrowserView before it's positioned in the wall
+    const offscreenWin = new BrowserWindow({
+      width,
+      height,
+      show: false,
+    })
+
     const actor = createActor(viewStateMachine, {
       input: {
         id: viewId,
         view,
         win,
+        offscreenWin,
       },
     })
 
@@ -277,9 +288,12 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       newViews.set(view.getSnapshot().context.id, view)
     }
     for (const view of unusedViews) {
-      const contentView = view.getSnapshot().context.view
+      view.stop()
+      const { view: contentView, offscreenWin } = view.getSnapshot().context
+      offscreenWin.contentView.removeChildView(contentView)
       win.contentView.removeChildView(contentView)
       contentView.webContents.close()
+      offscreenWin.destroy()
     }
     this.views = newViews
     this.emitState()
