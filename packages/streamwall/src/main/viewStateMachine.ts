@@ -21,11 +21,13 @@ const viewStateMachine = setup({
       id: number
       view: WebContentsView
       win: BrowserWindow
+      offscreenWin: BrowserWindow
     },
 
     context: {} as {
       id: number
       win: BrowserWindow
+      offscreenWin: BrowserWindow
       view: WebContentsView
       pos: ViewPos | null
       content: ViewContent | null
@@ -83,20 +85,22 @@ const viewStateMachine = setup({
     },
 
     offscreenView: ({ context }) => {
-      const { view, win } = context
-      win.contentView.addChildView(view, 0) // Insert below background (so hidden by background)
-      const { width, height } = win.getBounds()
+      const { view, win, offscreenWin } = context
+      win.contentView.removeChildView(view)
+      offscreenWin.contentView.addChildView(view)
+      const { width, height } = offscreenWin.getBounds()
       view.setBounds({ x: 0, y: 0, width, height })
     },
 
     positionView: ({ context }) => {
-      const { pos, view, win } = context
+      const { pos, view, win, offscreenWin } = context
 
       if (!pos) {
         return
       }
 
-      win.contentView.addChildView(view, win.contentView.children.length - 2) // Insert below overlay but above background
+      offscreenWin.contentView.removeChildView(view)
+      win.contentView.addChildView(view, win.contentView.children.length - 1) // Insert below overlay but above background
       view.setBounds(pos)
     },
   },
@@ -148,10 +152,11 @@ const viewStateMachine = setup({
 }).createMachine({
   id: 'view',
   initial: 'empty',
-  context: ({ input: { id, view, win } }) => ({
+  context: ({ input: { id, view, win, offscreenWin } }) => ({
     id,
     view,
     win,
+    offscreenWin,
     pos: null,
     content: null,
     options: null,
