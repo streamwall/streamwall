@@ -100,7 +100,16 @@ const viewStateMachine = setup({
       }
 
       offscreenWin.contentView.removeChildView(view)
-      win.contentView.addChildView(view, win.contentView.children.length - 1) // Insert below overlay but above background
+
+      const existingIdx = win.contentView.children.indexOf(view)
+      win.contentView.addChildView(
+        view,
+        existingIdx !== -1
+          ? existingIdx
+          : // Insert below the overlay (end of the current list because once added, the overlay's index will increase by 1)
+            win.contentView.children.length - 1,
+      )
+
       view.setBounds(pos)
     },
   },
