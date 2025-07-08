@@ -1,0 +1,26 @@
+# Streamwall Development Configuration
+# This configuration is optimized for local development with StreamSource
+
+[window]
+# Development window size
+width = 1280
+height = 720
+
+[grid]
+count = 4
+
+[control]
+# Local control server
+address = "http://localhost:8080"
+username = "dev"
+password = "development"
+
+[data]
+# Automatically fetch streams from StreamSource API
+json-url = ["http://localhost:3000/api/v1/streams"]
+
+# Refresh every 10 seconds in development (more frequent than production)
+interval = 10
+
+# Optionally load from local file for testing
+#toml-file = ["./example.streams.toml"]
