@@ -798,37 +798,13 @@ export function ControlUI({
               Show stream debug tools
             </label>
           )}
-          <Facts />
-        </StyledDataContainer>
-      </Stack>
-      <Stack className="stream-list" flex="1" scroll={true} minHeight={200}>
-        <StyledDataContainer isConnected={isConnected}>
-          {isConnected ? (
-            <div>
-              <input
-                onChange={handleStreamFilterChange}
-                value={streamFilter}
-                placeholder="filter"
-              />
-              <h3>Viewing</h3>
-              <StreamList rows={wallStreams} />
-              <h3>Live</h3>
-              <StreamList rows={liveStreams} />
-              <h3>Offline / Unknown</h3>
-              <StreamList rows={otherStreams} />
-            </div>
-          ) : (
-            <div>loading...</div>
-          )}
+          
+          {/* Move Custom Streams section here */}
           {roleCan(role, 'update-custom-stream') &&
             roleCan(role, 'delete-custom-stream') && (
               <>
                 <h2>Custom Streams</h2>
                 <div>
-                  {/*
-                    Include an empty object at the end to create an extra input for a new custom stream.
-                    We need it to be part of the array (rather than JSX below) for DOM diffing to match the key and retain focus.
-                  */}
                   {customStreams.map(({ link, label, kind }, idx) => (
                     <CustomStreamInput
                       key={idx}
@@ -845,6 +821,8 @@ export function ControlUI({
                 </div>
               </>
             )}
+          
+          {/* Move Access section here */}
           {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
             authState && (
               <>
@@ -886,6 +864,39 @@ export function ControlUI({
                 </div>
               </>
             )}
+          
+          <Facts />
+        </StyledDataContainer>
+      </Stack>
+      <Stack className="stream-list" flex="1" scroll={true} minHeight={200}>
+        <StyledDataContainer isConnected={isConnected}>
+          {isConnected ? (
+            <div>
+              <input
+                onChange={handleStreamFilterChange}
+                value={streamFilter}
+                placeholder="filter"
+              />
+              <h3>Viewing</h3>
+              <StreamList rows={wallStreams} />
+              {delayState && (
+                <StreamDelayControls
+                  role={role}
+                  delayState={delayState}
+                  setStreamCensored={setStreamCensored}
+                  setStreamRunning={setStreamRunning}
+                />
+              )}
+              <h3>Live</h3>
+              <StreamList rows={liveStreams} />
+              <h3>Offline / Unknown</h3>
+              <StreamList rows={otherStreams} />
+            </div>
+          ) : (
+            <div>loading...</div>
+          )}
+          
+          {/* Remove the Custom Streams and Access sections from here - they've been moved above */}
         </StyledDataContainer>
       </Stack>
     </Stack>
@@ -1638,11 +1649,11 @@ function AuthTokenLine({
 function Facts() {
   return (
     <StyledFacts>
-      <BLM>Black Lives Matter.</BLM>
+      <BLM></BLM>
       <TRM>
-        Trans rights are <em>human rights.</em>
+        
       </TRM>
-      <TIN>Technology is not neutral.</TIN>
+      <TIN></TIN>
     </StyledFacts>
   )
 }
