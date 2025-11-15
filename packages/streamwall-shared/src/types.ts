@@ -106,6 +106,10 @@ export interface StreamwallState {
   customStreams: StreamList
   views: ViewState[]
   streamdelay: StreamDelayStatus | null
+  savedLayouts?: {
+    slot1?: { name: string; timestamp: number }
+    slot2?: { name: string; timestamp: number }
+  }
 }
 
 type MessageMeta = {
@@ -133,6 +137,9 @@ export type ControlCommand =
   | { type: 'delete-token'; tokenId: string }
   | { type: 'refresh-all-views' }
   | { type: 'refresh-errored-views' }
+  | { type: 'save-layout'; slot: number; name: string }
+  | { type: 'load-layout'; slot: number }
+  | { type: 'clear-layout'; slot: number }
 
 export type ControlUpdate = {
   type: 'state'

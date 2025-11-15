@@ -162,6 +162,7 @@ export interface StreamwallConnection {
   stateIdxMap: Map<number, ViewInfo>
   delayState: StreamDelayStatus | null | undefined
   authState?: StreamwallState['auth']
+  savedLayouts?: StreamwallState['savedLayouts']
 }
 
 export function useStreamwallState(state: StreamwallState | undefined) {
@@ -176,6 +177,7 @@ export function useStreamwallState(state: StreamwallState | undefined) {
         stateIdxMap: new Map(),
         delayState: undefined,
         authState: undefined,
+        savedLayouts: undefined,
       }
     }
 
@@ -186,6 +188,7 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       streams: stateStreams,
       views: stateViews,
       streamdelay,
+      savedLayouts,
     } = state
     const stateIdxMap = new Map()
     const views = []
@@ -232,6 +235,7 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       streams,
       customStreams,
       stateIdxMap,
+      savedLayouts,
     }
   }, [state])
 }
@@ -253,6 +257,7 @@ export function ControlUI({
     stateIdxMap,
     delayState,
     authState,
+    savedLayouts,
     role,
   } = connection
   const {
@@ -473,6 +478,37 @@ export function ControlUI({
       send({
         type: 'dev-tools',
         viewIdx,
+      })
+    },
+    [send],
+  )
+
+  const handleSaveLayout = useCallback(
+    (slot: number, name: string) => {
+      send({
+        type: 'save-layout',
+        slot,
+        name,
+      })
+    },
+    [send],
+  )
+
+  const handleLoadLayout = useCallback(
+    (slot: number) => {
+      send({
+        type: 'load-layout',
+        slot,
+      })
+    },
+    [send],
+  )
+
+  const handleClearLayout = useCallback(
+    (slot: number) => {
+      send({
+        type: 'clear-layout',
+        slot,
       })
     },
     [send],
@@ -887,6 +923,29 @@ export function ControlUI({
                 </div>
               </>
             )}
+          
+          {/* Layout Management section */}
+          {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
+            <>
+              <h2>Layout Management</h2>
+              <div>
+                <LayoutSlot
+                  slot={1}
+                  savedLayout={savedLayouts?.slot1}
+                  onSave={handleSaveLayout}
+                  onLoad={handleLoadLayout}
+                  onClear={handleClearLayout}
+                />
+                <LayoutSlot
+                  slot={2}
+                  savedLayout={savedLayouts?.slot2}
+                  onSave={handleSaveLayout}
+                  onLoad={handleLoadLayout}
+                  onClear={handleClearLayout}
+                />
+              </div>
+            </>
+          )}
           
           <Facts />
         </StyledDataContainer>
@@ -1319,6 +1378,104 @@ function GridControls({
   )
 }
 
+function LayoutSlot({
+  slot,
+  savedLayout,
+  onSave,
+  onLoad,
+  onClear,
+}: {
+  slot: number
+  savedLayout?: { name: string; timestamp: number }
+  onSave: (slot: number, name: string) => void
+  onLoad: (slot: number) => void
+  onClear: (slot: number) => void
+}) {
+  const [name, setName] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+
+  const handleSave = useCallback(() => {
+    if (name.trim()) {
+      onSave(slot, name.trim())
+      setName('')
+      setIsEditing(false)
+    }
+  }, [slot, name, onSave])
+
+  const handleLoad = useCallback(() => {
+    onLoad(slot)
+  }, [slot, onLoad])
+
+  const handleClear = useCallback(() => {
+    onClear(slot)
+  }, [slot, onClear])
+
+  const handleEditClick = useCallback(() => {
+    setIsEditing(true)
+    setName(savedLayout?.name || '')
+  }, [savedLayout])
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false)
+    setName('')
+  }, [])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave()
+    } else if (e.key === 'Escape') {
+      handleCancel()
+    }
+  }, [handleSave, handleCancel])
+
+  return (
+    <StyledLayoutSlot>
+      <div>
+        <strong>Layout {slot}</strong>
+        {savedLayout && (
+          <span> - {savedLayout.name} ({DateTime.fromMillis(savedLayout.timestamp).toFormat('M/d/yy HH:mm')})</span>
+        )}
+      </div>
+      <div>
+        {isEditing ? (
+          <>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName((e.target as HTMLInputElement).value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Layout name"
+              autoFocus
+            />
+            <StyledButton onClick={handleSave} disabled={!name.trim()}>
+              Save
+            </StyledButton>
+            <StyledButton onClick={handleCancel}>
+              Cancel
+            </StyledButton>
+          </>
+        ) : (
+          <>
+            <StyledButton onClick={handleEditClick}>
+              {savedLayout ? 'Rename & Save' : 'Save Current'}
+            </StyledButton>
+            {savedLayout && (
+              <>
+                <StyledButton onClick={handleLoad}>
+                  Load
+                </StyledButton>
+                <StyledButton onClick={handleClear}>
+                  Clear
+                </StyledButton>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </StyledLayoutSlot>
+  )
+}
+
 function CustomStreamInput({
   onChange,
   onDelete,
@@ -1424,6 +1581,30 @@ const StyledStreamDelayBox = styled.div`
 
 const StyledDataContainer = styled.div`
   opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
+`
+
+const StyledLayoutSlot = styled.div`
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  > div:first-child {
+    flex: 1;
+  }
+  
+  > div:last-child {
+    display: flex;
+    gap: 4px;
+  }
+  
+  input {
+    margin-right: 4px;
+    padding: 2px 4px;
+  }
 `
 
 const StyledButton = styled.button`

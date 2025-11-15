@@ -5,11 +5,16 @@ import { StreamDataContent } from 'streamwall-shared'
 export interface StreamwallStoredData {
   stateDoc: string
   localStreamData: StreamDataContent[]
+  savedLayouts: {
+    slot1?: { name: string; stateDoc: string; timestamp: number }
+    slot2?: { name: string; stateDoc: string; timestamp: number }
+  }
 }
 
 const defaultData: StreamwallStoredData = {
   stateDoc: '',
   localStreamData: [],
+  savedLayouts: {}
 }
 
 export type StorageDB = Low<StreamwallStoredData>

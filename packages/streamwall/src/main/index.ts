@@ -298,6 +298,16 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     customStreams: [],
     views: [],
     streamdelay: null,
+    savedLayouts: {
+      slot1: db.data.savedLayouts?.slot1 ? { 
+        name: db.data.savedLayouts.slot1.name, 
+        timestamp: db.data.savedLayouts.slot1.timestamp 
+      } : undefined,
+      slot2: db.data.savedLayouts?.slot2 ? { 
+        name: db.data.savedLayouts.slot2.name, 
+        timestamp: db.data.savedLayouts.slot2.timestamp 
+      } : undefined,
+    }
   }
 
   function updateViewsFromStateDoc() {
@@ -426,6 +436,84 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     } else if (msg.type === 'refresh-errored-views') {
       console.debug('Refreshing errored views sequentially...')
       streamWindow.refreshErroredViewsSequentially()
+    } else if (msg.type === 'save-layout') {
+      console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
+      const currentState = Y.encodeStateAsUpdate(stateDoc)
+      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      db.update((data) => {
+        if (!data.savedLayouts) {
+          data.savedLayouts = {}
+        }
+        data.savedLayouts[slotKey] = {
+          name: msg.name,
+          stateDoc: Buffer.from(currentState).toString('base64'),
+          timestamp: Date.now()
+        }
+      })
+      // Update client state
+      updateState({
+        savedLayouts: {
+          ...clientState.savedLayouts,
+          [slotKey]: {
+            name: msg.name,
+            timestamp: Date.now()
+          }
+        }
+      })
+      console.debug('Layout saved successfully')
+    } else if (msg.type === 'load-layout') {
+      console.debug('Loading layout from slot:', msg.slot)
+      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      const savedLayout = db.data.savedLayouts?.[slotKey]
+      if (savedLayout) {
+        try {
+          const savedState = Buffer.from(savedLayout.stateDoc, 'base64')
+          
+          // Create a new document to extract the saved views
+          const tempDoc = new Y.Doc()
+          Y.applyUpdate(tempDoc, savedState)
+          const tempViewsState = tempDoc.getMap<Y.Map<string | undefined>>('views')
+          
+          // Clear current state and apply saved views
+          stateDoc.transact(() => {
+            // Clear all current streams
+            for (const [key, viewData] of viewsState) {
+              viewData.set('streamId', undefined)
+            }
+            
+            // Apply saved streams
+            for (const [key, savedViewData] of tempViewsState) {
+              if (viewsState.has(key)) {
+                const currentViewData = viewsState.get(key)
+                if (currentViewData) {
+                  currentViewData.set('streamId', savedViewData?.get('streamId'))
+                }
+              }
+            }
+          })
+          console.debug('Layout loaded successfully:', savedLayout.name)
+        } catch (err) {
+          console.warn('Failed to load saved layout:', err)
+        }
+      } else {
+        console.debug('No layout found in slot:', msg.slot)
+      }
+    } else if (msg.type === 'clear-layout') {
+      console.debug('Clearing layout from slot:', msg.slot)
+      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      db.update((data) => {
+        if (data.savedLayouts) {
+          delete data.savedLayouts[slotKey]
+        }
+      })
+      // Update client state
+      updateState({
+        savedLayouts: {
+          ...clientState.savedLayouts,
+          [slotKey]: undefined
+        }
+      })
+      console.debug('Layout cleared successfully')
     }
   }
 

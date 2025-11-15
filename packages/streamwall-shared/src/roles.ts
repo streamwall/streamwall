@@ -21,6 +21,9 @@ const operatorActions = [
   'set-stream-censored',
   'set-stream-running',
   'mutate-state-doc',
+  'save-layout',
+  'load-layout',
+  'clear-layout',
 ] as const
 
 const monitorActions = ['set-view-blurred', 'set-stream-censored'] as const
