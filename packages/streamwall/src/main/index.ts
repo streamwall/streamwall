@@ -289,6 +289,14 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   let streamdelayClient: StreamdelayClient | null = null
 
   console.debug('Creating initial state...')
+  const initialSavedLayouts = db.data.savedLayouts ? Object.fromEntries(
+    Object.entries(db.data.savedLayouts).map(([key, value]) => [
+      key,
+      { name: value.name, timestamp: value.timestamp }
+    ])
+  ) : undefined
+  console.debug('Initial savedLayouts loaded from DB:', initialSavedLayouts)
+  
   let clientState: StreamwallState = {
     identity: {
       role: 'local',
@@ -298,16 +306,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     customStreams: [],
     views: [],
     streamdelay: null,
-    savedLayouts: {
-      slot1: db.data.savedLayouts?.slot1 ? { 
-        name: db.data.savedLayouts.slot1.name, 
-        timestamp: db.data.savedLayouts.slot1.timestamp 
-      } : undefined,
-      slot2: db.data.savedLayouts?.slot2 ? { 
-        name: db.data.savedLayouts.slot2.name, 
-        timestamp: db.data.savedLayouts.slot2.timestamp 
-      } : undefined,
-    }
+    savedLayouts: initialSavedLayouts
   }
 
   function updateViewsFromStateDoc() {
@@ -439,7 +438,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     } else if (msg.type === 'save-layout') {
       console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
       const currentState = Y.encodeStateAsUpdate(stateDoc)
-      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      const slotKey = `slot${msg.slot}`
       db.update((data) => {
         if (!data.savedLayouts) {
           data.savedLayouts = {}
@@ -451,19 +450,21 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         }
       })
       // Update client state
-      updateState({
-        savedLayouts: {
-          ...clientState.savedLayouts,
-          [slotKey]: {
-            name: msg.name,
-            timestamp: Date.now()
-          }
+      const newSavedLayouts = {
+        ...clientState.savedLayouts,
+        [slotKey]: {
+          name: msg.name,
+          timestamp: Date.now()
         }
+      }
+      console.debug('Updating savedLayouts in client state:', newSavedLayouts)
+      updateState({
+        savedLayouts: newSavedLayouts
       })
       console.debug('Layout saved successfully')
     } else if (msg.type === 'load-layout') {
       console.debug('Loading layout from slot:', msg.slot)
-      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      const slotKey = `slot${msg.slot}`
       const savedLayout = db.data.savedLayouts?.[slotKey]
       if (savedLayout) {
         try {
@@ -500,18 +501,18 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       }
     } else if (msg.type === 'clear-layout') {
       console.debug('Clearing layout from slot:', msg.slot)
-      const slotKey = `slot${msg.slot}` as 'slot1' | 'slot2'
+      const slotKey = `slot${msg.slot}`
       db.update((data) => {
         if (data.savedLayouts) {
           delete data.savedLayouts[slotKey]
         }
       })
-      // Update client state
+      // Update client state - remove the slot and rebuild savedLayouts without undefined values
+      const newSavedLayouts = { ...clientState.savedLayouts }
+      delete newSavedLayouts[slotKey]
+      console.debug('Clearing savedLayouts in client state:', newSavedLayouts)
       updateState({
-        savedLayouts: {
-          ...clientState.savedLayouts,
-          [slotKey]: undefined
-        }
+        savedLayouts: newSavedLayouts
       })
       console.debug('Layout cleared successfully')
     }
@@ -521,6 +522,10 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
   function updateState(newState: Partial<StreamwallState>) {
     clientState = { ...clientState, ...newState }
+    if (newState.savedLayouts) {
+      console.debug('updateState called with savedLayouts:', newState.savedLayouts)
+      console.debug('New clientState savedLayouts:', clientState.savedLayouts)
+    }
     streamWindow.onState(clientState)
     controlWindow.onState(clientState)
     stateEmitter.emit('state', clientState)
@@ -569,6 +574,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     ws.binaryType = 'arraybuffer'
     ws.addEventListener('open', () => {
       console.debug('Control WebSocket connected.')
+      console.debug('Sending initial state to WebSocket:', clientState)
       ws.send(JSON.stringify({ type: 'state', state: clientState }))
       ws.send(Y.encodeStateAsUpdate(stateDoc))
     })
@@ -582,6 +588,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         let msg
         try {
           msg = JSON.parse(ev.data)
+          console.debug('Received WebSocket message:', msg)
         } catch (err) {
           console.warn('Failed to parse control WebSocket message:', err)
         }
@@ -590,6 +597,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       }
     })
     stateEmitter.on('state', () => {
+      console.debug('Sending updated state to WebSocket')
+      console.debug('  savedLayouts:', clientState.savedLayouts)
+      console.debug('  full state keys:', Object.keys(clientState))
       ws.send(JSON.stringify({ type: 'state', state: clientState }))
     })
     stateDoc.on('update', (update) => {

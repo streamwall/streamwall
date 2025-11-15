@@ -106,10 +106,7 @@ export interface StreamwallState {
   customStreams: StreamList
   views: ViewState[]
   streamdelay: StreamDelayStatus | null
-  savedLayouts?: {
-    slot1?: { name: string; timestamp: number }
-    slot2?: { name: string; timestamp: number }
-  }
+  savedLayouts?: Record<string, { name: string; timestamp: number }>
 }
 
 type MessageMeta = {

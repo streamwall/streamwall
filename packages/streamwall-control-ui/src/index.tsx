@@ -929,16 +929,8 @@ export function ControlUI({
             <>
               <h2>Layout Management</h2>
               <div>
-                <LayoutSlot
-                  slot={1}
-                  savedLayout={savedLayouts?.slot1}
-                  onSave={handleSaveLayout}
-                  onLoad={handleLoadLayout}
-                  onClear={handleClearLayout}
-                />
-                <LayoutSlot
-                  slot={2}
-                  savedLayout={savedLayouts?.slot2}
+                <DynamicLayoutSlots
+                  savedLayouts={savedLayouts}
                   onSave={handleSaveLayout}
                   onLoad={handleLoadLayout}
                   onClear={handleClearLayout}
@@ -1375,6 +1367,46 @@ function GridControls({
         )}
       </StyledGridButtons>
     </StyledGridControlsContainer>
+  )
+}
+
+function DynamicLayoutSlots({
+  savedLayouts,
+  onSave,
+  onLoad,
+  onClear,
+}: {
+  savedLayouts?: Record<string, { name: string; timestamp: number }>
+  onSave: (slot: number, name: string) => void
+  onLoad: (slot: number) => void
+  onClear: (slot: number) => void
+}) {
+  // Get all existing slot numbers and determine the next available slot
+  const existingSlots = savedLayouts 
+    ? Object.keys(savedLayouts)
+        .map(key => key.match(/^slot(\d+)$/)?.[1])
+        .filter(Boolean)
+        .map(Number)
+        .sort((a, b) => a - b)
+    : []
+  
+  // Always show at least slot 1, plus all existing slots, plus one empty slot for the next save
+  const maxSlot = existingSlots.length > 0 ? Math.max(...existingSlots) : 0
+  const slotsToShow = Array.from({ length: maxSlot + 1 }, (_, i) => i + 1)
+  
+  return (
+    <>
+      {slotsToShow.map(slotNum => (
+        <LayoutSlot
+          key={slotNum}
+          slot={slotNum}
+          savedLayout={savedLayouts?.[`slot${slotNum}`]}
+          onSave={onSave}
+          onLoad={onLoad}
+          onClear={onClear}
+        />
+      ))}
+    </>
   )
 }
 

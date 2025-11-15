@@ -61,7 +61,7 @@ export class StateWrapper extends EventEmitter {
   }
 
   view(role: StreamwallRole) {
-    const { config, auth, streams, customStreams, views, streamdelay } =
+    const { config, auth, streams, customStreams, views, streamdelay, savedLayouts } =
       this._value
 
     const state: StreamwallState = {
@@ -73,6 +73,7 @@ export class StateWrapper extends EventEmitter {
       customStreams,
       views,
       streamdelay,
+      savedLayouts,
     }
     if (role === 'admin') {
       state.auth = auth
