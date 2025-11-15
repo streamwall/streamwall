@@ -16,6 +16,8 @@ const operatorActions = [
   'delete-custom-stream',
   'rotate-stream',
   'reload-view',
+  'refresh-all-views',
+  'refresh-errored-views',
   'set-stream-censored',
   'set-stream-running',
   'mutate-state-doc',

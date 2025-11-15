@@ -334,6 +334,60 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     this.sendViewEvent(viewIdx, { type: 'DEVTOOLS', inWebContents })
   }
 
+  async refreshAllViewsSequentially(delayMs: number = 200) {
+    const viewsArray = Array.from(this.views.values())
+    console.log(`Starting sequential refresh of ${viewsArray.length} views with ${delayMs}ms delay...`)
+    
+    for (let i = 0; i < viewsArray.length; i++) {
+      const view = viewsArray[i]
+      const snapshot = view.getSnapshot()
+      
+      if (snapshot.matches('displaying')) {
+        const { content } = snapshot.context
+        console.log(`Refreshing view ${i + 1}/${viewsArray.length}: ${content?.url || 'unknown'}`)
+        view.send({ type: 'RELOAD' })
+        
+        // Wait before refreshing the next view (except for the last one)
+        if (i < viewsArray.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+        }
+      }
+    }
+    
+    console.log('Finished sequential refresh of all views')
+  }
+
+  async refreshErroredViewsSequentially(delayMs: number = 200) {
+    const viewsArray = Array.from(this.views.values())
+    const erroredViews = viewsArray.filter(view => {
+      const snapshot = view.getSnapshot()
+      return snapshot.matches({ displaying: 'error' })
+    })
+    
+    if (erroredViews.length === 0) {
+      console.log('No errored views found to refresh')
+      return
+    }
+    
+    console.log(`Starting sequential refresh of ${erroredViews.length} errored views with ${delayMs}ms delay...`)
+    
+    for (let i = 0; i < erroredViews.length; i++) {
+      const view = erroredViews[i]
+      const snapshot = view.getSnapshot()
+      const { content } = snapshot.context
+      
+      console.log(`Refreshing errored view ${i + 1}/${erroredViews.length}: ${content?.url || 'unknown'}`)
+      view.send({ type: 'RELOAD' })
+      
+      // Wait before refreshing the next view (except for the last one)
+      if (i < erroredViews.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+      }
+    }
+    
+    console.log('Finished sequential refresh of errored views')
+  }
+
   onState(state: StreamwallState) {
     this.overlayView.webContents.send('state', state)
     this.backgroundView.webContents.send('state', state)

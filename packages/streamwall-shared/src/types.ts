@@ -131,6 +131,8 @@ export type ControlCommand =
   | { type: 'set-stream-running'; isStreamRunning: boolean }
   | { type: 'create-invite'; role: string; name: string }
   | { type: 'delete-token'; tokenId: string }
+  | { type: 'refresh-all-views' }
+  | { type: 'refresh-errored-views' }
 
 export type ControlUpdate = {
   type: 'state'

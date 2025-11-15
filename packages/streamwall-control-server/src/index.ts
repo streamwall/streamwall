@@ -95,9 +95,21 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
   const app = Fastify()
 
   await app.register(fastifyCookie)
+  
+  // Add CORS headers for network access
+  app.addHook('onRequest', async (request, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*')
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie')
+    reply.header('Access-Control-Allow-Credentials', 'true')
+  })
+
   await app.register(fastifyWebsocket, {
     errorHandler: (err) => {
       console.warn('Error handling socket request', err)
+    },
+    options: {
+      verifyClient: () => true, // Allow all WebSocket connections
     },
   })
 
@@ -287,8 +299,18 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
 
       const { identity } = request
 
-      if (request.headers.origin !== expectedOrigin || !identity) {
-        ws.send(JSON.stringify({ error: 'unauthorized' }))
+      // Allow connections from localhost and network IPs on the same port
+      const originUrl = request.headers.origin ? new URL(request.headers.origin) : null
+      const expectedUrl = new URL(expectedOrigin)
+      const isValidOrigin = originUrl && 
+        originUrl.port === expectedUrl.port && 
+        (originUrl.hostname === expectedUrl.hostname || 
+         originUrl.hostname === 'localhost' || 
+         expectedUrl.hostname === 'localhost' ||
+         /^(10|172|192\.168)\./.test(originUrl.hostname)) // Allow private network IPs
+      
+      if (!isValidOrigin || !identity) {
+        ws.send(JSON.stringify({ error: 'unauthorized', origin: request.headers.origin, expected: expectedOrigin }))
         ws.close()
         return
       }
@@ -487,7 +509,7 @@ export default async function runServer({
   clientStaticPath,
 }: AppOptions & { hostname?: string; port?: string }) {
   const url = new URL(baseURL)
-  const hostname = overrideHostname ?? url.hostname
+  const hostname = overrideHostname ?? (url.hostname === 'localhost' ? '0.0.0.0' : url.hostname)
   const port = Number(overridePort ?? url.port ?? '80')
 
   console.debug('Initializing web server:', { hostname, port })

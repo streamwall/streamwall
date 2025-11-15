@@ -420,6 +420,12 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     } else if (msg.type === 'set-stream-running' && streamdelayClient) {
       console.debug('Setting stream running:', msg.isStreamRunning)
       streamdelayClient.setStreamRunning(msg.isStreamRunning)
+    } else if (msg.type === 'refresh-all-views') {
+      console.debug('Refreshing all views sequentially...')
+      streamWindow.refreshAllViewsSequentially()
+    } else if (msg.type === 'refresh-errored-views') {
+      console.debug('Refreshing errored views sequentially...')
+      streamWindow.refreshErroredViewsSequentially()
     }
   }
 

@@ -269,6 +269,14 @@ export function ControlUI({
     setShowDebug(ev.currentTarget.checked)
   }, [])
 
+  const handleRefreshAllViews = useCallback(() => {
+    send({ type: 'refresh-all-views' })
+  }, [send])
+
+  const handleRefreshErroredViews = useCallback(() => {
+    send({ type: 'refresh-errored-views' })
+  }, [send])
+
   const [swapStartIdx, setSwapStartIdx] = useState<number | undefined>()
   const handleSwapView = useCallback(
     (idx: number) => {
@@ -789,14 +797,29 @@ export function ControlUI({
             </StyledGridContainer>
           )}
           {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
-            <label>
-              <input
-                type="checkbox"
-                checked={showDebug}
-                onChange={handleChangeShowDebug}
-              />
-              Show stream debug tools
-            </label>
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showDebug}
+                  onChange={handleChangeShowDebug}
+                />
+                Show stream debug tools
+              </label>
+              {roleCan(role, 'refresh-all-views') && (
+                <>
+                  <br />
+                  <button onClick={handleRefreshAllViews} style={{ marginTop: '5px', marginRight: '10px' }}>
+                    Refresh All Views Sequentially
+                  </button>
+                  {roleCan(role, 'refresh-errored-views') && (
+                    <button onClick={handleRefreshErroredViews} style={{ marginTop: '5px' }}>
+                      Refresh Errored Views Only
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           )}
           
           {/* Move Custom Streams section here */}
