@@ -93,6 +93,8 @@ function filterStreams(
   streams: StreamData[],
   wallStreamIds: Set<string>,
   filter: string,
+  highwayFilters: Set<string>,
+  cityFilters: Set<string>,
 ) {
   const wallStreams = []
   const liveStreams = []
@@ -110,14 +112,48 @@ function filterStreams(
     ) {
       continue
     }
+    
     if (wallStreamIds.has(_id)) {
       wallStreams.push(stream)
     } else if ((kind && kind !== 'video') || status === 'Live') {
       liveStreams.push(stream)
     } else {
+      // Apply static filter logic for offline streams
+      if ((highwayFilters.size > 0 || cityFilters.size > 0) && label) {
+        let matchesFilters = true
+        
+        // If highway filters are selected, check if stream contains any of them
+        if (highwayFilters.size > 0) {
+          const matchesHighway = Array.from(highwayFilters).some(highway => 
+            label.includes(highway)
+          )
+          if (!matchesHighway) matchesFilters = false
+        }
+        
+        // If city filters are selected, check if stream starts with any of them
+        if (cityFilters.size > 0) {
+          const matchesCity = Array.from(cityFilters).some(city => {
+            // Check for exact matches like "CR -", "IC -", etc.
+            if (label.startsWith(city + ' -')) return true
+            
+            // Check for variations with digits like "6DT -", "6DW -", etc.
+            const cityPattern = new RegExp(`^\\d*${city}\\w* -`, 'i')
+            return cityPattern.test(label)
+          })
+          if (!matchesCity) matchesFilters = false
+        }
+        
+        if (!matchesFilters) continue
+      }
       otherStreams.push(stream)
     }
   }
+  
+  // Sort all stream lists alphabetically by label
+  wallStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  liveStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  otherStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  
   return [wallStreams, liveStreams, otherStreams]
 }
 
@@ -622,6 +658,39 @@ export function ControlUI({
     setStreamFilter(ev.currentTarget?.value)
   }, [])
 
+
+
+  // Static filter options for offline streams
+  const staticHighwayFilters = ['I-80', 'I-380', 'I-280', 'US 30', 'IA 13', 'IA 100', 'US 218'].sort()
+  const staticCityFilters = ['IC', 'QC', 'CR', 'WL', 'DQ', 'WWD'].sort()
+
+  const [selectedHighwayFilters, setSelectedHighwayFilters] = useState<Set<string>>(new Set())
+  const [selectedCityFilters, setSelectedCityFilters] = useState<Set<string>>(new Set())
+
+  const handleHighwayFilterToggle = useCallback((filter: string) => {
+    setSelectedHighwayFilters(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(filter)) {
+        newSet.delete(filter)
+      } else {
+        newSet.add(filter)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleCityFilterToggle = useCallback((filter: string) => {
+    setSelectedCityFilters(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(filter)) {
+        newSet.delete(filter)
+      } else {
+        newSet.add(filter)
+      }
+      return newSet
+    })
+  }, [])
+
   // Set up keyboard shortcuts.
   useHotkeys(
     hotkeyTriggers.map((k) => `alt+${k}`).join(','),
@@ -679,8 +748,8 @@ export function ControlUI({
     [sharedState],
   )
   const [wallStreams, liveStreams, otherStreams] = useMemo(
-    () => filterStreams(streams, wallStreamIds, streamFilter),
-    [streams, wallStreamIds, streamFilter],
+    () => filterStreams(streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters),
+    [streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters],
   )
   function StreamList({ rows }: { rows: StreamData[] }) {
     return rows.map((row) => (
@@ -966,6 +1035,66 @@ export function ControlUI({
               <h3>Live</h3>
               <StreamList rows={liveStreams} />
               <h3>Offline / Unknown</h3>
+              <StyledOfflineFilters>
+                <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
+                  Cities/Regions:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                  {[...staticCityFilters].sort().map(filter => (
+                    <StyledFilterButton
+                      key={filter}
+                      active={selectedCityFilters.has(filter)}
+                      onClick={() => handleCityFilterToggle(filter)}
+                    >
+                      {selectedCityFilters.has(filter) && '✓ '}{filter}
+                    </StyledFilterButton>
+                  ))}
+                  {selectedCityFilters.size > 0 && (
+                    <StyledFilterButton
+                      clear
+                      onClick={() => setSelectedCityFilters(new Set())}
+                    >
+                      Clear Cities
+                    </StyledFilterButton>
+                  )}
+                </div>
+                
+                <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
+                  Highways:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                  {[...staticHighwayFilters].sort().map(filter => (
+                    <StyledFilterButton
+                      key={filter}
+                      active={selectedHighwayFilters.has(filter)}
+                      onClick={() => handleHighwayFilterToggle(filter)}
+                    >
+                      {selectedHighwayFilters.has(filter) && '✓ '}{filter}
+                    </StyledFilterButton>
+                  ))}
+                  {selectedHighwayFilters.size > 0 && (
+                    <StyledFilterButton
+                      clear
+                      onClick={() => setSelectedHighwayFilters(new Set())}
+                    >
+                      Clear Highways
+                    </StyledFilterButton>
+                  )}
+                </div>
+                
+                {(selectedCityFilters.size > 0 || selectedHighwayFilters.size > 0) && (
+                  <StyledFilterButton
+                    clear
+                    onClick={() => {
+                      setSelectedCityFilters(new Set())
+                      setSelectedHighwayFilters(new Set())
+                    }}
+                    style={{ marginTop: '4px' }}
+                  >
+                    Clear All Filters
+                  </StyledFilterButton>
+                )}
+              </StyledOfflineFilters>
               <StreamList rows={otherStreams} />
             </div>
           ) : (
@@ -2235,6 +2364,33 @@ const TIN = styled.div`
 `
 
 // TODO: reuse for server
+const StyledOfflineFilters = styled.div`
+  margin-bottom: 8px;
+`
+
+const StyledFilterButton = styled.button<{ active?: boolean; clear?: boolean }>`
+  padding: 2px 8px;
+  border: 1px solid ${props => props.clear ? '#666' : '#ddd'};
+  background: ${props => props.clear ? '#f5f5f5' : '#fff'};
+  color: ${props => props.clear ? '#666' : '#333'};
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    background: ${props => props.clear ? '#e0e0e0' : '#f0f0f0'};
+    border-color: ${props => props.clear ? '#555' : '#bbb'};
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+`
+
 /*
 export function main() {
   const script = document.getElementById('main-script')
