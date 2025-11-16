@@ -1,912 +1,607 @@
 [[streams]]
 label = "CR - US 30 @ E of Jappa Rd (33)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv33lb/playlist.m3u8"
-latitude = 41.924906
-longitude = -91.569904
 
 [[streams]]
 label = "6DT - I-380 @ W Penn Street (IWZ 3141)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3141lb/playlist.m3u8"
-latitude = 41.752542
-longitude = -91.641672
 
 [[streams]]
 label = "CR - IA 100 @ East Post Rd (45)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv45lb/playlist.m3u8"
-latitude = 42.015582
-longitude = -91.598851
 
 [[streams]]
 label = "IC - I-80 @ Herbert Hoover Hwy (19Q)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv19qlb/playlist.m3u8"
-latitude = 41.671944
-longitude = -91.445006
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv19qlb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ Blairs Ferry Rd NE (18)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv18lb/playlist.m3u8"
-latitude = 42.034942
-longitude = -91.676244
 
 [[streams]]
 label = "IC - I-80 @ Herbert Hoover Hwy (19)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv19lb/playlist.m3u8"
-latitude = 41.671944
-longitude = -91.445001
 
 [[streams]]
 label = "CR - Collins Rd @ 1st Ave E (42)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv42lb/playlist.m3u8"
-latitude = 42.025595
-longitude = -91.621109
 
 [[streams]]
 label = "IC - I-80 @ 1st Ave (06)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv06lb/playlist.m3u8"
-latitude = 41.685164
-longitude = -91.565264
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv06lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 220"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv220lb/playlist.m3u8"
-latitude = 41.687292
-longitude = -92.008577
 
 [[streams]]
 label = "CR - US 30 @ Edgewood Rd SW (25)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv25lb/playlist.m3u8"
-latitude = 41.938432
-longitude = -91.715875
 
 [[streams]]
 label = "I-80 @ MM 208"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv208lb/playlist.m3u8"
-latitude = 41.69618
-longitude = -92.241166
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV208lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ Rest Area (01)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv01lb/playlist.m3u8"
-latitude = 41.868082
-longitude = -91.66917
 
 [[streams]]
 label = "IC - I-80 @ S Downey Dr (21)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv21lb/playlist.m3u8"
-latitude = 41.663764
-longitude = -91.347002
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv21lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ US 30 North (05)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv05lb/playlist.m3u8"
-latitude = 41.930109
-longitude = -91.670028
 
 [[streams]]
 label = "6DX - I-380 @ Wright Brothers Blvd (IWZ 3701)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3701lb/playlist.m3u8"
-latitude = 41.890748
-longitude = -91.669943
 
 [[streams]]
 label = "6EM - US 30 @  MM 299.5 (IWZ 3359)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3359lb/playlist.m3u8"
-latitude = 41.829479
-longitude = -90.793566
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/iwz3359lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - IA 13 @ Mt Vernon Rd (49)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv49lb/playlist.m3u8"
-latitude = 41.976098
-longitude = -91.551414
 
 [[streams]]
 label = "6DX - I-380 @ MM 13 (IWZ 3700)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3700lb/playlist.m3u8"
-latitude = 41.876987
-longitude = -91.670589
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/iwz3700lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ Eagle Ave NW (28)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv28lb/playlist.m3u8"
-latitude = 41.692231
-longitude = -91.754947
 
 [[streams]]
 label = "I-80 @ MM 190"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv190lb/playlist.m3u8"
-latitude = 41.695506
-longitude = -92.590867
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV190lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 215"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv215lb/playlist.m3u8"
-latitude = 41.692967
-longitude = -92.101666
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV215lb/playlist.m3u8"
 
 [[streams]]
 label = "QC - I-80 @ Walcott DMS (14)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv14lb/playlist.m3u8"
-latitude = 41.604333
-longitude = -90.724757
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/qctv14lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ MM 230 (29)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv29lb/playlist.m3u8"
-latitude = 41.687152
-longitude = -91.820917
 
 [[streams]]
 label = "I-80 @ MM 206"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv206lb/playlist.m3u8"
-latitude = 41.695853
-longitude = -92.280087
 
 [[streams]]
 label = "IC - I-80 @ MM 246 (09)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv09lb/playlist.m3u8"
-latitude = 41.68499
-longitude = -91.482895
 
 [[streams]]
 label = "CR - IA 100 W of I-380 (36)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv36lb/playlist.m3u8"
-latitude = 42.027962
-longitude = -91.688456
 
 [[streams]]
 label = "CR - Collins Rd @ Rockwell Dr NE (38)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv38lb/playlist.m3u8"
-latitude = 42.028549
-longitude = -91.649128
 
 [[streams]]
 label = "CR - Collins Rd @ Council St NE (37)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv37lb/playlist.m3u8"
-latitude = 42.028238
-longitude = -91.658098
 
 [[streams]]
 label = "I-80 @ MM 222"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv222lb/playlist.m3u8"
-latitude = 41.68658
-longitude = -91.968506
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV222lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ Prairie du Chien (24)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv24lb/playlist.m3u8"
-latitude = 41.68812
-longitude = -91.525765
 
 [[streams]]
 label = "IC - I-380 @ Swisher (18)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv18lb/playlist.m3u8"
-latitude = 41.847825
-longitude = -91.667583
 
 [[streams]]
 label = "CR - I-380 @ Diagonal Dr SW (08)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv08lb/playlist.m3u8"
-latitude = 41.967589
-longitude = -91.670571
 
 [[streams]]
 label = "CR - IA 100 @ I-380 (17Q)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv17qlb/playlist.m3u8"
-latitude = 42.028348
-longitude = -91.674065
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/crtv17qlb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ Wapsi Ave (10)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv10lb/playlist.m3u8"
-latitude = 41.667899
-longitude = -91.424786
 
 [[streams]]
 label = "CR - IA 13 @ Bertram Rd (48)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv48lb/playlist.m3u8"
-latitude = 41.959099
-longitude = -91.555525
 
 [[streams]]
 label = "IC - I-380 @ Swan Lake (15)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv15lb/playlist.m3u8"
-latitude = 41.774912
-longitude = -91.646533
 
 [[streams]]
 label = "I-80 @ MM 212"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv212lb/playlist.m3u8"
-latitude = 41.695761
-longitude = -92.16288
 
 [[streams]]
 label = "QC - I-280 @ Rockingham Rd (21)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv21lb/playlist.m3u8"
-latitude = 41.491348
-longitude = -90.647255
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/qctv21lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - Collins Rd @ F Ave NE (39)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv39lb/playlist.m3u8"
-latitude = 42.02846
-longitude = -91.643666
 
 [[streams]]
 label = "CR - I-380 @ Tower Terrace (20Q)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv20qlb/playlist.m3u8"
-latitude = 42.058838
-longitude = -91.700628
 
 [[streams]]
 label = "I-80 @ MM 200"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv200lb/playlist.m3u8"
-latitude = 41.696492
-longitude = -92.396557
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV200lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - US 30 @ 80th St SW (60)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv60lb/playlist.m3u8"
-latitude = 41.957606
-longitude = -91.77475
 
 [[streams]]
 label = "IC - I-80 @ I-380 NB Flyover (39)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv39lb/playlist.m3u8"
-latitude = 41.695207
-longitude = -91.636325
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv39lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-380 @ MM 3.15 (37)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv37lb/playlist.m3u8"
-latitude = 41.738384
-longitude = -91.642761
 
 [[streams]]
 label = "I-80 @ MM 204"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv204lb/playlist.m3u8"
-latitude = 41.695903
-longitude = -92.319495
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV204lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 194"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv194lb/playlist.m3u8"
-latitude = 41.694474
-longitude = -92.50419
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV194lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ Y Ave (26)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv26lb/playlist.m3u8"
-latitude = 41.68705
-longitude = -91.852747
 
 [[streams]]
 label = "CR - I-380 @ 1st Ave SW (09Q)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv09qlb/playlist.m3u8"
-latitude = 41.975698
-longitude = -91.675959
 
 [[streams]]
 label = "I-80 @ MM 217"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv217lb/playlist.m3u8"
-latitude = 41.68923
-longitude = -92.065829
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV217lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - IA 100 Near Xavier High School - MM 6.2 (54)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv54lb/playlist.m3u8"
-latitude = 42.028057
-longitude = -91.727041
 
 [[streams]]
 label = "IC - I-80 @ Coral Ridge Ave (04)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv04lb/playlist.m3u8"
-latitude = 41.693695
-longitude = -91.608918
 
 [[streams]]
 label = "CR - IA 100 @ Tama St (43)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv43lb/playlist.m3u8"
-latitude = 42.019499
-longitude = -91.617667
 
 [[streams]]
 label = "2CB - I-380 @ MM 43 (IWZ 3172)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3172lb/playlist.m3u8"
-latitude = 42.240039
-longitude = -91.884451
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/iwz3172lb/playlist.m3u8"
 
 [[streams]]
 label = "QC - I-280 @ Kimberly Rd (22)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv22lb/playlist.m3u8"
-latitude = 41.591525
-longitude = -90.675409
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/qctv22lb/playlist.m3u8"
 
 [[streams]]
 label = "WWD - I-380 @ 1st Ave (13)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv013lb/playlist.m3u8"
-latitude = 41.975581
-longitude = -91.676041
 
 [[streams]]
 label = "CR - Collins Rd @ C Ave NE (40)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv40lb/playlist.m3u8"
-latitude = 42.028101
-longitude = -91.638939
 
 [[streams]]
 label = "CR - US 30 @ 21st St SW (26)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv26lb/playlist.m3u8"
-latitude = 41.935867
-longitude = -91.705747
 
 [[streams]]
 label = "CR - I-380 @ Tower Terrace Rd (20)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv20lb/playlist.m3u8"
-latitude = 42.058832
-longitude = -91.700623
 
 [[streams]]
 label = "IC - I-80 @ Dubuque St (07)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv07lb/playlist.m3u8"
-latitude = 41.686463
-longitude = -91.539888
 
 [[streams]]
 label = "WWD - IA 100 @ Edgewood Rd NE (20)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv020lb/playlist.m3u8"
-latitude = 42.029106
-longitude = -91.700635
 
 [[streams]]
 label = "IC - I-380 @ Forevergreen Rd (13)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv13lb/playlist.m3u8"
-latitude = 41.723006
-longitude = -91.642199
 
 [[streams]]
 label = "IC - I-80 @ Jasper Ave (35)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv35lb/playlist.m3u8"
-latitude = 41.693778
-longitude = -91.64635
 
 [[streams]]
 label = "IC - I-380 @ Hwy 965 NE (16)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv16lb/playlist.m3u8"
-latitude = 41.800554
-longitude = -91.646276
 
 [[streams]]
 label = "CR - US 30 @ Stoney Point Rd (23)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv23lb/playlist.m3u8"
-latitude = 41.94873
-longitude = -91.75525
 
 [[streams]]
 label = "IC - I-80 @ Ireland Ave NW (02A)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv02alb/playlist.m3u8"
-latitude = 41.693596
-longitude = -91.666256
 
 [[streams]]
 label = "CR - I-380 SB @ MM 28.8 (21)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv21lb/playlist.m3u8"
-latitude = 42.092256
-longitude = -91.702041
 
 [[streams]]
 label = "CR - I-380 @ US 30 South (04)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv04lb/playlist.m3u8"
-latitude = 41.926943
-longitude = -91.670006
 
 [[streams]]
 label = "CR - I-380 @ Coldstream Ave NE (13)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv13lb/playlist.m3u8"
-latitude = 42.006603
-longitude = -91.666276
 
 [[streams]]
 label = "6DW - I-380 @ Boyson Rd (IWZ 3197)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3197lb/playlist.m3u8"
-latitude = 42.045954
-longitude = -91.684598
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/iwz3197lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ Wilson Ave SW (07)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv07lb/playlist.m3u8"
-latitude = 41.956028
-longitude = -91.670873
 
 [[streams]]
 label = "I-80 @ MM 223"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv223lb/playlist.m3u8"
-latitude = 41.687746
-longitude = -91.944621
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV223lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ 8th St NE (11)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv11lb/playlist.m3u8"
-latitude = 41.983606
-longitude = -91.663952
 
 [[streams]]
 label = "IC - I-380 SB @ I-80 EB Ramp (41)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv41lb/playlist.m3u8"
-latitude = 41.696221
-longitude = -91.641507
 
 [[streams]]
 label = "CR - I-380 @ 4th St SE (10)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv10lb/playlist.m3u8"
-latitude = 41.981684
-longitude = -91.666926
 
 [[streams]]
 label = "CR - US 30 @ J St SW (28)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv28lb/playlist.m3u8"
-latitude = 41.926675
-longitude = -91.663188
 
 [[streams]]
 label = "CR - IA 100 @ Menards Ln (44)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv44lb/playlist.m3u8"
-latitude = 42.016139
-longitude = -91.608465
 
 [[streams]]
 label = "CR - IA 13 @ Linn Aire Dr (51)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv51lb/playlist.m3u8"
-latitude = 42.031399
-longitude = -91.550524
 
 [[streams]]
 label = "IC - I-80 @ 12th Avenue (23)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv23lb/playlist.m3u8"
-latitude = 41.689188
-longitude = -91.581817
 
 [[streams]]
 label = "CR - US 30 @ C St SW (30)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv30lb/playlist.m3u8"
-latitude = 41.926356
-longitude = -91.637031
 
 [[streams]]
 label = "CR - IA 100 W of Edgewood Rd NE - MM 6.6 (53)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv53lb/playlist.m3u8"
-latitude = 42.029932
-longitude = -91.719476
 
 [[streams]]
 label = "IC - I-80 @ East of Coral Ridge Ave (05)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv05lb/playlist.m3u8"
-latitude = 41.69378
-longitude = -91.600142
 
 [[streams]]
 label = "I-80 @ MM 226"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv226lb/playlist.m3u8"
-latitude = 41.68735
-longitude = -91.886549
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV226lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - US 218 @ Melrose DMS (25)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv25lb/playlist.m3u8"
-latitude = 41.666379
-longitude = -91.610357
 
 [[streams]]
 label = "QC - I-280 @ MM 9.25 (51)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv51lb/playlist.m3u8"
-latitude = 41.483349
-longitude = -90.638198
 
 [[streams]]
 label = "WWD - I-80 W @ 1st Ave (73)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv073lb/playlist.m3u8"
-latitude = 41.685083
-longitude = -91.565127
 
 [[streams]]
 label = "I-80 @ MM 256.7"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv256lb/playlist.m3u8"
-latitude = 41.663235
-longitude = -91.30767
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/80tv256lb/playlist.m3u8"
 
 [[streams]]
 label = "6EM - US 30 @ MM 298.5 (IWZ 3361)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/iwz3361lb/playlist.m3u8"
-latitude = 41.829573
-longitude = -90.806362
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/iwz3361lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ 76th Ave (03)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv03lb/playlist.m3u8"
-latitude = 41.906923
-longitude = -91.672059
 
 [[streams]]
 label = "CR - IA 100 @ E Ave NW - MM 1.3 (59)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv59lb/playlist.m3u8"
-latitude = 41.97888
-longitude = -91.776477
 
 [[streams]]
 label = "IC - I-80 @ US 6 (40)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv40lb/playlist.m3u8"
-latitude = 41.694427
-longitude = -91.618864
 
 [[streams]]
 label = "CR - US 30 @ IA 100 (22Q)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv22qlb/playlist.m3u8"
-latitude = 41.962701
-longitude = -91.781976
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/crtv22qlb/playlist.m3u8"
 
 [[streams]]
 label = "CR - US 30 @ Honey Grove Rd (32)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv32lb/playlist.m3u8"
-latitude = 41.926822
-longitude = -91.603394
 
 [[streams]]
 label = "CR - IA 100 @ S 22nd St (46)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv46lb/playlist.m3u8"
-latitude = 42.01527
-longitude = -91.588579
 
 [[streams]]
 label = "I-80 @ MM 219"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv219lb/playlist.m3u8"
-latitude = 41.686628
-longitude = -92.034876
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV219lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - Kansas Ave @ I-80/380 System IC (33)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv33lb/playlist.m3u8"
-latitude = 41.692582
-longitude = -91.642794
 
 [[streams]]
 label = "WWD - I-280 @ Kimberly Rd (22)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv022lb/playlist.m3u8"
-latitude = 41.591216
-longitude = -90.675489
 
 [[streams]]
 label = "I-80 @ MM 197"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv197lb/playlist.m3u8"
-latitude = 41.695924
-longitude = -92.446427
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV197lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ IA 1 (08)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv08lb/playlist.m3u8"
-latitude = 41.686828
-longitude = -91.499569
 
 [[streams]]
 label = "WWD - I-380 S @ Tower Terrace Rd (71)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv071lb/playlist.m3u8"
-latitude = 42.058749
-longitude = -91.70054
 
 [[streams]]
 label = "CR - US 30 @ Kirkwood Blvd SW (29)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv29lb/playlist.m3u8"
-latitude = 41.926491
-longitude = -91.656562
 
 [[streams]]
 label = "IC - US 218 @ Melrose (12)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv12lb/playlist.m3u8"
-latitude = 41.657066
-longitude = -91.598318
 
 [[streams]]
 label = "QC - I-80 @ Co Rd Y48 (15)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv15lb/playlist.m3u8"
-latitude = 41.603449
-longitude = -90.685652
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/qctv15lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 196"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv196lb/playlist.m3u8"
-latitude = 41.695064
-longitude = -92.465635
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV196lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ Collins Rd- North (17)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv17lb/playlist.m3u8"
-latitude = 42.028292
-longitude = -91.673271
 
 [[streams]]
 label = "IC - US 218 @ South of I-80 (34)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv34lb/playlist.m3u8"
-latitude = 41.686833
-longitude = -91.634585
 
 [[streams]]
 label = "WWD - I-380 @ 33rd Ave (12)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv012lb/playlist.m3u8"
-latitude = 41.944299
-longitude = -91.670707
 
 [[streams]]
 label = "CR - US 30 @ 16th Ave SW (22)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv22lb/playlist.m3u8"
-latitude = 41.963126
-longitude = -91.781595
 
 [[streams]]
 label = "CR - I-380 @ 32nd St NE (14)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv14lb/playlist.m3u8"
-latitude = 42.012173
-longitude = -91.66713
 
 [[streams]]
 label = "I-80 @ MM 188"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv188lb/playlist.m3u8"
-latitude = 41.696174
-longitude = -92.629441
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV188lb/playlist.m3u8"
 
 [[streams]]
 label = "WWD - US 30 E @ C St SW (19)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv019lb/playlist.m3u8"
-latitude = 41.925795
-longitude = -91.637322
 
 [[streams]]
 label = "WWD - US 30 @ 6th St SW (10)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv010lb/playlist.m3u8"
-latitude = 41.927743
-longitude = -91.676623
 
 [[streams]]
 label = "WWD - I-380 @ Wilson Ave (11)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv011lb/playlist.m3u8"
-latitude = 41.954873
-longitude = -91.670338
 
 [[streams]]
 label = "IC - I-80 @ I-380 NB Flyover (38)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv38lb/playlist.m3u8"
-latitude = 41.693479
-longitude = -91.636813
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv38lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - IA 100 W of Cedar River - MM 5.3 (56)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv56lb/playlist.m3u8"
-latitude = 42.026503
-longitude = -91.744641
 
 [[streams]]
 label = "CR - IA 13 @ 7th Ave (52)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv52lb/playlist.m3u8"
-latitude = 42.035706
-longitude = -91.550633
 
 [[streams]]
 label = "CR - IA 100 @ Edgewood Rd NE (35Q)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv35qlb/playlist.m3u8"
-latitude = 42.029264
-longitude = -91.701402
 
 [[streams]]
 label = "CR - US 30 @ 80th St SW (60Q)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv60qlb/playlist.m3u8"
-latitude = 41.957412
-longitude = -91.774878
 
 [[streams]]
 label = "IC - US 218 NB Ramp to I-80 (32)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv32lb/playlist.m3u8"
-latitude = 41.692319
-longitude = -91.634688
 
 [[streams]]
 label = "CR - I-380 @ Wilson Ave SW (07Q)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv07qlb/playlist.m3u8"
-latitude = 41.955715
-longitude = -91.671113
 
 [[streams]]
 label = "WWD - US 30 @ Edgewood Rd (15)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv015lb/playlist.m3u8"
-latitude = 41.937998
-longitude = -91.715978
 
 [[streams]]
 label = "CR - US 30 @ W of 6th St SW (27)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv27lb/playlist.m3u8"
-latitude = 41.929825
-longitude = -91.683914
 
 [[streams]]
 label = "CR - IA 100 @ Ellis Rd - MM 2.8 (58)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv58lb/playlist.m3u8"
-latitude = 42.00026
-longitude = -91.774975
 
 [[streams]]
 label = "I-80 @ MM 205"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv205lb/playlist.m3u8"
-latitude = 41.696081
-longitude = -92.300283
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV205lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 225"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv225lb/playlist.m3u8"
-latitude = 41.687643
-longitude = -91.906137
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV225lb/playlist.m3u8"
 
 [[streams]]
 label = "WWD - US 30 @ Kirkwood Blvd SW - N (16)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv016lb/playlist.m3u8"
-latitude = 41.926719
-longitude = -91.656869
 
 [[streams]]
 label = "WWD - US 30 @ Kirkwood Blvd SW - S (17)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv017lb/playlist.m3u8"
-latitude = 41.926127
-longitude = -91.656887
 
 [[streams]]
 label = "CR - I-380 @ Collins Rd- South (16)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv16lb/playlist.m3u8"
-latitude = 42.028188
-longitude = -91.672703
 
 [[streams]]
 label = "CR - IA 100 @ Covington Rd - MM 3.8 (57)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv57lb/playlist.m3u8"
-latitude = 42.012635
-longitude = -91.76693
 
 [[streams]]
 label = "IC - US 218 @ IA 1 (11)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv11lb/playlist.m3u8"
-latitude = 41.63357
-longitude = -91.56744
 
 [[streams]]
 label = "CR - IA 100 @ Edgewood Rd NE (35)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv35lb/playlist.m3u8"
-latitude = 42.029509
-longitude = -91.701147
 
 [[streams]]
 label = "QC - I-80 @ I-280 (16)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/qctv16lb/playlist.m3u8"
-latitude = 41.602628
-longitude = -90.677354
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/qctv16lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - I-380 @ 1st Ave SW (09)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv09lb/playlist.m3u8"
-latitude = 41.975675
-longitude = -91.675767
 
 [[streams]]
 label = "IC - I-380 @ Iowa River (17)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv17lb/playlist.m3u8"
-latitude = 41.818836
-longitude = -91.654408
 
 [[streams]]
 label = "CR - I-380 @ 33rd Ave SW (06)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv06lb/playlist.m3u8"
-latitude = 41.945563
-longitude = -91.671625
 
 [[streams]]
 label = "WWD - US 30 E @ C St SW (18N)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv018lb/playlist.m3u8"
-latitude = 41.925792
-longitude = -91.656887
 
 [[streams]]
 label = "IC - I-380 @ Oak Hill School (36)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv36lb/playlist.m3u8"
-latitude = 41.708494
-longitude = -91.643092
 
 [[streams]]
 label = "IC - I-380 @ MM 0.2 (03)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv03lb/playlist.m3u8"
-latitude = 41.693802
-longitude = -91.638302
 
 [[streams]]
 label = "CR - IA 13 @ Cottage Grove Pkwy (50)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv50lb/playlist.m3u8"
-latitude = 41.994883
-longitude = -91.550868
 
 [[streams]]
 label = "CR - IA 100 E of Cedar River - MM 5.7 (55)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv55lb/playlist.m3u8"
-latitude = 42.029281
-longitude = -91.736105
 
 [[streams]]
 label = "CR - US 30 @ Williams Blvd SW (24)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv24lb/playlist.m3u8"
-latitude = 41.945301
-longitude = -91.74173
 
 [[streams]]
 label = "I-80 @ MM 198"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv198lb/playlist.m3u8"
-latitude = 41.695767
-longitude = -92.421459
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV198lb/playlist.m3u8"
 
 [[streams]]
 label = "I-80 @ MM 202"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv202lb/playlist.m3u8"
-latitude = 41.695255
-longitude = -92.357481
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV202lb/playlist.m3u8"
 
 [[streams]]
 label = "IC - I-80 @ 1st Ave (06Q)"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv06qlb/playlist.m3u8"
-latitude = 41.685024
-longitude = -91.565264
+link = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/ictv06qlb/playlist.m3u8"
 
 [[streams]]
 label = "CR - US 30 @ Ivanhoe Rd SW (31)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv31lb/playlist.m3u8"
-latitude = 41.926337
-longitude = -91.617546
 
 [[streams]]
 label = "I-80 @ MM 192"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv192lb/playlist.m3u8"
-latitude = 41.696656
-longitude = -92.552721
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV192lb/playlist.m3u8"
 
 [[streams]]
 label = "CR - US 30 @ IA 13 (34)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv34lb/playlist.m3u8"
-latitude = 41.926796
-longitude = -91.542331
 
 [[streams]]
 label = "CR - IA 100 @ IA 13 (47)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv47lb/playlist.m3u8"
-latitude = 42.019718
-longitude = -91.550485
 
 [[streams]]
 label = "IC - I-80 @ Half Moon Rd (01)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv01lb/playlist.m3u8"
-latitude = 41.694403
-longitude = -91.69095
 
 [[streams]]
 label = "CR - I-380 @ H Ave NE (12)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/crtv12lb/playlist.m3u8"
-latitude = 41.995566
-longitude = -91.666557
 
 [[streams]]
 label = "I-80 @ MM 214"
-link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv214lb/playlist.m3u8"
-latitude = 41.694128
-longitude = -92.123938
+link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80TV214lb/playlist.m3u8"
 
 [[streams]]
 label = "WWD - I-380 @ 2nd St NE (08)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/wwdtv08lb/playlist.m3u8"
-latitude = 41.980243
-longitude = -91.669157
 
 [[streams]]
 label = "IC - I-80 @ Black Hawk Ave NW (27)"
 link = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/ictv27lb/playlist.m3u8"
-latitude = 41.688397
-longitude = -91.805056
-

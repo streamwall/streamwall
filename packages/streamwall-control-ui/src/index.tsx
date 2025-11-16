@@ -8,6 +8,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'preact/hooks'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -39,6 +40,13 @@ import { createGlobalStyle, styled } from 'styled-components'
 import { matchesState } from 'xstate'
 import * as Y from 'yjs'
 import './index.css'
+
+// Leaflet types for global window
+declare global {
+  interface Window {
+    L: any
+  }
+}
 
 export interface ViewInfo {
   state: ViewState
@@ -93,14 +101,12 @@ function filterStreams(
   streams: StreamData[],
   wallStreamIds: Set<string>,
   filter: string,
-  highwayFilters: Set<string>,
-  cityFilters: Set<string>,
 ) {
   const wallStreams = []
   const liveStreams = []
   const otherStreams = []
   for (const stream of streams) {
-    const { _id, kind, status, label, source, state, city, latitude, longitude } = stream
+    const { _id, kind, status, label, source, state, city } = stream
     if (kind && !normalStreamKinds.has(kind)) {
       continue
     }
@@ -112,48 +118,14 @@ function filterStreams(
     ) {
       continue
     }
-    
     if (wallStreamIds.has(_id)) {
       wallStreams.push(stream)
     } else if ((kind && kind !== 'video') || status === 'Live') {
       liveStreams.push(stream)
     } else {
-      // Apply static filter logic for offline streams
-      if ((highwayFilters.size > 0 || cityFilters.size > 0) && label) {
-        let matchesFilters = true
-        
-        // If highway filters are selected, check if stream contains any of them
-        if (highwayFilters.size > 0) {
-          const matchesHighway = Array.from(highwayFilters).some(highway => 
-            label.includes(highway)
-          )
-          if (!matchesHighway) matchesFilters = false
-        }
-        
-        // If city filters are selected, check if stream starts with any of them
-        if (cityFilters.size > 0) {
-          const matchesCity = Array.from(cityFilters).some(city => {
-            // Check for exact matches like "CR -", "IC -", etc.
-            if (label.startsWith(city + ' -')) return true
-            
-            // Check for variations with digits like "6DT -", "6DW -", etc.
-            const cityPattern = new RegExp(`^\\d*${city}\\w* -`, 'i')
-            return cityPattern.test(label)
-          })
-          if (!matchesCity) matchesFilters = false
-        }
-        
-        if (!matchesFilters) continue
-      }
       otherStreams.push(stream)
     }
   }
-  
-  // Sort all stream lists alphabetically by label
-  wallStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
-  liveStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
-  otherStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
-  
   return [wallStreams, liveStreams, otherStreams]
 }
 
@@ -274,6 +246,77 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       savedLayouts,
     }
   }, [state])
+}
+
+/* 
+ * MAP COMPONENT REMOVED - HIGHLIGHT FUNCTION PRESERVED FOR FUTURE USE
+ * 
+ * To re-implement the map feature later, use this component structure:
+ * - StreamLocationMap component with streams and onStreamPreview props
+ * - Filter streams with: streams.filter(s => s.latitude != null && s.longitude != null)
+ * - Use lat/lon coordinates from streams.toml for positioning
+ * - Cedar Rapids center: [41.9778, -91.6656]
+ * - Iowa geographic bounds: lat 40.4-43.5, lng -96.6--90.1
+ * - Coordinate projection: x = ((longitude + 96) / 5.5) * width, y = ((43 - latitude) / 2.5) * height
+ * 
+ * Map drawing elements included:
+ * - Iowa state outline with simplified border coordinates
+ * - Major highways: I-35, I-80, I-380, US-30 with proper styling
+ * - Cities: Des Moines, Cedar Rapids, Iowa City, Davenport, Waterloo
+ * - Camera markers as circles with click detection (15px radius)
+ * - Legend showing interstates, highways, and camera count
+ * - Canvas-based rendering (400x300) for Electron compatibility
+ * 
+ * Click handler logic:
+ * - getBoundingClientRect() for canvas coordinates
+ * - Distance calculation to find closest camera
+ * - onStreamPreview(stream._id) to trigger highlight
+ * 
+ * Working implementations attempted:
+ * - Leaflet.js (CSP issues in Electron)
+ * - Mapbox GL (token/authentication issues) 
+ * - OpenStreetMap embeds (iframe blocking)
+ * - Canvas rendering (working solution)
+ * 
+ * Dependencies to install if re-implementing:
+ * - For Leaflet: npm install leaflet @types/leaflet
+ * - For Mapbox: npm install mapbox-gl
+ * - For Canvas: No dependencies needed (native HTML5)
+ */
+
+// Placeholder for future map implementation
+function StreamLocationMap({ streams, onStreamPreview }: { 
+  streams: StreamData[], 
+  onStreamPreview: (streamId: string) => void 
+}) {
+  // Filter streams that have location data (for future use)
+  const streamWithLocation = useMemo(() => 
+    streams.filter(stream => 
+      stream.latitude != null && 
+      stream.longitude != null
+    ), 
+    [streams]
+  )
+
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <div style={{
+        padding: '20px',
+        border: '1px dashed #ccc',
+        borderRadius: '4px',
+        textAlign: 'center',
+        color: '#666',
+        backgroundColor: '#f9f9f9'
+      }}>
+        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+          📍 Map Feature Disabled
+        </div>
+        <div style={{ fontSize: '11px' }}>
+          {streamWithLocation.length} cameras with location data available
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ControlUI({
@@ -525,11 +568,9 @@ export function ControlUI({
         type: 'save-layout',
         slot,
         name,
-        gridSize: cols != null && rows != null ? { cols, rows } : undefined,
-        gridId: 'Grid 1',
       })
     },
-    [send, cols, rows],
+    [send],
   )
 
   const handleLoadLayout = useCallback(
@@ -658,39 +699,6 @@ export function ControlUI({
     setStreamFilter(ev.currentTarget?.value)
   }, [])
 
-
-
-  // Static filter options for offline streams
-  const staticHighwayFilters = ['I-80', 'I-380', 'I-280', 'US 30', 'IA 13', 'IA 100', 'US 218'].sort()
-  const staticCityFilters = ['IC', 'QC', 'CR', 'WL', 'DQ', 'WWD'].sort()
-
-  const [selectedHighwayFilters, setSelectedHighwayFilters] = useState<Set<string>>(new Set())
-  const [selectedCityFilters, setSelectedCityFilters] = useState<Set<string>>(new Set())
-
-  const handleHighwayFilterToggle = useCallback((filter: string) => {
-    setSelectedHighwayFilters(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(filter)) {
-        newSet.delete(filter)
-      } else {
-        newSet.add(filter)
-      }
-      return newSet
-    })
-  }, [])
-
-  const handleCityFilterToggle = useCallback((filter: string) => {
-    setSelectedCityFilters(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(filter)) {
-        newSet.delete(filter)
-      } else {
-        newSet.add(filter)
-      }
-      return newSet
-    })
-  }, [])
-
   // Set up keyboard shortcuts.
   useHotkeys(
     hotkeyTriggers.map((k) => `alt+${k}`).join(','),
@@ -748,8 +756,8 @@ export function ControlUI({
     [sharedState],
   )
   const [wallStreams, liveStreams, otherStreams] = useMemo(
-    () => filterStreams(streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters),
-    [streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters],
+    () => filterStreams(streams, wallStreamIds, streamFilter),
+    [streams, wallStreamIds, streamFilter],
   )
   function StreamList({ rows }: { rows: StreamData[] }) {
     return rows.map((row) => (
@@ -761,6 +769,29 @@ export function ControlUI({
       />
     ))
   }
+
+  const handleStreamPreview = useCallback(
+    (streamId: string) => {
+      // Find the stream element in the list and scroll to it
+      const streamElement = document.querySelector(`[data-stream-id="${streamId}"]`)
+      if (streamElement) {
+        // Scroll to the element
+        streamElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+        
+        // Add highlight effect
+        streamElement.classList.add('stream-highlight')
+        
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+          streamElement.classList.remove('stream-highlight')
+        }, 3000)
+      }
+    },
+    []
+  )
 
   return (
     <Stack flex="1" direction="row" gap={16}>
@@ -952,22 +983,7 @@ export function ControlUI({
               </>
             )}
           
-          {/* Layout Management section */}
-          {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
-            <>
-              <h2>Layout Management</h2>
-              <div>
-                <FixedLayoutGrid
-                  savedLayouts={savedLayouts}
-                  onSave={handleSaveLayout}
-                  onLoad={handleLoadLayout}
-                  onClear={handleClearLayout}
-                />
-              </div>
-            </>
-          )}
-          
-          {/* Access section moved below Layout Management */}
+          {/* Move Access section here */}
           {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
             authState && (
               <>
@@ -1010,6 +1026,21 @@ export function ControlUI({
               </>
             )}
           
+          {/* Layout Management section */}
+          {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
+            <>
+              <h2>Layout Management</h2>
+              <div>
+                <FixedLayoutGrid
+                  savedLayouts={savedLayouts}
+                  onSave={handleSaveLayout}
+                  onLoad={handleLoadLayout}
+                  onClear={handleClearLayout}
+                />
+              </div>
+            </>
+          )}
+          
           <Facts />
         </StyledDataContainer>
       </Stack>
@@ -1035,71 +1066,17 @@ export function ControlUI({
               <h3>Live</h3>
               <StreamList rows={liveStreams} />
               <h3>Offline / Unknown</h3>
-              <StyledOfflineFilters>
-                <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
-                  Cities/Regions:
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-                  {[...staticCityFilters].sort().map(filter => (
-                    <StyledFilterButton
-                      key={filter}
-                      active={selectedCityFilters.has(filter)}
-                      onClick={() => handleCityFilterToggle(filter)}
-                    >
-                      {selectedCityFilters.has(filter) && '✓ '}{filter}
-                    </StyledFilterButton>
-                  ))}
-                  {selectedCityFilters.size > 0 && (
-                    <StyledFilterButton
-                      clear
-                      onClick={() => setSelectedCityFilters(new Set())}
-                    >
-                      Clear Cities
-                    </StyledFilterButton>
-                  )}
-                </div>
-                
-                <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
-                  Highways:
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-                  {[...staticHighwayFilters].sort().map(filter => (
-                    <StyledFilterButton
-                      key={filter}
-                      active={selectedHighwayFilters.has(filter)}
-                      onClick={() => handleHighwayFilterToggle(filter)}
-                    >
-                      {selectedHighwayFilters.has(filter) && '✓ '}{filter}
-                    </StyledFilterButton>
-                  ))}
-                  {selectedHighwayFilters.size > 0 && (
-                    <StyledFilterButton
-                      clear
-                      onClick={() => setSelectedHighwayFilters(new Set())}
-                    >
-                      Clear Highways
-                    </StyledFilterButton>
-                  )}
-                </div>
-                
-                {(selectedCityFilters.size > 0 || selectedHighwayFilters.size > 0) && (
-                  <StyledFilterButton
-                    clear
-                    onClick={() => {
-                      setSelectedCityFilters(new Set())
-                      setSelectedHighwayFilters(new Set())
-                    }}
-                    style={{ marginTop: '4px' }}
-                  >
-                    Clear All Filters
-                  </StyledFilterButton>
-                )}
-              </StyledOfflineFilters>
               <StreamList rows={otherStreams} />
             </div>
           ) : (
             <div>loading...</div>
           )}
+          
+          {/* Stream Location Map */}
+          <StreamLocationMap 
+            streams={streams}
+            onStreamPreview={handleStreamPreview}
+          />
           
           {/* Remove the Custom Streams and Access sections from here - they've been moved above */}
         </StyledDataContainer>
@@ -1210,7 +1187,7 @@ function StreamLine({
     onClickId(id)
   }, [onClickId, id])
   return (
-    <StyledStreamLine>
+    <StyledStreamLine data-stream-id={id}>
       <StyledId
         $disabled={disabled}
         onMouseDown={disabled ? null : handleMouseDownId}
@@ -1685,18 +1662,11 @@ function LayoutPresetCard({
           )}
         </StyledLayoutCardButtons>
         
-        <StyledLayoutCardTimeInfo>
-          {savedLayout && (
-            <>
-              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('HH:mm')}</div>
-              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('M/d/yy')}</div>
-            </>
-          )}
-        </StyledLayoutCardTimeInfo>
-        
         <StyledLayoutCardInfo>
           {savedLayout && (
             <>
+              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('M/d/yy')}</div>
+              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('HH:mm')}</div>
               {savedLayout.gridSize && (
                 <div>{savedLayout.gridSize.cols}×{savedLayout.gridSize.rows}</div>
               )}
@@ -1969,7 +1939,7 @@ const StyledLayoutCard = styled.div`
 
 const StyledLayoutCardTitle = styled.button`
   flex: 1;
-  background: ${props => props.hasLayout ? '#d4e8f0' : '#f5f5f5'};
+  background: ${props => props.hasLayout ? '#e8f4f8' : '#f5f5f5'};
   border: none;
   border-bottom: 1px solid #ddd;
   border-radius: 6px 6px 0 0;
@@ -1978,12 +1948,10 @@ const StyledLayoutCardTitle = styled.button`
   font-weight: bold;
   font-size: 12px;
   cursor: ${props => props.hasLayout ? 'pointer' : 'default'};
-  color: ${props => props.hasLayout ? '#1565C0' : '#666'};
-  transition: all 0.2s;
+  color: ${props => props.hasLayout ? '#2196F3' : '#666'};
   
   &:hover {
-    background: ${props => props.hasLayout ? '#bbdefb' : '#f5f5f5'};
-    transform: ${props => props.hasLayout ? 'translateY(-1px)' : 'none'};
+    background: ${props => props.hasLayout ? '#d1e7dd' : '#f5f5f5'};
   }
   
   &:disabled {
@@ -1993,10 +1961,9 @@ const StyledLayoutCardTitle = styled.button`
 `
 
 const StyledLayoutCardControls = styled.div`
-  position: relative;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   padding: 4px 6px;
   background: #fff;
   border-radius: 0 0 6px 6px;
@@ -2018,12 +1985,10 @@ const StyledLayoutCardButton = styled.button`
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s;
+  transition: background 0.2s;
   
   &:hover {
     background: #f0f0f0;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
   
   &:disabled {
@@ -2032,39 +1997,14 @@ const StyledLayoutCardButton = styled.button`
   }
   
   &.save {
-    background: #e8f5e8;
-    border-color: #4CAF50;
-    color: #2e7d32;
-    &:hover { 
-      background: #c8e6c8; 
-      border-color: #45a049;
-    }
+    color: #4CAF50;
+    &:hover { background: #e8f5e8; }
   }
   
   &.delete {
-    background: #fdeaea;
-    border-color: #f44336;
-    color: #c62828;
-    &:hover { 
-      background: #ffcdd2; 
-      border-color: #d32f2f;
-    }
+    color: #f44336;
+    &:hover { background: #fdeaea; }
   }
-`
-
-const StyledLayoutCardTimeInfo = styled.div`
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 9px;
-  color: #666;
-  text-align: center;
-  line-height: 1.2;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none;
 `
 
 const StyledLayoutCardInfo = styled.div`
@@ -2364,33 +2304,6 @@ const TIN = styled.div`
 `
 
 // TODO: reuse for server
-const StyledOfflineFilters = styled.div`
-  margin-bottom: 8px;
-`
-
-const StyledFilterButton = styled.button<{ active?: boolean; clear?: boolean }>`
-  padding: 2px 8px;
-  border: 1px solid ${props => props.clear ? '#666' : '#ddd'};
-  background: ${props => props.clear ? '#f5f5f5' : '#fff'};
-  color: ${props => props.clear ? '#666' : '#333'};
-  border-radius: 3px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  &:hover {
-    background: ${props => props.clear ? '#e0e0e0' : '#f0f0f0'};
-    border-color: ${props => props.clear ? '#555' : '#bbb'};
-  }
-
-  &:active {
-    transform: translateY(1px);
-  }
-`
-
 /*
 export function main() {
   const script = document.getElementById('main-script')

@@ -24,8 +24,44 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
       closable: false,
       webPreferences: {
         preload: path.join(__dirname, 'controlPreload.js'),
+        webSecurity: false, // Allow external resources
+        allowRunningInsecureContent: true, // Allow mixed content
       },
     })
+
+    // Allow loading external resources for map tiles and libraries
+    this.win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+      const headers = { ...details.requestHeaders }
+      
+      // Add proper headers for external requests
+      if (details.url.includes('unpkg.com') || 
+          details.url.includes('openstreetmap.org') ||
+          details.url.includes('tile.openstreetmap.org') ||
+          details.url.includes('basemaps.cartocdn.com')) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        headers['Accept'] = 'image/webp,image/apng,image/*,*/*;q=0.8'
+        delete headers['sec-fetch-site']
+        delete headers['sec-fetch-mode']
+        delete headers['sec-fetch-dest']
+      }
+      
+      callback({ cancel: false, requestHeaders: headers })
+    })
+
+    // Handle response headers for CORS
+    this.win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      const responseHeaders = { ...details.responseHeaders }
+      
+      if (details.url.includes('openstreetmap.org') || 
+          details.url.includes('basemaps.cartocdn.com')) {
+        responseHeaders['Access-Control-Allow-Origin'] = ['*']
+        responseHeaders['Access-Control-Allow-Methods'] = ['GET, POST, OPTIONS']
+        responseHeaders['Access-Control-Allow-Headers'] = ['*']
+      }
+      
+      callback({ cancel: false, responseHeaders })
+    })
+    
     this.win.removeMenu()
 
     this.win.on('close', () => this.emit('close'))
