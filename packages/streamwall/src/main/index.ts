@@ -292,7 +292,12 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   const initialSavedLayouts = db.data.savedLayouts ? Object.fromEntries(
     Object.entries(db.data.savedLayouts).map(([key, value]) => [
       key,
-      { name: value.name, timestamp: value.timestamp }
+      { 
+        name: value.name, 
+        timestamp: value.timestamp,
+        gridSize: value.gridSize,
+        gridId: value.gridId
+      }
     ])
   ) : undefined
   console.debug('Initial savedLayouts loaded from DB:', initialSavedLayouts)
@@ -439,6 +444,14 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
       const currentState = Y.encodeStateAsUpdate(stateDoc)
       const slotKey = `slot${msg.slot}`
+      
+      // Use gridSize and gridId from message, or fallback to current config
+      const gridSize = msg.gridSize || {
+        cols: streamWindowConfig.cols,
+        rows: streamWindowConfig.rows
+      }
+      const gridId = msg.gridId || 'Grid 1'
+      
       db.update((data) => {
         if (!data.savedLayouts) {
           data.savedLayouts = {}
@@ -446,7 +459,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         data.savedLayouts[slotKey] = {
           name: msg.name,
           stateDoc: Buffer.from(currentState).toString('base64'),
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          gridSize,
+          gridId
         }
       })
       // Update client state
@@ -454,7 +469,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         ...clientState.savedLayouts,
         [slotKey]: {
           name: msg.name,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          gridSize,
+          gridId
         }
       }
       console.debug('Updating savedLayouts in client state:', newSavedLayouts)

@@ -489,9 +489,11 @@ export function ControlUI({
         type: 'save-layout',
         slot,
         name,
+        gridSize: cols != null && rows != null ? { cols, rows } : undefined,
+        gridId: 'Grid 1',
       })
     },
-    [send],
+    [send, cols, rows],
   )
 
   const handleLoadLayout = useCallback(
@@ -881,7 +883,22 @@ export function ControlUI({
               </>
             )}
           
-          {/* Move Access section here */}
+          {/* Layout Management section */}
+          {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
+            <>
+              <h2>Layout Management</h2>
+              <div>
+                <FixedLayoutGrid
+                  savedLayouts={savedLayouts}
+                  onSave={handleSaveLayout}
+                  onLoad={handleLoadLayout}
+                  onClear={handleClearLayout}
+                />
+              </div>
+            </>
+          )}
+          
+          {/* Access section moved below Layout Management */}
           {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
             authState && (
               <>
@@ -924,21 +941,6 @@ export function ControlUI({
               </>
             )}
           
-          {/* Layout Management section */}
-          {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
-            <>
-              <h2>Layout Management</h2>
-              <div>
-                <DynamicLayoutSlots
-                  savedLayouts={savedLayouts}
-                  onSave={handleSaveLayout}
-                  onLoad={handleLoadLayout}
-                  onClear={handleClearLayout}
-                />
-              </div>
-            </>
-          )}
-          
           <Facts />
         </StyledDataContainer>
       </Stack>
@@ -954,7 +956,7 @@ export function ControlUI({
               <h3>Viewing</h3>
               <StreamList rows={wallStreams} />
               {delayState && (
-                <StreamDelayControls
+                <StreamDelayBox
                   role={role}
                   delayState={delayState}
                   setStreamCensored={setStreamCensored}
@@ -1370,34 +1372,33 @@ function GridControls({
   )
 }
 
-function DynamicLayoutSlots({
+function FixedLayoutGrid({
   savedLayouts,
   onSave,
   onLoad,
   onClear,
 }: {
-  savedLayouts?: Record<string, { name: string; timestamp: number }>
+  savedLayouts?: Record<string, { 
+    name: string; 
+    timestamp: number;
+    gridSize?: { cols: number; rows: number };
+    gridId?: string;
+  }>
   onSave: (slot: number, name: string) => void
   onLoad: (slot: number) => void
   onClear: (slot: number) => void
 }) {
-  // Get all existing slot numbers and determine the next available slot
-  const existingSlots = savedLayouts 
-    ? Object.keys(savedLayouts)
-        .map(key => key.match(/^slot(\d+)$/)?.[1])
-        .filter(Boolean)
-        .map(Number)
-        .sort((a, b) => a - b)
-    : []
+  // Fixed 4x11 grid (44 total slots)
+  const GRID_COLS = 4
+  const GRID_ROWS = 11
+  const totalSlots = GRID_COLS * GRID_ROWS
   
-  // Always show at least slot 1, plus all existing slots, plus one empty slot for the next save
-  const maxSlot = existingSlots.length > 0 ? Math.max(...existingSlots) : 0
-  const slotsToShow = Array.from({ length: maxSlot + 1 }, (_, i) => i + 1)
+  const slotsToShow = Array.from({ length: totalSlots }, (_, i) => i + 1)
   
   return (
-    <>
+    <StyledLayoutPresetGrid>
       {slotsToShow.map(slotNum => (
-        <LayoutSlot
+        <LayoutPresetCard
           key={slotNum}
           slot={slotNum}
           savedLayout={savedLayouts?.[`slot${slotNum}`]}
@@ -1406,7 +1407,178 @@ function DynamicLayoutSlots({
           onClear={onClear}
         />
       ))}
-    </>
+    </StyledLayoutPresetGrid>
+  )
+}
+
+function LayoutPresetCard({
+  slot,
+  savedLayout,
+  onSave,
+  onLoad,
+  onClear,
+}: {
+  slot: number
+  savedLayout?: { 
+    name: string; 
+    timestamp: number;
+    gridSize?: { cols: number; rows: number };
+    gridId?: string;
+  }
+  onSave: (slot: number, name: string) => void
+  onLoad: (slot: number) => void
+  onClear: (slot: number) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [name, setName] = useState('')
+
+  const handleTitleClick = useCallback(() => {
+    if (savedLayout) {
+      onLoad(slot)
+    }
+  }, [savedLayout, onLoad, slot])
+
+  const handleSaveClick = useCallback(() => {
+    setIsEditing(true)
+    setName(savedLayout?.name || `Layout ${slot}`)
+  }, [savedLayout, slot])
+
+  const handleSaveConfirm = useCallback(() => {
+    if (name.trim()) {
+      onSave(slot, name.trim())
+      setIsEditing(false)
+      setName('')
+    }
+  }, [slot, name, onSave])
+
+  const handleSaveCancel = useCallback(() => {
+    setIsEditing(false)
+    setName('')
+  }, [])
+
+  const handleDeleteClick = useCallback(() => {
+    if (confirm(`Delete ${savedLayout?.name || `Layout ${slot}`}?`)) {
+      onClear(slot)
+    }
+  }, [savedLayout, slot, onClear])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveConfirm()
+    } else if (e.key === 'Escape') {
+      handleSaveCancel()
+    }
+  }, [handleSaveConfirm, handleSaveCancel])
+
+  if (isEditing) {
+    return (
+      <StyledLayoutCard>
+        <div style={{ padding: '8px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName((e.target as HTMLInputElement).value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Layout name"
+            autoFocus
+            style={{ 
+              border: '1px solid #ddd', 
+              borderRadius: '3px', 
+              padding: '4px',
+              fontSize: '12px'
+            }}
+          />
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={handleSaveConfirm}
+              disabled={!name.trim()}
+              style={{ 
+                flex: 1, 
+                padding: '4px', 
+                fontSize: '10px',
+                background: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={handleSaveCancel}
+              style={{ 
+                flex: 1, 
+                padding: '4px', 
+                fontSize: '10px',
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </StyledLayoutCard>
+    )
+  }
+
+  return (
+    <StyledLayoutCard>
+      <StyledLayoutCardTitle
+        hasLayout={!!savedLayout}
+        onClick={handleTitleClick}
+        disabled={!savedLayout}
+      >
+        {savedLayout ? savedLayout.name : `Slot ${slot}`}
+      </StyledLayoutCardTitle>
+      
+      <StyledLayoutCardControls>
+        <StyledLayoutCardButtons>
+          <StyledLayoutCardButton
+            className="save"
+            onClick={handleSaveClick}
+            title="Save current layout"
+          >
+            💾
+          </StyledLayoutCardButton>
+          {savedLayout && (
+            <StyledLayoutCardButton
+              className="delete"
+              onClick={handleDeleteClick}
+              title={`Delete ${savedLayout.name}`}
+            >
+              🗑️
+            </StyledLayoutCardButton>
+          )}
+        </StyledLayoutCardButtons>
+        
+        <StyledLayoutCardTimeInfo>
+          {savedLayout && (
+            <>
+              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('HH:mm')}</div>
+              <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('M/d/yy')}</div>
+            </>
+          )}
+        </StyledLayoutCardTimeInfo>
+        
+        <StyledLayoutCardInfo>
+          {savedLayout && (
+            <>
+              {savedLayout.gridSize && (
+                <div>{savedLayout.gridSize.cols}×{savedLayout.gridSize.rows}</div>
+              )}
+              {savedLayout.gridId && (
+                <div>{savedLayout.gridId}</div>
+              )}
+            </>
+          )}
+        </StyledLayoutCardInfo>
+      </StyledLayoutCardControls>
+    </StyledLayoutCard>
   )
 }
 
@@ -1637,6 +1809,140 @@ const StyledLayoutSlot = styled.div`
     margin-right: 4px;
     padding: 2px 4px;
   }
+`
+
+const StyledLayoutPresetGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(11, 1fr);
+  gap: 8px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+`
+
+const StyledLayoutCard = styled.div`
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+  position: relative;
+  transition: box-shadow 0.2s;
+  
+  &:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+`
+
+const StyledLayoutCardTitle = styled.button`
+  flex: 1;
+  background: ${props => props.hasLayout ? '#d4e8f0' : '#f5f5f5'};
+  border: none;
+  border-bottom: 1px solid #ddd;
+  border-radius: 6px 6px 0 0;
+  padding: 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: ${props => props.hasLayout ? 'pointer' : 'default'};
+  color: ${props => props.hasLayout ? '#1565C0' : '#666'};
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.hasLayout ? '#bbdefb' : '#f5f5f5'};
+    transform: ${props => props.hasLayout ? 'translateY(-1px)' : 'none'};
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+`
+
+const StyledLayoutCardControls = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  background: #fff;
+  border-radius: 0 0 6px 6px;
+`
+
+const StyledLayoutCardButtons = styled.div`
+  display: flex;
+  gap: 2px;
+`
+
+const StyledLayoutCardButton = styled.button`
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  &.save {
+    background: #e8f5e8;
+    border-color: #4CAF50;
+    color: #2e7d32;
+    &:hover { 
+      background: #c8e6c8; 
+      border-color: #45a049;
+    }
+  }
+  
+  &.delete {
+    background: #fdeaea;
+    border-color: #f44336;
+    color: #c62828;
+    &:hover { 
+      background: #ffcdd2; 
+      border-color: #d32f2f;
+    }
+  }
+`
+
+const StyledLayoutCardTimeInfo = styled.div`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #666;
+  text-align: center;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+`
+
+const StyledLayoutCardInfo = styled.div`
+  font-size: 9px;
+  color: #666;
+  text-align: right;
+  line-height: 1.2;
 `
 
 const StyledButton = styled.button`
