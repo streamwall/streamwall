@@ -100,7 +100,7 @@ function filterStreams(
   const liveStreams = []
   const otherStreams = []
   for (const stream of streams) {
-    const { _id, kind, status, label, source, state, city } = stream
+    const { _id, kind, status, label, source, state, city, latitude, longitude } = stream
     if (kind && !normalStreamKinds.has(kind)) {
       continue
     }

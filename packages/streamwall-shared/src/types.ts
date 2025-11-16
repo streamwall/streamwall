@@ -34,6 +34,8 @@ export interface StreamDataContent extends ContentDisplayOptions {
   status?: string
   city?: string
   state?: string
+  latitude?: number
+  longitude?: number
   _id?: string
   _dataSource?: string
 }
