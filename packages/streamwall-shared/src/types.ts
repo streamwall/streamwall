@@ -38,6 +38,7 @@ export interface StreamDataContent extends ContentDisplayOptions {
   longitude?: number
   _id?: string
   _dataSource?: string
+  isLive?: boolean
 }
 
 export interface StreamData extends StreamDataContent {

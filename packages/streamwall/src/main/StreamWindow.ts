@@ -334,7 +334,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     this.sendViewEvent(viewIdx, { type: 'DEVTOOLS', inWebContents })
   }
 
-  async refreshAllViewsSequentially(delayMs: number = 200) {
+  async refreshAllViewsSequentially(delayMs: number = 1000) {
     const viewsArray = Array.from(this.views.values())
     console.log(`Starting sequential refresh of ${viewsArray.length} views with ${delayMs}ms delay...`)
     
@@ -357,7 +357,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     console.log('Finished sequential refresh of all views')
   }
 
-  async refreshErroredViewsSequentially(delayMs: number = 200) {
+  async refreshErroredViewsSequentially(delayMs: number = 1000) {
     const viewsArray = Array.from(this.views.values())
     const erroredViews = viewsArray.filter(view => {
       const snapshot = view.getSnapshot()

@@ -6,8 +6,10 @@
   "main": "./src/index.tsx",
   "dependencies": {
     "@fontsource/noto-sans": "^5.1.1",
+    "@types/leaflet": "^1.9.21",
     "color": "^5.0.0",
     "jsondiffpatch": "^0.6.0",
+    "leaflet": "^1.9.4",
     "lodash-es": "^4.17.21",
     "luxon": "^3.5.0",
     "preact": "^10.25.3",

@@ -95,10 +95,28 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
   }
 
   onState(state: StreamwallState) {
-    this.win.webContents.send('state', state)
+    if (this.win && this.win.webContents && !this.win.isDestroyed()) {
+      try {
+        this.win.webContents.send('state', state)
+      } catch (err) {
+        // Silently ignore errors when window is being disposed
+        if (!(err instanceof Error) || !err.message.includes('disposed')) {
+          console.error('Error sending state to control window:', err)
+        }
+      }
+    }
   }
 
   onYDocUpdate(update: Uint8Array) {
-    this.win.webContents.send('ydoc', update)
+    if (this.win && this.win.webContents && !this.win.isDestroyed()) {
+      try {
+        this.win.webContents.send('ydoc', update)
+      } catch (err) {
+        // Silently ignore errors when window is being disposed
+        if (!(err instanceof Error) || !err.message.includes('disposed')) {
+          console.error('Error sending YDoc update to control window:', err)
+        }
+      }
+    }
   }
 }

@@ -431,7 +431,13 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
 
       const state = streamwallConn.clientState.view(identity.role)
       ws.send(JSON.stringify({ type: 'state', state }))
-      ws.send(Y.encodeStateAsUpdate(streamwallConn.stateDoc))
+      
+      // Send the complete Yjs document state so the client has all collaborative data
+      const stateUpdate = Y.encodeStateAsUpdate(streamwallConn.stateDoc)
+      if (stateUpdate.length > 0) {
+        ws.send(stateUpdate)
+      }
+      
       client.lastStateSent = state
     })
   })

@@ -1,4 +1,5 @@
 import '@fontsource/noto-sans'
+import 'leaflet/dist/leaflet.css'
 import Color from 'color'
 import { range, sortBy, truncate } from 'lodash-es'
 import { DateTime } from 'luxon'
@@ -101,6 +102,8 @@ function filterStreams(
   streams: StreamData[],
   wallStreamIds: Set<string>,
   filter: string,
+  highwayFilters: Set<string>,
+  cityFilters: Set<string>,
 ) {
   const wallStreams = []
   const liveStreams = []
@@ -118,14 +121,48 @@ function filterStreams(
     ) {
       continue
     }
+    
     if (wallStreamIds.has(_id)) {
       wallStreams.push(stream)
     } else if ((kind && kind !== 'video') || status === 'Live') {
       liveStreams.push(stream)
     } else {
+      // Apply static filter logic for offline streams
+      if ((highwayFilters.size > 0 || cityFilters.size > 0) && label) {
+        let matchesFilters = true
+        
+        // If highway filters are selected, check if stream contains any of them
+        if (highwayFilters.size > 0) {
+          const matchesHighway = Array.from(highwayFilters).some(highway => 
+            label.includes(highway)
+          )
+          if (!matchesHighway) matchesFilters = false
+        }
+        
+        // If city filters are selected, check if stream starts with any of them
+        if (cityFilters.size > 0) {
+          const matchesCity = Array.from(cityFilters).some(city => {
+            // Check for exact matches like "CR -", "IC -", etc.
+            if (label.startsWith(city + ' -')) return true
+            
+            // Check for variations with digits like "6DT -", "6DW -", etc.
+            const cityPattern = new RegExp(`^\\d*${city}\\w* -`, 'i')
+            return cityPattern.test(label)
+          })
+          if (!matchesCity) matchesFilters = false
+        }
+        
+        if (!matchesFilters) continue
+      }
       otherStreams.push(stream)
     }
   }
+  
+  // Sort all stream lists alphabetically by label
+  wallStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  liveStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  otherStreams.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+  
   return [wallStreams, liveStreams, otherStreams]
 }
 
@@ -155,6 +192,7 @@ export function useYDoc<T>(keys: string[]): {
 
 export interface CollabData {
   views: { [viewIdx: string]: { streamId: string | undefined } }
+  uiState?: { loopRefreshErrored?: boolean }
 }
 
 export interface StreamwallConnection {
@@ -248,72 +286,273 @@ export function useStreamwallState(state: StreamwallState | undefined) {
   }, [state])
 }
 
-/* 
- * MAP COMPONENT REMOVED - HIGHLIGHT FUNCTION PRESERVED FOR FUTURE USE
- * 
- * To re-implement the map feature later, use this component structure:
- * - StreamLocationMap component with streams and onStreamPreview props
- * - Filter streams with: streams.filter(s => s.latitude != null && s.longitude != null)
- * - Use lat/lon coordinates from streams.toml for positioning
- * - Cedar Rapids center: [41.9778, -91.6656]
- * - Iowa geographic bounds: lat 40.4-43.5, lng -96.6--90.1
- * - Coordinate projection: x = ((longitude + 96) / 5.5) * width, y = ((43 - latitude) / 2.5) * height
- * 
- * Map drawing elements included:
- * - Iowa state outline with simplified border coordinates
- * - Major highways: I-35, I-80, I-380, US-30 with proper styling
- * - Cities: Des Moines, Cedar Rapids, Iowa City, Davenport, Waterloo
- * - Camera markers as circles with click detection (15px radius)
- * - Legend showing interstates, highways, and camera count
- * - Canvas-based rendering (400x300) for Electron compatibility
- * 
- * Click handler logic:
- * - getBoundingClientRect() for canvas coordinates
- * - Distance calculation to find closest camera
- * - onStreamPreview(stream._id) to trigger highlight
- * 
- * Working implementations attempted:
- * - Leaflet.js (CSP issues in Electron)
- * - Mapbox GL (token/authentication issues) 
- * - OpenStreetMap embeds (iframe blocking)
- * - Canvas rendering (working solution)
- * 
- * Dependencies to install if re-implementing:
- * - For Leaflet: npm install leaflet @types/leaflet
- * - For Mapbox: npm install mapbox-gl
- * - For Canvas: No dependencies needed (native HTML5)
- */
+import 'leaflet/dist/leaflet.css'
 
-// Placeholder for future map implementation
-function StreamLocationMap({ streams, onStreamPreview }: { 
+// ...existing code...
+
+// Leaflet.js map component - works reliably in web browser environment
+function StreamLocationMap({ streams, wallStreams, onStreamPreview }: { 
   streams: StreamData[], 
-  onStreamPreview: (streamId: string) => void 
+  wallStreams: StreamData[],
+  onStreamPreview: (streamId: string) => void
 }) {
-  // Filter streams that have location data (for future use)
-  const streamWithLocation = useMemo(() => 
-    streams.filter(stream => 
+  const mapRef = useRef<HTMLDivElement>(null)
+  const leafletMapRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
+  const hasInitialFitRef = useRef(false)
+  const [mapReady, setMapReady] = useState(false)
+  
+  console.log('StreamLocationMap mounted with', streams.length, 'total streams')
+  if (streams.length > 0) {
+    console.log('First stream:', streams[0])
+  }
+  
+  // Filter streams that have location data
+  const streamWithLocation = useMemo(() => {
+    const filtered = streams.filter(stream => 
       stream.latitude != null && 
       stream.longitude != null
-    ), 
-    [streams]
-  )
+    )
+    console.log('Filtered to', filtered.length, 'streams with location data')
+    if (filtered.length === 0 && streams.length > 0) {
+      console.log('First stream lat/lon:', streams[0].latitude, streams[0].longitude)
+      console.log('Stream keys:', Object.keys(streams[0]))
+    }
+    return filtered
+  }, [streams])
+
+  // Initialize map on mount
+  useEffect(() => {
+    const initializeMap = async () => {
+      console.log('Initializing map, mapRef.current:', !!mapRef.current, 'leafletMapRef.current:', !!leafletMapRef.current)
+      if (!mapRef.current || leafletMapRef.current) return
+
+      try {
+        // Dynamically import Leaflet
+        const L = (await import('leaflet')).default
+        console.log('Leaflet imported successfully')
+
+        // Create map instance
+        leafletMapRef.current = L.map(mapRef.current, {
+          center: [41.85571672210071, -91.86152308331968], // Centered on specified location
+          zoom: 10,
+          zoomControl: true,
+          scrollWheelZoom: true
+        })
+        console.log('Map instance created')
+
+        // Add OpenStreetMap tiles using protocol-relative URL
+        L.tileLayer('//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 18,
+          subdomains: ['a', 'b', 'c'],
+          crossOrigin: true
+        }).addTo(leafletMapRef.current)
+        console.log('Tile layer added')
+
+        setMapReady(true)
+        console.log('Map ready flag set')
+      } catch (error) {
+        console.error('Failed to initialize map:', error)
+      }
+    }
+
+    initializeMap()
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove()
+        leafletMapRef.current = null
+      }
+    }
+  }, [])
+
+  // Update markers when streams or map readiness changes
+  useEffect(() => {
+    if (!leafletMapRef.current || !mapReady) return
+
+    const updateMarkers = async () => {
+      const L = (await import('leaflet')).default
+
+      console.log('Updating markers for', streamWithLocation.length, 'streams with location')
+
+      // Clear existing markers
+      markersRef.current.forEach((marker: any) => marker.remove())
+      markersRef.current = []
+
+      // Add markers for each camera
+      streamWithLocation.forEach(stream => {
+        console.log('Adding marker for', stream._id, 'at', stream.latitude, stream.longitude)
+        // Check if stream is in the viewing list
+        const isViewing = wallStreams.some(s => s._id === stream._id)
+        
+        const marker = L.circleMarker([stream.latitude!, stream.longitude!], {
+          radius: 6,
+          fillColor: isViewing ? '#4CAF50' : '#1976D2',
+          color: '#ffffff',
+          weight: 2,
+          opacity: 0.8,
+          fillOpacity: 0.8
+        })
+
+        // Create popup with stream information
+        const popupContent = `
+          <div style="font-size: 12px; line-height: 1.5; min-width: 180px;">
+            <strong>${stream.label || stream._id}</strong><br>
+            <small style="color: #666;">Lat: ${stream.latitude!.toFixed(4)}</small><br>
+            <small style="color: #666;">Lon: ${stream.longitude!.toFixed(4)}</small>
+          </div>
+        `
+        
+        const popup = L.popup().setContent(popupContent)
+        marker.bindPopup(popup)
+        
+        // Highlight in list when popup opens
+        marker.on('popupopen', () => {
+          onStreamPreview(stream._id)
+        })
+
+        // Handle click to highlight in list
+        marker.on('click', () => {
+          onStreamPreview(stream._id)
+        })
+
+        marker.addTo(leafletMapRef.current)
+        markersRef.current.push(marker)
+      })
+
+      // Mark that markers have been loaded (fitBounds will be called via home button instead)
+      if (streamWithLocation.length > 0 && !hasInitialFitRef.current) {
+        hasInitialFitRef.current = true
+        console.log('Markers loaded, initial zoom level will be preserved')
+      }
+    }
+
+    updateMarkers()
+  }, [streamWithLocation, wallStreams, onStreamPreview, mapReady])
+
+  const handleHomeClick = useCallback(() => {
+    if (leafletMapRef.current) {
+      // Return to initial view location and zoom
+      leafletMapRef.current.setView([41.85571672210071, -91.86152308331968], 10, { animate: true })
+    }
+  }, [])
+
+  const handleIowaClick = useCallback(() => {
+    if (leafletMapRef.current) {
+      // Center on Iowa and zoom to show entire state with all cameras
+      leafletMapRef.current.setView([42.0115, -93.2105], 7, { animate: true })
+    }
+  }, [])
 
   return (
     <div style={{ marginTop: '20px' }}>
+      <h3>Stream Locations Map</h3>
+      <div 
+        ref={mapRef}
+        style={{
+          width: '100%',
+          height: '400px',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          backgroundColor: '#f0f0f0',
+          position: 'relative'
+        }}
+      >
+        {!mapReady && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            padding: '20px',
+            borderRadius: '4px',
+            textAlign: 'center',
+            zIndex: 1000
+          }}>
+            Loading map...
+          </div>
+        )}
+        <button
+          onClick={handleHomeClick}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 500,
+            padding: '8px 12px',
+            backgroundColor: 'white',
+            border: '2px solid #ccc',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#f0f0f0'
+            e.currentTarget.style.borderColor = '#999'
+            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.borderColor = '#ccc'
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+          }}
+          title="Fit all markers in view"
+        >
+          🏠
+        </button>
+        <button
+          onClick={handleIowaClick}
+          style={{
+            position: 'absolute',
+            top: '54px',
+            right: '12px',
+            zIndex: 500,
+            padding: '8px 12px',
+            backgroundColor: 'white',
+            border: '2px solid #ccc',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#f0f0f0'
+            e.currentTarget.style.borderColor = '#999'
+            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.borderColor = '#ccc'
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+          }}
+          title="Zoom to show all of Iowa"
+        >
+          🗺️
+        </button>
+      </div>
       <div style={{
-        padding: '20px',
-        border: '1px dashed #ccc',
-        borderRadius: '4px',
-        textAlign: 'center',
-        color: '#666',
-        backgroundColor: '#f9f9f9'
+        marginTop: '8px',
+        fontSize: '11px',
+        color: '#666'
       }}>
-        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-          📍 Map Feature Disabled
-        </div>
-        <div style={{ fontSize: '11px' }}>
-          {streamWithLocation.length} cameras with location data available
-        </div>
+        {streamWithLocation.length} cameras with location data • Click markers to highlight in stream list
       </div>
     </div>
   )
@@ -360,6 +599,26 @@ export function ControlUI({
   const handleRefreshErroredViews = useCallback(() => {
     send({ type: 'refresh-errored-views' })
   }, [send])
+
+  const loopRefreshErrored = sharedState?.uiState?.loopRefreshErrored ?? false
+  const toggleLoopRefreshErrored = useCallback(() => {
+    stateDoc.transact(() => {
+      const uiStateMap = stateDoc.getMap<any>('uiState')
+      uiStateMap.set('loopRefreshErrored', !loopRefreshErrored)
+    })
+  }, [stateDoc, loopRefreshErrored])
+
+  useEffect(() => {
+    if (!loopRefreshErrored) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      send({ type: 'refresh-errored-views' })
+    }, 5000) // Refresh every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [loopRefreshErrored, send])
 
   const [swapStartIdx, setSwapStartIdx] = useState<number | undefined>()
   const handleSwapView = useCallback(
@@ -692,11 +951,46 @@ export function ControlUI({
     ev.preventDefault()
   }, [])
 
+  const [layoutCollapsed, setLayoutCollapsed] = useState(true)
+  const [accessCollapsed, setAccessCollapsed] = useState(true)
   const [streamFilter, setStreamFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'viewing' | 'live' | 'offline'>('all')
+  
   const handleStreamFilterChange = useCallback<
     JSX.InputEventHandler<HTMLInputElement>
   >((ev) => {
     setStreamFilter(ev.currentTarget?.value)
+  }, [])
+
+  // Static filter options for offline streams
+  const staticHighwayFilters = ['I-80', 'I-380', 'I-280', 'US 30', 'IA 13', 'IA 100', 'US 218'].sort()
+  const staticCityFilters = ['IC', 'QC', 'CR', 'WL', 'DQ', 'WWD'].sort()
+
+  const [selectedHighwayFilters, setSelectedHighwayFilters] = useState<Set<string>>(new Set())
+  const [selectedCityFilters, setSelectedCityFilters] = useState<Set<string>>(new Set())
+
+  const handleHighwayFilterToggle = useCallback((filter: string) => {
+    setSelectedHighwayFilters(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(filter)) {
+        newSet.delete(filter)
+      } else {
+        newSet.add(filter)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleCityFilterToggle = useCallback((filter: string) => {
+    setSelectedCityFilters(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(filter)) {
+        newSet.delete(filter)
+      } else {
+        newSet.add(filter)
+      }
+      return newSet
+    })
   }, [])
 
   // Set up keyboard shortcuts.
@@ -756,8 +1050,8 @@ export function ControlUI({
     [sharedState],
   )
   const [wallStreams, liveStreams, otherStreams] = useMemo(
-    () => filterStreams(streams, wallStreamIds, streamFilter),
-    [streams, wallStreamIds, streamFilter],
+    () => filterStreams(streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters),
+    [streams, wallStreamIds, streamFilter, selectedHighwayFilters, selectedCityFilters],
   )
   function StreamList({ rows }: { rows: StreamData[] }) {
     return rows.map((row) => (
@@ -773,7 +1067,7 @@ export function ControlUI({
   const handleStreamPreview = useCallback(
     (streamId: string) => {
       // Find the stream element in the list and scroll to it
-      const streamElement = document.querySelector(`[data-stream-id="${streamId}"]`)
+      const streamElement = document.querySelector(`[data-stream-id="${streamId}"]`) as HTMLElement | null
       if (streamElement) {
         // Scroll to the element
         streamElement.scrollIntoView({ 
@@ -781,13 +1075,16 @@ export function ControlUI({
           block: 'center' 
         })
         
-        // Add highlight effect
+        // Add highlight effect with background color
         streamElement.classList.add('stream-highlight')
+        streamElement.style.backgroundColor = '#fff9c4'
+        streamElement.style.transition = 'background-color 0.3s ease'
         
-        // Remove highlight after 3 seconds
+        // Remove highlight after 7 seconds
         setTimeout(() => {
           streamElement.classList.remove('stream-highlight')
-        }, 3000)
+          streamElement.style.backgroundColor = ''
+        }, 7000)
       }
     },
     []
@@ -934,112 +1231,205 @@ export function ControlUI({
               )}
             </StyledGridContainer>
           )}
-          {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
-            <div>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showDebug}
-                  onChange={handleChangeShowDebug}
-                />
-                Show stream debug tools
-              </label>
-              {roleCan(role, 'refresh-all-views') && (
-                <>
-                  <br />
-                  <button onClick={handleRefreshAllViews} style={{ marginTop: '5px', marginRight: '10px' }}>
-                    Refresh All Views Sequentially
-                  </button>
-                  {roleCan(role, 'refresh-errored-views') && (
-                    <button onClick={handleRefreshErroredViews} style={{ marginTop: '5px' }}>
-                      Refresh Errored Views Only
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          
-          {/* Move Custom Streams section here */}
-          {roleCan(role, 'update-custom-stream') &&
-            roleCan(role, 'delete-custom-stream') && (
-              <>
-                <h2>Custom Streams</h2>
-                <div>
-                  {customStreams.map(({ link, label, kind }, idx) => (
-                    <CustomStreamInput
-                      key={idx}
-                      link={link}
-                      label={label}
-                      kind={kind}
-                      onChange={handleChangeCustomStream}
-                      onDelete={handleDeleteCustomStream}
+          {/* Two-column section: Debug/Custom Streams on left, Map on right */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            {/* Left column: Debug Box and Custom Streams */}
+            <div style={{ flex: '0 0 auto' }}>
+              {/* Debug Tools */}
+              {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showDebug}
+                      onChange={handleChangeShowDebug}
                     />
-                  ))}
-                  <CreateCustomStreamInput
-                    onCreate={handleChangeCustomStream}
-                  />
-                </div>
-              </>
-            )}
-          
-          {/* Move Access section here */}
-          {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
-            authState && (
-              <>
-                <h2>Access</h2>
-                <div>
-                  <CreateInviteInput onCreateInvite={handleCreateInvite} />
-                  <h3>Invites</h3>
-                  {newInvite && (
-                    <StyledNewInviteBox>
-                      Invite link created:{' '}
-                      <a
-                        href={inviteLink({
-                          tokenId: newInvite.tokenId,
-                          secret: newInvite.secret,
-                        })}
-                        onClick={preventLinkClick}
+                    Show stream debug tools
+                  </label>
+                  {roleCan(role, 'refresh-all-views') && (
+                    <>
+                      <br />
+                      <button 
+                        onClick={handleRefreshAllViews} 
+                        style={{ 
+                          marginTop: '5px', 
+                          marginRight: '10px',
+                          padding: '6px 12px',
+                          backgroundColor: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '12px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#45a049'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#4CAF50'
+                        }}
                       >
-                        "{newInvite.name}"
-                      </a>
-                    </StyledNewInviteBox>
+                        Refresh All Views Sequentially
+                      </button>
+                      {roleCan(role, 'refresh-errored-views') && (() => {
+                        const errorCount = views.filter(view => 
+                          matchesState('displaying.error', view.state.state)
+                        ).length
+                        return (
+                          <button 
+                            onClick={(e) => {
+                              if (e.shiftKey) {
+                                e.preventDefault()
+                                toggleLoopRefreshErrored()
+                              } else {
+                                handleRefreshErroredViews()
+                              }
+                            }}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              toggleLoopRefreshErrored()
+                            }}
+                            style={{ 
+                              marginTop: '5px',
+                              padding: '6px 12px',
+                              backgroundColor: errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: errorCount > 0 ? 'pointer' : 'default',
+                              fontWeight: 'bold',
+                              fontSize: '12px',
+                              transition: 'all 0.2s',
+                              opacity: errorCount > 0 ? 1 : 0.7,
+                              position: 'relative'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (errorCount > 0) {
+                                e.currentTarget.style.backgroundColor = loopRefreshErrored ? '#f57c00' : '#d32f2f'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc'
+                            }}
+                            disabled={errorCount === 0}
+                            title={`Left-click to refresh once. Shift+click or right-click to toggle continuous loop. Status: ${loopRefreshErrored ? 'LOOPING ⏸' : 'normal ▶'}`}
+                          >
+                            Refresh Errored Views {errorCount > 0 && `(${errorCount})`} {loopRefreshErrored && '🔄'}
+                          </button>
+                        )
+                      })()}
+                    </>
                   )}
-                  {authState.invites.map(({ tokenId, name, role }) => (
-                    <AuthTokenLine
-                      id={tokenId}
-                      name={name}
-                      role={role}
-                      onDelete={handleDeleteToken}
-                    />
-                  ))}
-                  <h3>Sessions</h3>
-                  {authState.sessions.map(({ tokenId, name, role }) => (
-                    <AuthTokenLine
-                      id={tokenId}
-                      name={name}
-                      role={role}
-                      onDelete={handleDeleteToken}
-                    />
-                  ))}
                 </div>
-              </>
-            )}
+              )}
+              
+              {/* Custom Streams section */}
+              {roleCan(role, 'update-custom-stream') &&
+                roleCan(role, 'delete-custom-stream') && (
+                  <>
+                    <h2>Custom Streams</h2>
+                    <div>
+                      {customStreams.map(({ link, label, kind }, idx) => (
+                        <CustomStreamInput
+                          key={idx}
+                          link={link}
+                          label={label}
+                          kind={kind}
+                          onChange={handleChangeCustomStream}
+                          onDelete={handleDeleteCustomStream}
+                        />
+                      ))}
+                      <CreateCustomStreamInput
+                        onCreate={handleChangeCustomStream}
+                      />
+                    </div>
+                  </>
+                )}
+            </div>
+            
+            {/* Right column: Stream Location Map */}
+            <div style={{ flex: '1', minWidth: '400px' }}>
+              <StreamLocationMap 
+                streams={streams}
+                wallStreams={wallStreams}
+                onStreamPreview={handleStreamPreview}
+              />
+            </div>
+          </div>
           
           {/* Layout Management section */}
           {roleCan(role, 'save-layout') && roleCan(role, 'load-layout') && roleCan(role, 'clear-layout') && (
             <>
-              <h2>Layout Management</h2>
+              <h2 
+                style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                onClick={() => setLayoutCollapsed(!layoutCollapsed)}
+              >
+                {layoutCollapsed ? '▶' : '▼'} Layout Management
+              </h2>
               <div>
                 <FixedLayoutGrid
                   savedLayouts={savedLayouts}
                   onSave={handleSaveLayout}
                   onLoad={handleLoadLayout}
                   onClear={handleClearLayout}
+                  rowsToShow={layoutCollapsed ? 2 : 11}
                 />
               </div>
             </>
           )}
+          
+          {/* Move Access section here */}
+          {(roleCan(role, 'create-invite') || roleCan(role, 'delete-token')) &&
+            authState && (
+              <>
+                <h2 
+                  style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  onClick={() => setAccessCollapsed(!accessCollapsed)}
+                >
+                  {accessCollapsed ? '▶' : '▼'} Access
+                </h2>
+                {!accessCollapsed && (
+                  <div>
+                    <CreateInviteInput onCreateInvite={handleCreateInvite} />
+                    <h3>Invites</h3>
+                    {newInvite && (
+                      <StyledNewInviteBox>
+                        Invite link created:{' '}
+                        <a
+                          href={inviteLink({
+                            tokenId: newInvite.tokenId,
+                            secret: newInvite.secret,
+                          })}
+                          onClick={preventLinkClick}
+                        >
+                          "{newInvite.name}"
+                        </a>
+                      </StyledNewInviteBox>
+                    )}
+                    {authState.invites.map(({ tokenId, name, role }) => (
+                      <AuthTokenLine
+                        id={tokenId}
+                        name={name}
+                        role={role}
+                        onDelete={handleDeleteToken}
+                      />
+                    ))}
+                    <h3>Sessions</h3>
+                    {authState.sessions.map(({ tokenId, name, role }) => (
+                      <AuthTokenLine
+                        id={tokenId}
+                        name={name}
+                        role={role}
+                        onDelete={handleDeleteToken}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           
           <Facts />
         </StyledDataContainer>
@@ -1051,11 +1441,86 @@ export function ControlUI({
               <input
                 onChange={handleStreamFilterChange}
                 value={streamFilter}
-                placeholder="filter"
+                placeholder="filter streams..."
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box'
+                }}
               />
-              <h3>Viewing</h3>
-              <StreamList rows={wallStreams} />
-              {delayState && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    backgroundColor: categoryFilter === 'all' ? '#007bff' : '#f8f9fa',
+                    color: categoryFilter === 'all' ? 'white' : 'black',
+                    cursor: 'pointer',
+                    fontWeight: categoryFilter === 'all' ? 'bold' : 'normal'
+                  }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('viewing')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    backgroundColor: categoryFilter === 'viewing' ? '#007bff' : '#f8f9fa',
+                    color: categoryFilter === 'viewing' ? 'white' : 'black',
+                    cursor: 'pointer',
+                    fontWeight: categoryFilter === 'viewing' ? 'bold' : 'normal'
+                  }}
+                >
+                  Viewing ({wallStreams.length})
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('live')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    backgroundColor: categoryFilter === 'live' ? '#007bff' : '#f8f9fa',
+                    color: categoryFilter === 'live' ? 'white' : 'black',
+                    cursor: 'pointer',
+                    fontWeight: categoryFilter === 'live' ? 'bold' : 'normal'
+                  }}
+                >
+                  Live ({liveStreams.length})
+                </button>
+                <button
+                  onClick={() => setCategoryFilter('offline')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    backgroundColor: categoryFilter === 'offline' ? '#007bff' : '#f8f9fa',
+                    color: categoryFilter === 'offline' ? 'white' : 'black',
+                    cursor: 'pointer',
+                    fontWeight: categoryFilter === 'offline' ? 'bold' : 'normal'
+                  }}
+                >
+                  Offline/Unknown ({otherStreams.length})
+                </button>
+              </div>
+              {(categoryFilter === 'all' || categoryFilter === 'viewing') && (
+                <>
+                  <h3>Viewing</h3>
+                  <StreamList rows={wallStreams} />
+                </>
+              )}
+              {delayState && (categoryFilter === 'all' || categoryFilter === 'viewing') && (
                 <StreamDelayBox
                   role={role}
                   delayState={delayState}
@@ -1063,22 +1528,82 @@ export function ControlUI({
                   setStreamRunning={setStreamRunning}
                 />
               )}
-              <h3>Live</h3>
-              <StreamList rows={liveStreams} />
-              <h3>Offline / Unknown</h3>
-              <StreamList rows={otherStreams} />
+              {(categoryFilter === 'all' || categoryFilter === 'live') && (
+                <>
+                  <h3>Live</h3>
+                  <StreamList rows={liveStreams} />
+                </>
+              )}
+              {(categoryFilter === 'all' || categoryFilter === 'offline') && (
+                <>
+                  <h3>Offline / Unknown</h3>
+                  <StyledOfflineFilters>
+                    <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
+                      Cities/Regions:
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                      {[...staticCityFilters].sort().map(filter => (
+                        <StyledFilterButton
+                          key={filter}
+                          active={selectedCityFilters.has(filter)}
+                          onClick={() => handleCityFilterToggle(filter)}
+                        >
+                          {selectedCityFilters.has(filter) && '✓ '}{filter}
+                        </StyledFilterButton>
+                      ))}
+                      {selectedCityFilters.size > 0 && (
+                        <StyledFilterButton
+                          clear
+                          onClick={() => setSelectedCityFilters(new Set())}
+                        >
+                          Clear Cities
+                        </StyledFilterButton>
+                      )}
+                    </div>
+                    
+                    <div style={{ fontSize: '12px', marginBottom: '4px', color: '#666' }}>
+                      Highways:
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                      {[...staticHighwayFilters].sort().map(filter => (
+                        <StyledFilterButton
+                          key={filter}
+                          active={selectedHighwayFilters.has(filter)}
+                          onClick={() => handleHighwayFilterToggle(filter)}
+                        >
+                          {selectedHighwayFilters.has(filter) && '✓ '}{filter}
+                        </StyledFilterButton>
+                      ))}
+                      {selectedHighwayFilters.size > 0 && (
+                        <StyledFilterButton
+                          clear
+                          onClick={() => setSelectedHighwayFilters(new Set())}
+                        >
+                          Clear Highways
+                        </StyledFilterButton>
+                      )}
+                    </div>
+                    
+                    {(selectedCityFilters.size > 0 || selectedHighwayFilters.size > 0) && (
+                      <StyledFilterButton
+                        clear
+                        onClick={() => {
+                          setSelectedCityFilters(new Set())
+                          setSelectedHighwayFilters(new Set())
+                        }}
+                        style={{ marginTop: '4px' }}
+                      >
+                        Clear All Filters
+                      </StyledFilterButton>
+                    )}
+                  </StyledOfflineFilters>
+                  <StreamList rows={otherStreams} />
+                </>
+              )}
             </div>
           ) : (
             <div>loading...</div>
           )}
-          
-          {/* Stream Location Map */}
-          <StreamLocationMap 
-            streams={streams}
-            onStreamPreview={handleStreamPreview}
-          />
-          
-          {/* Remove the Custom Streams and Access sections from here - they've been moved above */}
         </StyledDataContainer>
       </Stack>
     </Stack>
@@ -1483,6 +2008,7 @@ function FixedLayoutGrid({
   onSave,
   onLoad,
   onClear,
+  rowsToShow = 11,
 }: {
   savedLayouts?: Record<string, { 
     name: string; 
@@ -1493,13 +2019,15 @@ function FixedLayoutGrid({
   onSave: (slot: number, name: string) => void
   onLoad: (slot: number) => void
   onClear: (slot: number) => void
+  rowsToShow?: number
 }) {
-  // Fixed 4x11 grid (44 total slots)
+  // Fixed 4x11 grid (44 total slots), show specified number of rows
   const GRID_COLS = 4
   const GRID_ROWS = 11
   const totalSlots = GRID_COLS * GRID_ROWS
+  const slotsToDisplay = GRID_COLS * rowsToShow
   
-  const slotsToShow = Array.from({ length: totalSlots }, (_, i) => i + 1)
+  const slotsToShow = Array.from({ length: slotsToDisplay }, (_, i) => i + 1)
   
   return (
     <StyledLayoutPresetGrid>
@@ -1913,10 +2441,8 @@ const StyledLayoutSlot = styled.div`
 const StyledLayoutPresetGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(11, 1fr);
+  grid-template-rows: repeat(auto-fit, minmax(60px, 1fr));
   gap: 8px;
-  max-height: 600px;
-  overflow-y: auto;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -1985,7 +2511,7 @@ const StyledLayoutCardButton = styled.button`
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
   
   &:hover {
     background: #f0f0f0;
@@ -1997,13 +2523,23 @@ const StyledLayoutCardButton = styled.button`
   }
   
   &.save {
-    color: #4CAF50;
-    &:hover { background: #e8f5e8; }
+    background: #c8e6c8;
+    border-color: #4CAF50;
+    color: #2e7d32;
+    &:hover { 
+      background: #a5d6a7;
+      border-color: #45a049;
+    }
   }
   
   &.delete {
-    color: #f44336;
-    &:hover { background: #fdeaea; }
+    background: #ffcdd2;
+    border-color: #f44336;
+    color: #c62828;
+    &:hover { 
+      background: #ef9a9a;
+      border-color: #d32f2f;
+    }
   }
 `
 
@@ -2304,6 +2840,32 @@ const TIN = styled.div`
 `
 
 // TODO: reuse for server
+const StyledOfflineFilters = styled.div`
+  margin-bottom: 8px;
+`
+
+const StyledFilterButton = styled.button<{ active?: boolean; clear?: boolean }>`
+  padding: 2px 8px;
+  border: 1px solid ${props => props.active && !props.clear ? '#0066cc' : props.clear ? '#666' : '#ddd'};
+  background: ${props => props.active && !props.clear ? '#0066cc' : props.clear ? '#f5f5f5' : '#fff'};
+  color: ${props => props.active && !props.clear ? '#fff' : props.clear ? '#666' : '#333'};
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    background: ${props => props.active && !props.clear ? '#0052a3' : props.clear ? '#e0e0e0' : '#f0f0f0'};
+    border-color: ${props => props.active && !props.clear ? '#003d7a' : props.clear ? '#555' : '#bbb'};
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+`
 /*
 export function main() {
   const script = document.getElementById('main-script')

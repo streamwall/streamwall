@@ -22,6 +22,7 @@ declare global {
 function useStreamwallIPCConnection(): StreamwallConnection {
   const { docValue: sharedState, doc: stateDoc } = useYDoc<CollabData>([
     'views',
+    'uiState',
   ])
 
   const [streamwallState, setStreamwallState] = useState<StreamwallState>()

@@ -29,9 +29,25 @@ function useStreamwallWebsocketConnection(
     docValue: sharedState,
     doc: stateDoc,
     setDoc: setStateDoc,
-  } = useYDoc<CollabData>(['views'])
+  } = useYDoc<CollabData>(['views', 'uiState'])
   const [streamwallState, setStreamwallState] = useState<StreamwallState>()
   const appState = useStreamwallState(streamwallState)
+
+  // Set up Yjs send handler
+  const handleSendUpdate = useCallback((update: Uint8Array, origin: string) => {
+    if (origin === 'server') {
+      return
+    }
+    console.log('Sending Yjs update to server, size:', update.length)
+    wsRef.current?.ws.send(update)
+  }, [])
+
+  useEffect(() => {
+    stateDoc.on('update', handleSendUpdate)
+    return () => {
+      stateDoc.off('update', handleSendUpdate)
+    }
+  }, [stateDoc, handleSendUpdate])
 
   useEffect(() => {
     let lastStateData: StreamwallState | undefined
@@ -49,6 +65,9 @@ function useStreamwallWebsocketConnection(
     })
     ws.addEventListener('message', (ev) => {
       if (ev.data instanceof ArrayBuffer) {
+        // Handle Yjs binary updates
+        console.log('Received Yjs update from server, size:', ev.data.byteLength)
+        Y.applyUpdate(stateDoc, new Uint8Array(ev.data), 'server')
         return
       }
       const msg = JSON.parse(ev.data)
@@ -77,7 +96,7 @@ function useStreamwallWebsocketConnection(
       }
     })
     wsRef.current = { ws, msgId: 0, responseMap: new Map() }
-  }, [])
+  }, [stateDoc])
 
   const send = useCallback(
     (msg: ControlCommand, cb?: (msg: unknown) => void) => {
@@ -101,31 +120,13 @@ function useStreamwallWebsocketConnection(
 
   useEffect(() => {
     if (!wsRef.current) {
-      throw new Error('Websocket not initialized')
+      return
     }
-    const { ws } = wsRef.current
-
-    function sendUpdate(update: Uint8Array, origin: string) {
-      if (origin === 'server') {
-        return
-      }
-      wsRef.current?.ws.send(update)
-    }
-
-    function receiveUpdate(ev: MessageEvent) {
-      if (!(ev.data instanceof ArrayBuffer)) {
-        return
-      }
-      Y.applyUpdate(stateDoc, new Uint8Array(ev.data), 'server')
-    }
-
-    stateDoc.on('update', sendUpdate)
-    ws.addEventListener('message', receiveUpdate)
+    // Connection establishment and teardown is handled by ReconnectingWebSocket
     return () => {
-      stateDoc.off('update', sendUpdate)
-      ws.removeEventListener('message', receiveUpdate)
+      // Cleanup if needed
     }
-  }, [stateDoc])
+  }, [])
 
   return {
     ...appState,

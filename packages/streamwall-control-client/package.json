@@ -12,7 +12,9 @@
   "license": "MIT",
   "dependencies": {
     "@preact/preset-vite": "^2.10.1",
+    "@types/leaflet": "^1.9.21",
     "jsondiffpatch": "^0.7.3",
+    "leaflet": "^1.9.4",
     "reconnecting-websocket": "^4.4.0",
     "typescript": "~4.5.4",
     "vite": "^5.4.14",

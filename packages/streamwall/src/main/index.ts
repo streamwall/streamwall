@@ -575,6 +575,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     ws.addEventListener('open', () => {
       console.debug('Control WebSocket connected.')
       console.debug('Sending initial state to WebSocket:', clientState)
+      if (clientState.streams.length > 0) {
+        console.debug('First stream being sent:', clientState.streams[0])
+      }
       ws.send(JSON.stringify({ type: 'state', state: clientState }))
       ws.send(Y.encodeStateAsUpdate(stateDoc))
     })
