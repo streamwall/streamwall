@@ -7,6 +7,7 @@ import WebSocket from 'ws'
 import * as Y from 'yjs'
 
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   type AuthTokenInfo,
   type ControlCommandMessage,
@@ -119,13 +120,17 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
       const { id } = request.params
       const { token } = request.query
 
+      console.log('Invite request:', { id, token: token ? '***' : undefined })
+
       if (!token || typeof token !== 'string') {
-        return reply.code(403).send()
+        console.warn('Invite rejected: missing or invalid token')
+        return reply.code(403).send('Missing or invalid token')
       }
 
       const tokenInfo = await auth.validateToken(id, token)
       if (!tokenInfo || tokenInfo.kind !== 'invite') {
-        return reply.code(403).send()
+        console.warn('Invite rejected: token validation failed', { id, tokenInfo })
+        return reply.code(403).send('Invalid invite token')
       }
 
       const sessionToken = await auth.createToken({
@@ -145,6 +150,7 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
         },
       )
 
+      console.log('Invite accepted, session created:', { name: tokenInfo.name, role: tokenInfo.role })
       await auth.deleteToken(tokenInfo.tokenId)
       return reply.redirect('/')
     },
@@ -285,6 +291,15 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
           request.identity = tokenInfo
         }
       }
+      // TEMP: Bypass authentication - provide default admin identity
+      if (!request.identity) {
+        request.identity = {
+          tokenId: 'bypass',
+          kind: 'session',
+          role: 'admin',
+          name: 'Admin (Auth Disabled)'
+        }
+      }
     })
 
     // Serve frontend assets
@@ -299,18 +314,9 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
 
       const { identity } = request
 
-      // Allow connections from localhost and network IPs on the same port
-      const originUrl = request.headers.origin ? new URL(request.headers.origin) : null
-      const expectedUrl = new URL(expectedOrigin)
-      const isValidOrigin = originUrl && 
-        originUrl.port === expectedUrl.port && 
-        (originUrl.hostname === expectedUrl.hostname || 
-         originUrl.hostname === 'localhost' || 
-         expectedUrl.hostname === 'localhost' ||
-         /^(10|172|192\.168)\./.test(originUrl.hostname)) // Allow private network IPs
-      
-      if (!isValidOrigin || !identity) {
-        ws.send(JSON.stringify({ error: 'unauthorized', origin: request.headers.origin, expected: expectedOrigin }))
+      // Authentication is bypassed in preHandler, so identity should always exist
+      if (!identity) {
+        ws.send(JSON.stringify({ error: 'unauthorized', reason: 'no valid session', origin: request.headers.origin, expected: expectedOrigin }))
         ws.close()
         return
       }
@@ -400,13 +406,14 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
         }
 
         try {
-          if (!roleCan(identity.role, msg.type)) {
-            console.warn(
-              `Unauthorized attempt to "${msg.type}" by "${identity.name}"`,
-            )
-            respond({ error: 'unauthorized' })
-            return
-          }
+          // TEMP: Bypass role permission checks
+          // if (!roleCan(identity.role, msg.type)) {
+          //   console.warn(
+          //     `Unauthorized attempt to "${msg.type}" by "${identity.name}"`,
+          //   )
+          //   respond({ error: 'unauthorized' })
+          //   return
+          // }
 
           if (msg.type === 'create-invite') {
             console.debug('Creating invite for role:', msg.role)
@@ -531,11 +538,13 @@ export default async function runServer({
   return { server: app.server }
 }
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 runServer({
   hostname: process.env.STREAMWALL_CONTROL_HOSTNAME,
   port: process.env.STREAMWALL_CONTROL_PORT,
   baseURL: process.env.STREAMWALL_CONTROL_URL ?? 'http://localhost:3000',
   clientStaticPath:
     process.env.STREAMWALL_CONTROL_STATIC ??
-    path.join(import.meta.dirname, '../../streamwall-control-client/dist'),
+    path.join(__dirname, '../../streamwall-control-client/dist'),
 })

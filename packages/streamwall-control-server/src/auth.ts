@@ -120,17 +120,14 @@ export class Auth extends EventEmitter<AuthEvents> {
       kind,
       role,
     })
+    const tokens = Array.from(this.tokensById.values())
     return {
-      invites: this.tokensById
-        .values()
+      invites: tokens
         .filter((t) => t.kind === 'invite')
-        .map(toTokenInfo)
-        .toArray(),
-      sessions: this.tokensById
-        .values()
+        .map(toTokenInfo),
+      sessions: tokens
         .filter((t) => t.kind === 'session')
-        .map(toTokenInfo)
-        .toArray(),
+        .map(toTokenInfo),
     }
   }
 

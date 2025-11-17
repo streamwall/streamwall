@@ -50,6 +50,7 @@ function useStreamwallWebsocketConnection(
   }, [stateDoc, handleSendUpdate])
 
   useEffect(() => {
+    console.log('Setting up WebSocket connection to', wsEndpoint)
     let lastStateData: StreamwallState | undefined
     const ws = new ReconnectingWebSocket(wsEndpoint, [], {
       maxReconnectionDelay: 5000,
@@ -58,9 +59,9 @@ function useStreamwallWebsocketConnection(
     })
     ws.binaryType = 'arraybuffer'
     ws.addEventListener('close', () => {
+      console.log('WebSocket closed')
       setStreamwallState(undefined)
       lastStateData = undefined
-      setStateDoc(new Y.Doc())
       setIsConnected(false)
     })
     ws.addEventListener('message', (ev) => {
@@ -96,7 +97,12 @@ function useStreamwallWebsocketConnection(
       }
     })
     wsRef.current = { ws, msgId: 0, responseMap: new Map() }
-  }, [stateDoc])
+    
+    return () => {
+      console.log('Cleaning up WebSocket connection')
+      ws.close()
+    }
+  }, [wsEndpoint])
 
   const send = useCallback(
     (msg: ControlCommand, cb?: (msg: unknown) => void) => {

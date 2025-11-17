@@ -298,8 +298,9 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
 }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const leafletMapRef = useRef<any>(null)
-  const markersRef = useRef<any[]>([])
+  const markersRef = useRef<Map<string, any>>(new Map())
   const hasInitialFitRef = useRef(false)
+  const markersInitializedRef = useRef(false)
   const [mapReady, setMapReady] = useState(false)
   
   console.log('StreamLocationMap mounted with', streams.length, 'total streams')
@@ -369,8 +370,21 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
 
   // Update markers when streams or map readiness changes
   useEffect(() => {
-    if (!leafletMapRef.current || !mapReady) return
-
+    if (!leafletMapRef.current || !mapReady) {
+      console.log('Skipping marker update: map not ready', { hasMap: !!leafletMapRef.current, mapReady })
+      return
+    }
+    
+    // Only initialize markers once on first load, but wait until we have streams with location data
+    if (markersInitializedRef.current) {
+      console.log('Skipping marker update: already initialized')
+      return
+    }
+    if (streamWithLocation.length === 0) {
+      console.log('Skipping marker update: no streams with location data yet')
+      return
+    }
+    
     const updateMarkers = async () => {
       const L = (await import('leaflet')).default
 
@@ -378,7 +392,7 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
 
       // Clear existing markers
       markersRef.current.forEach((marker: any) => marker.remove())
-      markersRef.current = []
+      markersRef.current.clear()
 
       // Add markers for each camera
       streamWithLocation.forEach(stream => {
@@ -394,6 +408,9 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
           opacity: 0.8,
           fillOpacity: 0.8
         })
+        
+        // Store stream ID on marker for later reference
+        marker.streamId = stream._id
 
         // Create popup with stream information
         const popupContent = `
@@ -418,7 +435,7 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
         })
 
         marker.addTo(leafletMapRef.current)
-        markersRef.current.push(marker)
+        markersRef.current.set(stream._id, marker)
       })
 
       // Mark that markers have been loaded (fitBounds will be called via home button instead)
@@ -426,10 +443,29 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
         hasInitialFitRef.current = true
         console.log('Markers loaded, initial zoom level will be preserved')
       }
+      
+      // Mark markers as initialized so we don't redraw them
+      markersInitializedRef.current = true
+      console.log('Markers initialized successfully, added', markersRef.current.size, 'markers to map')
     }
 
     updateMarkers()
   }, [streamWithLocation, wallStreams, onStreamPreview, mapReady])
+
+  // Update marker colors when wallStreams changes (without redrawing all markers)
+  useEffect(() => {
+    if (!markersInitializedRef.current || markersRef.current.size === 0) return
+
+    const wallStreamIds = new Set(wallStreams.map(s => s._id))
+    
+    markersRef.current.forEach((marker, streamId) => {
+      const isViewing = wallStreamIds.has(streamId)
+      const newColor = isViewing ? '#4CAF50' : '#1976D2'
+      marker.setStyle({ fillColor: newColor })
+    })
+    
+    console.log('Updated marker colors based on', wallStreams.length, 'wall streams')
+  }, [wallStreams])
 
   const handleHomeClick = useCallback(() => {
     if (leafletMapRef.current) {
