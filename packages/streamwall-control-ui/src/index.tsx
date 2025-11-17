@@ -446,8 +446,8 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
   }, [])
 
   return (
-    <div style={{ marginTop: '20px' }}>
-      <h3>Stream Locations Map</h3>
+    <div style={{ marginTop: '0' }}>
+      <h3 style={{ marginBottom: '4px', marginTop: '0' }}>Stream Locations Map</h3>
       <div 
         ref={mapRef}
         style={{
@@ -586,10 +586,8 @@ export function ControlUI({
   } = config ?? { cols: null, rows: null, width: null, height: null }
 
   const [showDebug, setShowDebug] = useState(false)
-  const handleChangeShowDebug = useCallback<
-    JSX.InputEventHandler<HTMLInputElement>
-  >((ev) => {
-    setShowDebug(ev.currentTarget.checked)
+  const handleChangeShowDebug = useCallback(() => {
+    setShowDebug((prev) => !prev)
   }, [])
 
   const handleRefreshAllViews = useCallback(() => {
@@ -1232,97 +1230,110 @@ export function ControlUI({
             </StyledGridContainer>
           )}
           {/* Two-column section: Debug/Custom Streams on left, Map on right */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', paddingTop: '16px' }}>
             {/* Left column: Debug Box and Custom Streams */}
             <div style={{ flex: '0 0 auto' }}>
               {/* Debug Tools */}
               {(roleCan(role, 'dev-tools') || roleCan(role, 'browse')) && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={showDebug}
-                      onChange={handleChangeShowDebug}
-                    />
-                    Show stream debug tools
-                  </label>
-                  {roleCan(role, 'refresh-all-views') && (
-                    <>
-                      <br />
-                      <button 
-                        onClick={handleRefreshAllViews} 
-                        style={{ 
-                          marginTop: '5px', 
-                          marginRight: '10px',
-                          padding: '6px 12px',
-                          backgroundColor: '#4CAF50',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          fontSize: '12px',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#45a049'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#4CAF50'
-                        }}
-                      >
-                        Refresh All Views Sequentially
-                      </button>
-                      {roleCan(role, 'refresh-errored-views') && (() => {
-                        const errorCount = views.filter(view => 
-                          matchesState('displaying.error', view.state.state)
-                        ).length
-                        return (
-                          <button 
-                            onClick={(e) => {
-                              if (e.shiftKey) {
+                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    {roleCan(role, 'refresh-all-views') && (
+                      <>
+                        <button 
+                          onClick={handleRefreshAllViews} 
+                          style={{ 
+                            padding: '6px 12px',
+                            backgroundColor: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#45a049'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#4CAF50'
+                          }}
+                        >
+                          Refresh All Views Sequentially
+                        </button>
+                        {roleCan(role, 'refresh-errored-views') && (() => {
+                          const errorCount = views.filter(view => 
+                            matchesState('displaying.error', view.state.state)
+                          ).length
+                          return (
+                            <button 
+                              onClick={(e) => {
+                                if (e.shiftKey) {
+                                  e.preventDefault()
+                                  toggleLoopRefreshErrored()
+                                } else {
+                                  handleRefreshErroredViews()
+                                }
+                              }}
+                              onContextMenu={(e) => {
                                 e.preventDefault()
+                                e.stopPropagation()
                                 toggleLoopRefreshErrored()
-                              } else {
-                                handleRefreshErroredViews()
-                              }
-                            }}
-                            onContextMenu={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              toggleLoopRefreshErrored()
-                            }}
-                            style={{ 
-                              marginTop: '5px',
-                              padding: '6px 12px',
-                              backgroundColor: errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: errorCount > 0 ? 'pointer' : 'default',
-                              fontWeight: 'bold',
-                              fontSize: '12px',
-                              transition: 'all 0.2s',
-                              opacity: errorCount > 0 ? 1 : 0.7,
-                              position: 'relative'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (errorCount > 0) {
-                                e.currentTarget.style.backgroundColor = loopRefreshErrored ? '#f57c00' : '#d32f2f'
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc'
-                            }}
-                            disabled={errorCount === 0}
-                            title={`Left-click to refresh once. Shift+click or right-click to toggle continuous loop. Status: ${loopRefreshErrored ? 'LOOPING ⏸' : 'normal ▶'}`}
-                          >
-                            Refresh Errored Views {errorCount > 0 && `(${errorCount})`} {loopRefreshErrored && '🔄'}
-                          </button>
-                        )
-                      })()}
-                    </>
-                  )}
+                              }}
+                              style={{ 
+                                padding: '6px 12px',
+                                backgroundColor: errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: errorCount > 0 ? 'pointer' : 'default',
+                                fontWeight: 'bold',
+                                fontSize: '12px',
+                                transition: 'all 0.2s',
+                                opacity: errorCount > 0 ? 1 : 0.7,
+                                position: 'relative'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (errorCount > 0) {
+                                  e.currentTarget.style.backgroundColor = loopRefreshErrored ? '#f57c00' : '#d32f2f'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = errorCount > 0 ? (loopRefreshErrored ? '#ff9800' : '#f44336') : '#cccccc'
+                              }}
+                              disabled={errorCount === 0}
+                              title={`Left-click to refresh once. Shift+click or right-click to toggle continuous loop. Status: ${loopRefreshErrored ? 'LOOPING ⏸' : 'normal ▶'}`}
+                            >
+                              Refresh Errored Views {errorCount > 0 && `(${errorCount})`} {loopRefreshErrored && '🔄'}
+                            </button>
+                          )
+                        })()}
+                      </>
+                    )}
+                  </div>
+                  <button 
+                    onClick={handleChangeShowDebug} 
+                    style={{ 
+                      padding: '6px 12px',
+                      backgroundColor: showDebug ? '#2196F3' : '#757575',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = showDebug ? '#0b7dda' : '#616161'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = showDebug ? '#2196F3' : '#757575'
+                    }}
+                    title={showDebug ? 'Debug tools enabled' : 'Debug tools disabled'}
+                  >
+                    {showDebug ? '✓ Debug Tools ON' : 'Debug Tools OFF'}
+                  </button>
                 </div>
               )}
               
