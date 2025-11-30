@@ -351,6 +351,14 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
         }).addTo(leafletMapRef.current)
         console.log('Tile layer added')
 
+        // Force map to recalculate size with a small delay
+        setTimeout(() => {
+          if (leafletMapRef.current) {
+            leafletMapRef.current.invalidateSize()
+            console.log('Map size invalidated')
+          }
+        }, 100)
+
         setMapReady(true)
         console.log('Map ready flag set')
       } catch (error) {
@@ -408,9 +416,6 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
           opacity: 0.8,
           fillOpacity: 0.8
         })
-        
-        // Store stream ID on marker for later reference
-        marker.streamId = stream._id
 
         // Create popup with stream information
         const popupContent = `
@@ -479,6 +484,17 @@ function StreamLocationMap({ streams, wallStreams, onStreamPreview }: {
       // Center on Iowa and zoom to show entire state with all cameras
       leafletMapRef.current.setView([42.0115, -93.2105], 7, { animate: true })
     }
+  }, [])
+
+  // Force map resize when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize(true)
+        console.log('Map invalidateSize on mount')
+      }
+    }, 500)
+    return () => clearTimeout(timer)
   }, [])
 
   return (
@@ -765,13 +781,14 @@ export function ControlUI({
 
   const handleSetView = useCallback(
     (idx: number, streamId: string) => {
-      const stream = streams.find((d) => d._id === streamId)
+      // Allow spot placeholders (spot-1, spot-2, etc.) or any custom streamId
+      // Even if they're not in the streams array, we still add them to the grid
       stateDoc
         .getMap<Y.Map<string | undefined>>('views')
         .get(String(idx))
-        ?.set('streamId', stream ? streamId : '')
+        ?.set('streamId', streamId)
     },
-    [stateDoc, streams],
+    [stateDoc],
   )
 
   const handleSetListening = useCallback(
@@ -912,6 +929,41 @@ export function ControlUI({
       handleSetView(availableIdx, streamId)
     },
     [cols, rows, sharedState, focusedInputIdx],
+  )
+
+  const handleSwapWithSpot = useCallback(
+    (streamIdToSwap: string, spotNum: number) => {
+      if (cols == null || rows == null) {
+        return
+      }
+
+      const viewsMap = stateDoc.getMap<Y.Map<string | undefined>>('views')
+      const spotId = `spot-${spotNum}`
+      
+      // Find ALL spot placeholder positions
+      const spotIndices: number[] = []
+      for (let i = 0; i < cols * rows; i++) {
+        const viewData = viewsMap.get(String(i))
+        if (viewData?.get('streamId') === spotId) {
+          spotIndices.push(i)
+        }
+      }
+      
+      if (spotIndices.length === 0) {
+        return // Spot not found in grid
+      }
+      
+      // Replace all spots with the stream ID - that's it, no automatic replacement
+      stateDoc.transact(() => {
+        spotIndices.forEach((spotIdx) => {
+          const spotView = viewsMap.get(String(spotIdx))
+          if (spotView) {
+            spotView.set('streamId', streamIdToSwap)
+          }
+        })
+      })
+    },
+    [cols, rows],
   )
 
   const handleChangeCustomStream = useCallback(
@@ -1192,14 +1244,21 @@ export function ControlUI({
                   }
 
                   const { streamId } = sharedState?.views[pos.spaces[0]] ?? {}
+                  // Allow spots (spot-1, spot-2, etc.) to be displayed even without stream data
+                  // Regular streams must have actual data
+                  if (streamId == null) {
+                    return null
+                  }
                   const data = streams.find((d) => d._id === streamId)
-                  if (streamId == null || !data == null) {
+                  const isSpot = streamId.startsWith('spot-')
+                  if (!isSpot && !data) {
                     return null
                   }
 
                   return (
                     <StyledGridPreviewBox
                       color={idColor(streamId)}
+                      isSpot={isSpot}
                       style={{
                         left: `${(100 * pos.x) / windowWidth}%`,
                         top: `${(100 * pos.y) / windowHeight}%`,
@@ -1213,56 +1272,76 @@ export function ControlUI({
                       isError={matchesState('displaying.error', state.state)}
                     >
                       <StyledGridInfo>
-                        <StyledGridLabel>{streamId}</StyledGridLabel>
-                        <div>{data?.source}</div>
+                        <StyledGridLabel>
+                          {isSpot ? streamId.toUpperCase() : streamId}
+                        </StyledGridLabel>
+                        {!isSpot && <div>{data?.source}</div>}
                       </StyledGridInfo>
                     </StyledGridPreviewBox>
                   )
                 })}
               </StyledGridPreview>
-              {views.map(
-                ({ state, isListening, isBackgroundListening, isBlurred }) => {
-                  const { pos } = state.context
-                  if (!pos) {
-                    return null
+              {/* Check if any spots exist in the grid */}
+              {(() => {
+                let hasSpots = false
+                if (sharedState) {
+                  for (let i = 0; i < (cols ?? 0) * (rows ?? 0); i++) {
+                    if (sharedState.views[i]?.streamId?.startsWith('spot-')) {
+                      hasSpots = true
+                      break
+                    }
                   }
-                  const { streamId } = sharedState?.views[pos.spaces[0]] ?? {}
-                  if (!streamId) {
-                    return null
-                  }
-                  return (
-                    <GridControls
-                      idx={pos.spaces[0]}
-                      streamId={streamId}
-                      style={{
-                        left: `${(100 * pos.x) / windowWidth}%`,
-                        top: `${(100 * pos.y) / windowHeight}%`,
-                        width: `${(100 * pos.width) / windowWidth}%`,
-                        height: `${(100 * pos.height) / windowHeight}%`,
-                      }}
-                      isDisplaying={matchesState('displaying', state.state)}
-                      isListening={isListening}
-                      isBackgroundListening={isBackgroundListening}
-                      isBlurred={isBlurred}
-                      isSwapping={
-                        swapStartIdx != null &&
-                        pos.spaces.includes(swapStartIdx)
-                      }
-                      showDebug={showDebug}
-                      role={role}
-                      onSetListening={handleSetListening}
-                      onSetBackgroundListening={handleSetBackgroundListening}
-                      onSetBlurred={handleSetBlurred}
-                      onReloadView={handleReloadView}
-                      onSwapView={handleSwapView}
-                      onRotateView={handleRotateStream}
-                      onBrowse={handleBrowse}
-                      onDevTools={handleDevTools}
-                      onMouseDown={handleDragStart}
-                    />
-                  )
-                },
-              )}
+                }
+                return (
+                  <>
+                    {views.map(
+                      ({ state, isListening, isBackgroundListening, isBlurred }) => {
+                        const { pos } = state.context
+                        if (!pos) {
+                          return null
+                        }
+                        const { streamId } = sharedState?.views[pos.spaces[0]] ?? {}
+                        if (!streamId) {
+                          return null
+                        }
+                        return (
+                          <GridControls
+                            idx={pos.spaces[0]}
+                            streamId={streamId}
+                            style={{
+                              left: `${(100 * pos.x) / windowWidth}%`,
+                              top: `${(100 * pos.y) / windowHeight}%`,
+                              width: `${(100 * pos.width) / windowWidth}%`,
+                              height: `${(100 * pos.height) / windowHeight}%`,
+                            }}
+                            isDisplaying={matchesState('displaying', state.state)}
+                            isListening={isListening}
+                            isBackgroundListening={isBackgroundListening}
+                            isBlurred={isBlurred}
+                            isSwapping={
+                              swapStartIdx != null &&
+                              pos.spaces.includes(swapStartIdx)
+                            }
+                            showDebug={showDebug}
+                            role={role}
+                            onSetListening={handleSetListening}
+                            onSetBackgroundListening={handleSetBackgroundListening}
+                            onSetBlurred={handleSetBlurred}
+                            onReloadView={handleReloadView}
+                            onSwapView={handleSwapView}
+                            onRotateView={handleRotateStream}
+                            onBrowse={handleBrowse}
+                            onDevTools={handleDevTools}
+                            onMouseDown={handleDragStart}
+                            onSwapWithSpot={handleSwapWithSpot}
+                            hasSpots={hasSpots}
+                          />
+                        )
+                      },
+                    )}
+                  </>
+                )
+              })()}
             </StyledGridContainer>
           )}
           {/* Two-column section: Debug/Custom Streams on left, Map on right */}
@@ -1373,6 +1452,39 @@ export function ControlUI({
                 </div>
               )}
               
+              {/* Quick Spot Buttons */}
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '12px', marginRight: '8px' }}>Placeholders:</span>
+                {[1, 2, 3, 4].map((spotNum) => (
+                  <button
+                    key={`spot-${spotNum}`}
+                    onClick={() => handleClickId(`spot-${spotNum}`)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#f0f0f0',
+                      color: '#333',
+                      border: '2px solid #999',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e0e0e0'
+                      e.currentTarget.style.borderColor = '#666'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f0f0f0'
+                      e.currentTarget.style.borderColor = '#999'
+                    }}
+                    title={`Click to add SPOT${spotNum} placeholder to next available grid slot`}
+                  >
+                    SPOT{spotNum}
+                  </button>
+                ))}
+              </div>
+              
               {/* Custom Streams section */}
               {roleCan(role, 'update-custom-stream') &&
                 roleCan(role, 'delete-custom-stream') && (
@@ -1398,7 +1510,7 @@ export function ControlUI({
             </div>
             
             {/* Right column: Stream Location Map */}
-            <div style={{ flex: '1', minWidth: '400px' }}>
+            <div style={{ flex: '1', minWidth: '0' }}>
               <StreamLocationMap 
                 streams={streams}
                 wallStreams={wallStreams}
@@ -1914,6 +2026,8 @@ function GridControls({
   onBrowse,
   onDevTools,
   onMouseDown,
+  onSwapWithSpot,
+  hasSpots,
 }: {
   idx: number
   streamId: string
@@ -1937,6 +2051,8 @@ function GridControls({
   onBrowse: (streamId: string) => void
   onDevTools: (idx: number) => void
   onMouseDown: JSX.MouseEventHandler<HTMLDivElement>
+  onSwapWithSpot?: (streamId: string, spotNum: number) => void
+  hasSpots?: boolean
 }) {
   // TODO: Refactor callbacks to use streamID instead of idx.
   // We should probably also switch the view-state-changing RPCs to use a view id instead of idx like they do currently.
@@ -2046,6 +2162,51 @@ function GridControls({
           </StyledButton>
         )}
       </StyledGridButtons>
+      
+      {/* Spot swap buttons on bottom-left */}
+      {hasSpots && onSwapWithSpot && !streamId.startsWith('spot-') && (
+        <div style={{ 
+          position: 'absolute',
+          bottom: '8px',
+          left: '8px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '3px',
+          width: '56px'
+        }}>
+          {[1, 2, 3, 4].map((spotNum) => (
+            <button
+              key={`swap-spot-${spotNum}`}
+              onClick={() => onSwapWithSpot(streamId, spotNum)}
+              style={{
+                padding: '2px 4px',
+                backgroundColor: '#ccc',
+                color: '#333',
+                border: '2px solid gray',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '10px',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#bbb'
+                e.currentTarget.style.borderColor = '#666'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ccc'
+                e.currentTarget.style.borderColor = 'gray'
+              }}
+              title={`Swap with SPOT${spotNum}`}
+            >
+              S{spotNum}
+            </button>
+          ))}
+        </div>
+      )}
     </StyledGridControlsContainer>
   )
 }
@@ -2636,6 +2797,7 @@ const StyledGridPreview = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 1;
 `
 
 const StyledGridPreviewBox = styled.div.attrs(() => ({
@@ -2645,8 +2807,8 @@ const StyledGridPreviewBox = styled.div.attrs(() => ({
   align-items: center;
   justify-content: center;
   position: absolute;
-  background: ${({ color }) =>
-    Color(color).lightness(50).hsl().string() || '#333'};
+  background: ${({ color, isSpot }) =>
+    isSpot ? '#e0e0e0' : Color(color).lightness(50).hsl().string() || '#333'};
   border: 0 solid
     ${({ isError }) =>
       isError ? Color('red').hsl().string() : Color('black').hsl().string()};
@@ -2671,6 +2833,7 @@ const StyledGridInfo = styled.div`
 
 const StyledGridLabel = styled.div`
   font-size: 30px;
+  color: #333;
 `
 
 const StyledGridInputs = styled.div`
@@ -2682,7 +2845,7 @@ const StyledGridInputs = styled.div`
   opacity: 0;
   transition: opacity 100ms ease-out;
   overflow: hidden;
-  z-index: 100;
+  z-index: 10;
 `
 
 const StyledGridInputContainer = styled.div`
