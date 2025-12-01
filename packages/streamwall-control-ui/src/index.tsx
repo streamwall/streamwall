@@ -18,7 +18,9 @@ import {
   FaRedoAlt,
   FaRegLifeRing,
   FaRegWindowMaximize,
+  FaSearch,
   FaSyncAlt,
+  FaTimes,
   FaVideoSlash,
   FaVolumeUp,
 } from 'react-icons/fa'
@@ -642,6 +644,8 @@ export function ControlUI({
     setShowDebug((prev) => !prev)
   }, [])
 
+  const [spotlightedStreamId, setSpotlightedStreamId] = useState<string | undefined>()
+
   const handleRefreshAllViews = useCallback(() => {
     send({ type: 'refresh-all-views' })
   }, [send])
@@ -711,6 +715,7 @@ export function ControlUI({
   )
 
   const [hoveringIdx, setHoveringIdx] = useState<number>()
+  const [expandedIdx, setExpandedIdx] = useState<number | undefined>()
   const updateHoveringIdx = useCallback(
     (ev: MouseEvent) => {
       if (
@@ -870,6 +875,26 @@ export function ControlUI({
       })
     },
     [send],
+  )
+
+  const handleSpotlight = useCallback(
+    (streamId: string) => {
+      console.debug('handleSpotlight called with streamId:', streamId)
+      const stream = streams.find((d) => d._id === streamId)
+      console.debug('Found stream:', stream)
+      if (!stream) {
+        console.warn('Stream not found:', streamId)
+        return
+      }
+      console.debug('Sending spotlight command for URL:', stream.link)
+      // Toggle spotlight state
+      setSpotlightedStreamId((prev) => (prev === streamId ? undefined : streamId))
+      send({
+        type: 'spotlight',
+        url: stream.link,
+      })
+    },
+    [streams, send],
   )
 
   const handleSaveLayout = useCallback(
@@ -1243,7 +1268,8 @@ export function ControlUI({
                     return null
                   }
 
-                  const { streamId } = sharedState?.views[pos.spaces[0]] ?? {}
+                  const gridIdx = pos.spaces[0]
+                  const { streamId } = sharedState?.views[gridIdx] ?? {}
                   // Allow spots (spot-1, spot-2, etc.) to be displayed even without stream data
                   // Regular streams must have actual data
                   if (streamId == null) {
@@ -1257,19 +1283,22 @@ export function ControlUI({
 
                   return (
                     <StyledGridPreviewBox
+                      key={`preview-${gridIdx}`}
                       color={idColor(streamId)}
                       isSpot={isSpot}
-                      style={{
-                        left: `${(100 * pos.x) / windowWidth}%`,
-                        top: `${(100 * pos.y) / windowHeight}%`,
-                        width: `${(100 * pos.width) / windowWidth}%`,
-                        height: `${(100 * pos.height) / windowHeight}%`,
-                      }}
                       pos={pos}
                       windowWidth={windowWidth}
                       windowHeight={windowHeight}
                       isListening={isListening}
                       isError={matchesState('displaying.error', state.state)}
+                      isSpotlighted={spotlightedStreamId === streamId}
+                      style={{
+                        left: `${(100 * pos.x) / windowWidth}%`,
+                        top: `${(100 * pos.y) / windowHeight}%`,
+                        width: `${(100 * pos.width) / windowWidth}%`,
+                        height: `${(100 * pos.height) / windowHeight}%`,
+                        zIndex: 1,
+                      }}
                     >
                       <StyledGridInfo>
                         <StyledGridLabel>
@@ -1335,6 +1364,10 @@ export function ControlUI({
                             onMouseDown={handleDragStart}
                             onSwapWithSpot={handleSwapWithSpot}
                             hasSpots={hasSpots}
+                            onSpotlight={handleSpotlight}
+                            spotlightedStreamId={spotlightedStreamId}
+                            onSetView={handleSetView}
+                            spaces={pos.spaces}
                           />
                         )
                       },
@@ -2028,6 +2061,10 @@ function GridControls({
   onMouseDown,
   onSwapWithSpot,
   hasSpots,
+  onSpotlight,
+  spotlightedStreamId,
+  onSetView,
+  spaces,
 }: {
   idx: number
   streamId: string
@@ -2053,6 +2090,10 @@ function GridControls({
   onMouseDown: JSX.MouseEventHandler<HTMLDivElement>
   onSwapWithSpot?: (streamId: string, spotNum: number) => void
   hasSpots?: boolean
+  onSpotlight?: (streamId: string) => void
+  spotlightedStreamId?: string
+  onSetView: (idx: number, value: string) => void
+  spaces: number[]
 }) {
   // TODO: Refactor callbacks to use streamID instead of idx.
   // We should probably also switch the view-state-changing RPCs to use a view id instead of idx like they do currently.
@@ -2087,6 +2128,13 @@ function GridControls({
   const handleBrowseClick = useCallback(
     () => onBrowse(streamId),
     [streamId, onBrowse],
+  )
+  const handleClearClick = useCallback(
+    () => {
+      // Clear all grid spaces that are part of this merged/connected box
+      spaces.forEach((space) => onSetView(space, ''))
+    },
+    [spaces, onSetView],
   )
   const handleDevToolsClick = useCallback(
     () => onDevTools(idx),
@@ -2135,11 +2183,27 @@ function GridControls({
                   <FaRedoAlt />
                 </StyledSmallButton>
               )}
+              {roleCan(role, 'mutate-state-doc') && (
+                <StyledSmallButton onClick={handleClearClick} tabIndex={1} title="Clear stream">
+                  <FaTimes />
+                </StyledSmallButton>
+              )}
             </>
           )}
         </StyledGridButtons>
       )}
       <StyledGridButtons side="right">
+        {onSpotlight && roleCan(role, 'set-listening-view') && (
+          <StyledButton
+            onClick={() => onSpotlight(streamId)}
+            tabIndex={1}
+            title="Spotlight stream (click to close)"
+            isActive={spotlightedStreamId === streamId}
+            activeColor="red"
+          >
+            <FaSearch />
+          </StyledButton>
+        )}
         {roleCan(role, 'set-view-blurred') && (
           <StyledButton
             isActive={isBlurred}
@@ -2765,6 +2829,7 @@ const StyledButton = styled.button`
   border-color: gray;
   background: #ccc;
   border-radius: 5px;
+  cursor: pointer;
 
   ${({ isActive, activeColor = 'red' }) =>
     isActive &&
@@ -2776,6 +2841,14 @@ const StyledButton = styled.button`
   &:focus {
     outline: none;
     box-shadow: 0 0 10px orange inset;
+  }
+
+  &:hover {
+    background: #aaa;
+  }
+
+  &:active {
+    background: #999;
   }
 
   svg {
@@ -2810,8 +2883,12 @@ const StyledGridPreviewBox = styled.div.attrs(() => ({
   background: ${({ color, isSpot }) =>
     isSpot ? '#e0e0e0' : Color(color).lightness(50).hsl().string() || '#333'};
   border: 0 solid
-    ${({ isError }) =>
-      isError ? Color('red').hsl().string() : Color('black').hsl().string()};
+    ${({ isError, isSpotlighted }) =>
+      isSpotlighted
+        ? '#00ff00'
+        : isError
+        ? Color('red').hsl().string()
+        : Color('black').hsl().string()};
   border-left-width: ${({ pos, borderWidth }) =>
     pos.x === 0 ? 0 : borderWidth}px;
   border-right-width: ${({ pos, borderWidth, windowWidth }) =>
@@ -2820,10 +2897,10 @@ const StyledGridPreviewBox = styled.div.attrs(() => ({
     pos.y === 0 ? 0 : borderWidth}px;
   border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
     pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
-  box-shadow: ${({ isListening }) =>
-    isListening ? `0 0 0 4px red inset` : 'none'};
+  box-shadow: ${({ isListening, isSpotlighted }) =>
+    isSpotlighted ? `0 0 0 4px #00ff00 inset` : isListening ? `0 0 0 4px red inset` : 'none'};
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   user-select: none;
 `
 
@@ -2846,6 +2923,7 @@ const StyledGridInputs = styled.div`
   transition: opacity 100ms ease-out;
   overflow: hidden;
   z-index: 10;
+  pointer-events: none;
 `
 
 const StyledGridInputContainer = styled.div`
@@ -2904,6 +2982,7 @@ const StyledGridContainer = styled.div.attrs(() => ({
 
   &:hover ${StyledGridInputs} {
     opacity: 0.35;
+    pointer-events: auto;
   }
 `
 

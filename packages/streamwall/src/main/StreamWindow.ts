@@ -13,6 +13,7 @@ import {
   StreamWindowConfig,
   ViewContent,
   ViewContentMap,
+  ViewPos,
   ViewState,
 } from 'streamwall-shared'
 import { createActor, EventFrom, SnapshotFrom } from 'xstate'
@@ -134,6 +135,51 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     })
     ipcMain.on('devtools-overlay', () => {
       overlayView.webContents.openDevTools()
+    })
+
+    ipcMain.on('view-expand', (ev, { url }) => {
+      if (ev.sender !== this.overlayView.webContents) {
+        return
+      }
+
+      const { width, height } = this.config
+      // Find the view by URL
+      let targetView: ViewActor | undefined
+      let originalPos: ViewPos | null = null
+
+      for (const view of this.views.values()) {
+        const snapshot = view.getSnapshot()
+        if (snapshot.context.content?.url === url) {
+          targetView = view
+          originalPos = snapshot.context.pos
+          break
+        }
+      }
+
+      if (!targetView || !originalPos) {
+        return
+      }
+
+      const content = targetView.getSnapshot().context.content
+      if (!content) {
+        return
+      }
+
+      // If url is provided, expand; if not, it's a collapse
+      if (url) {
+        // Calculate expanded position: centered, 66.666% of window
+        const expandedPos = {
+          x: Math.floor(width * 0.16666),
+          y: Math.floor(height * 0.16666),
+          width: Math.floor(width * 0.66666),
+          height: Math.floor(height * 0.66666),
+          spaces: originalPos.spaces,
+        }
+        targetView.send({ type: 'DISPLAY', pos: expandedPos, content })
+      } else {
+        // Collapse: restore original position
+        targetView.send({ type: 'DISPLAY', pos: originalPos, content })
+      }
     })
   }
 
@@ -407,5 +453,10 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         })
       }
     }
+  }
+
+  spotlight(url: string) {
+    console.debug('Spotlighting stream:', url)
+    this.overlayView.webContents.send('spotlight', url)
   }
 }

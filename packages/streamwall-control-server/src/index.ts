@@ -405,6 +405,12 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
           return
         }
 
+        console.debug('Control server received message type:', msg.type)
+        if (!currentStreamwallConn) {
+          console.warn('No streamwall connection available to forward message type:', msg.type)
+          // Don't return early - let it continue for local commands like create-invite
+        }
+
         try {
           // TEMP: Bypass role permission checks
           // if (!roleCan(identity.role, msg.type)) {
@@ -427,9 +433,15 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
             console.debug('Deleting token:', msg.tokenId)
             auth.deleteToken(msg.tokenId)
           } else {
-            streamwallConn.ws.send(
-              JSON.stringify({ ...msg, clientId: identity.tokenId }),
-            )
+            console.debug('Forwarding message to streamwall:', msg.type)
+            if (currentStreamwallConn) {
+              streamwallConn.ws.send(
+                JSON.stringify({ ...msg, clientId: identity.tokenId }),
+              )
+              console.debug('Message sent to streamwall')
+            } else {
+              console.warn('Cannot forward message - no streamwall connection')
+            }
           }
         } catch (err) {
           console.error('Failed to handle ws message:', rawData, err)

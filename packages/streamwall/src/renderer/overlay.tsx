@@ -1,6 +1,6 @@
 import Color from 'color'
 import { render } from 'preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   FaFacebook,
@@ -33,6 +33,29 @@ function Overlay({
   streams,
 }: Pick<StreamwallState, 'config' | 'views' | 'streams'>) {
   const { width, height, activeColor } = config
+  const [expandedUrl, setExpandedUrl] = useState<string | undefined>()
+  
+  // Listen for spotlight messages from the main process
+  useEffect(() => {
+    console.debug('Setting up spotlight listener')
+    const unsubscribe = window.streamwallLayer.onSpotlight((url: string) => {
+      console.debug('Received spotlight message for URL:', url)
+      console.debug('Current expandedUrl:', expandedUrl)
+      console.debug('Toggling expandedUrl...')
+      setExpandedUrl(expandedUrl === url ? undefined : url)
+    })
+    return unsubscribe
+  }, [expandedUrl])
+  
+  // Memoize stream lookup map for faster access
+  const streamsByUrl = useMemo(() => {
+    const map = new Map()
+    streams.forEach(s => map.set(s.link, s))
+    return map
+  }, [streams])
+  
+  const expandedData = expandedUrl ? streamsByUrl.get(expandedUrl) : undefined
+  
   const activeViews = views.filter(
     ({ state }) =>
       matchesState('displaying', state) &&
@@ -44,7 +67,7 @@ function Overlay({
       <VersionFooter />
       {activeViews.map(({ state, context }) => {
         const { content, pos } = context
-        if (!content) {
+        if (!content || !pos) {
           return
         }
 
@@ -64,36 +87,43 @@ function Overlay({
         const isLoading = matchesState('displaying.loading', state)
         const hasTitle = data && (data.label || data.source)
         const position = data?.labelPosition ?? 'top-left'
+        const isExpanded = expandedUrl === content.url
         return (
-          <SpaceBorder
-            pos={pos}
-            windowWidth={width}
-            windowHeight={height}
-            activeColor={activeColor}
-            isListening={isListening}
-          >
-            <BlurCover isBlurred={isBlurred} />
-            {hasTitle && (
-              <StreamTitle
-                position={position}
-                activeColor={activeColor}
-                isListening={isListening}
-              >
-                <StreamIcon url={content.url} />
-                <span>
-                  {data.label ? (
-                    data.label
-                  ) : (
-                    <>
-                      {data.source} &ndash; {data.city} {data.state}
-                    </>
-                  )}
-                </span>
-                {(isListening || isBackgroundListening) && <FaVolumeUp />}
-              </StreamTitle>
-            )}
-            {isLoading && <LoadingSpinner />}
-          </SpaceBorder>
+          <div key={`${pos.spaces.join('-')}`}>
+            <SpaceBorder
+              pos={pos}
+              windowWidth={width}
+              windowHeight={height}
+              activeColor={activeColor}
+              isListening={isListening}
+              isExpanded={false}
+              isHighlighted={expandedUrl === content.url}
+              onClick={() => setExpandedUrl(content.url)}
+              style={{ cursor: 'pointer' }}
+            >
+              <BlurCover isBlurred={isBlurred} />
+              {hasTitle && (
+                <StreamTitle
+                  position={position}
+                  activeColor={activeColor}
+                  isListening={isListening}
+                >
+                  <StreamIcon url={content.url} />
+                  <span>
+                    {data.label ? (
+                      data.label
+                    ) : (
+                      <>
+                        {data.source} &ndash; {data.city} {data.state}
+                      </>
+                    )}
+                  </span>
+                  {(isListening || isBackgroundListening) && <FaVolumeUp />}
+                </StreamTitle>
+              )}
+              {isLoading && <LoadingSpinner />}
+            </SpaceBorder>
+          </div>
         )
       })}
       {overlays.map((s) => (
@@ -105,6 +135,37 @@ function Overlay({
           scrolling="no"
         />
       ))}
+      {expandedUrl && expandedData && (
+        <ExpandedOverlay onClick={() => setExpandedUrl(undefined)}>
+          <ExpandedContent onClick={() => setExpandedUrl(undefined)}>
+            {expandedData && (expandedData.label || expandedData.source) && (
+              <StreamTitle
+                position={expandedData.labelPosition ?? 'top-left'}
+                activeColor={activeColor}
+                isListening={false}
+              >
+                <StreamIcon url={expandedData.link} />
+                <span>
+                  {expandedData.label ? (
+                    expandedData.label
+                  ) : (
+                    <>
+                      {expandedData.source} &ndash; {expandedData.city} {expandedData.state}
+                    </>
+                  )}
+                </span>
+              </StreamTitle>
+            )}
+            <ExpandedVideoFrame
+              key={expandedUrl}
+              src={`./playHLS.html?src=${encodeURIComponent(expandedUrl)}`}
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+              allow="autoplay accelerometer camera geolocation gyroscope magnetometer microphone midi payment usb vr xr-spatial-tracking"
+              scrolling="no"
+            />
+          </ExpandedContent>
+        </ExpandedOverlay>
+      )}
     </OverlayContainer>
   )
 }
@@ -184,53 +245,114 @@ const OverlayContainer = styled.div`
   overflow: hidden;
 `
 
+const ExpandedOverlay = styled.div`
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`
+
+const ExpandedContent = styled.div`
+  position: relative;
+  width: 66.666vw;
+  height: 66.666vh;
+  overflow: hidden;
+  pointer-events: none;
+`
+
+const ExpandedVideoFrame = styled.iframe`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: none;
+  cursor: pointer;
+`
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: 1px solid #666;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: #999;
+  }
+`
+
 const SpaceBorder = styled.div.attrs(() => ({
   borderWidth: 2,
 }))`
   display: flex;
   align-items: flex-start;
   position: fixed;
-  left: ${({ pos }) => pos.x}px;
-  top: ${({ pos }) => pos.y}px;
-  width: ${({ pos }) => pos.width}px;
-  height: ${({ pos }) => pos.height}px;
-  border: 0 solid black;
-  border-left-width: ${({ pos, borderWidth }) =>
-    pos.x === 0 ? 0 : borderWidth}px;
-  border-right-width: ${({ pos, borderWidth, windowWidth }) =>
-    pos.x + pos.width === windowWidth ? 0 : borderWidth}px;
-  border-top-width: ${({ pos, borderWidth }) =>
-    pos.y === 0 ? 0 : borderWidth}px;
-  border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
-    pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
-  box-shadow: ${({ isListening, activeColor }) =>
-    isListening ? `0 0 10px ${activeColor} inset` : 'none'};
+  left: ${({ pos, isExpanded, windowWidth }) => isExpanded ? windowWidth * 0.1666 : pos.x}px;
+  top: ${({ pos, isExpanded, windowHeight }) => isExpanded ? windowHeight * 0.1666 : pos.y}px;
+  width: ${({ pos, isExpanded, windowWidth }) => isExpanded ? windowWidth * 0.6666 : pos.width}px;
+  height: ${({ pos, isExpanded, windowHeight }) => isExpanded ? windowHeight * 0.6666 : pos.height}px;
+  border: 0 solid ${({ isHighlighted }) => isHighlighted ? '#00ff00' : 'black'};
+  border-left-width: ${({ pos, borderWidth, isExpanded }) =>
+    (isExpanded || pos.x === 0) ? 0 : borderWidth}px;
+  border-right-width: ${({ pos, borderWidth, windowWidth, isExpanded }) =>
+    (isExpanded || pos.x + pos.width === windowWidth) ? 0 : borderWidth}px;
+  border-top-width: ${({ pos, borderWidth, isExpanded }) =>
+    (isExpanded || pos.y === 0) ? 0 : borderWidth}px;
+  border-bottom-width: ${({ pos, borderWidth, windowHeight, isExpanded }) =>
+    (isExpanded || pos.y + pos.height === windowHeight) ? 0 : borderWidth}px;
+  box-shadow: ${({ isListening, activeColor, isExpanded }) =>
+    isListening || isExpanded ? `0 0 10px ${activeColor} inset` : 'none'};
   box-sizing: border-box;
-  pointer-events: none;
+  cursor: pointer;
+  transition: ${({ isExpanded }) => isExpanded ? 'all 0.3s ease' : 'none'};
+  z-index: ${({ isExpanded }) => isExpanded ? 1000 : 1};
+  pointer-events: auto;
   user-select: none;
 `
 
 const StreamTitle = styled.div`
   position: absolute;
+  z-index: 100;
+  pointer-events: auto;
   ${({ position }) => {
     if (position === 'top-left') {
-      return `top: 0; left: 0;`
+      return `top: 10px; left: 10px;`
     } else if (position === 'top-right') {
-      return `top: 0; right: 0;`
+      return `top: 10px; right: 10px;`
     } else if (position === 'bottom-right') {
-      return `bottom: 0; right: 0;`
+      return `bottom: 10px; right: 10px;`
     } else if (position === 'bottom-left') {
-      return `bottom: 0; left: 0;`
+      return `bottom: 10px; left: 10px;`
     }
   }}
-  max-width: calc(100% - 10px);
+  max-width: calc(100% - 30px);
   box-sizing: border-box;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 4px 10px;
-  margin: 5px;
   font-weight: 600;
   font-size: 20px;
   color: white;

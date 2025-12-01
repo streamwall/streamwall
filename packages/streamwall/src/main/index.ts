@@ -367,154 +367,192 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
   const onCommand = async (msg: ControlCommand) => {
     console.debug('Received message:', msg)
-    if (msg.type === 'set-listening-view') {
-      console.debug('Setting listening view:', msg.viewIdx)
-      streamWindow.setListeningView(msg.viewIdx)
-    } else if (msg.type === 'set-view-background-listening') {
-      console.debug(
-        'Setting view background listening:',
-        msg.viewIdx,
-        msg.listening,
-      )
-      streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
-    } else if (msg.type === 'set-view-blurred') {
-      console.debug('Setting view blurred:', msg.viewIdx, msg.blurred)
-      streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
-    } else if (msg.type === 'rotate-stream') {
-      console.debug('Rotating stream:', msg.url, msg.rotation)
-      overlayStreamData.update(msg.url, {
-        rotation: msg.rotation,
-      })
-    } else if (msg.type === 'update-custom-stream') {
-      console.debug('Updating custom stream:', msg.url)
-      localStreamData.update(msg.url, msg.data)
-    } else if (msg.type === 'delete-custom-stream') {
-      console.debug('Deleting custom stream:', msg.url)
-      localStreamData.delete(msg.url)
-    } else if (msg.type === 'reload-view') {
-      console.debug('Reloading view:', msg.viewIdx)
-      streamWindow.reloadView(msg.viewIdx)
-    } else if (msg.type === 'browse' || msg.type === 'dev-tools') {
-      if (browseWindow && !browseWindow.isDestroyed()) {
-        // DevTools needs a fresh webContents to work. Close any existing window.
-        browseWindow.destroy()
-        browseWindow = null
-      }
-      if (!browseWindow || browseWindow.isDestroyed()) {
-        browseWindow = new BrowserWindow({
-          webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            partition: 'persist:session',
-            sandbox: true,
-          },
+    console.debug('Message type check:', {
+      msgType: msg.type,
+      isSpotlight: msg.type === 'spotlight',
+      typeOfMsgType: typeof msg.type,
+      keys: Object.keys(msg),
+    })
+    
+    switch (msg.type) {
+      case 'set-listening-view':
+        console.debug('Setting listening view:', msg.viewIdx)
+        streamWindow.setListeningView(msg.viewIdx)
+        break
+      case 'set-view-background-listening':
+        console.debug(
+          'Setting view background listening:',
+          msg.viewIdx,
+          msg.listening,
+        )
+        streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
+        break
+      case 'set-view-blurred':
+        console.debug('Setting view blurred:', msg.viewIdx, msg.blurred)
+        streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
+        break
+      case 'rotate-stream':
+        console.debug('Rotating stream:', msg.url, msg.rotation)
+        overlayStreamData.update(msg.url, {
+          rotation: msg.rotation,
         })
+        break
+      case 'update-custom-stream':
+        console.debug('Updating custom stream:', msg.url)
+        localStreamData.update(msg.url, msg.data)
+        break
+      case 'delete-custom-stream':
+        console.debug('Deleting custom stream:', msg.url)
+        localStreamData.delete(msg.url)
+        break
+      case 'reload-view':
+        console.debug('Reloading view:', msg.viewIdx)
+        streamWindow.reloadView(msg.viewIdx)
+        break
+      case 'browse':
+      case 'dev-tools':
+        if (browseWindow && !browseWindow.isDestroyed()) {
+          // DevTools needs a fresh webContents to work. Close any existing window.
+          browseWindow.destroy()
+          browseWindow = null
+        }
+        if (!browseWindow || browseWindow.isDestroyed()) {
+          browseWindow = new BrowserWindow({
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true,
+              partition: 'persist:session',
+              sandbox: true,
+            },
+          })
+        }
+        if (msg.type === 'browse') {
+          console.debug('Attempting to browse URL:', msg.url)
+          try {
+            ensureValidURL(msg.url)
+            browseWindow.loadURL(msg.url)
+          } catch (error) {
+            console.error('Invalid URL:', msg.url)
+            console.error('Error:', error)
+          }
+        } else if (msg.type === 'dev-tools') {
+          console.debug('Opening DevTools for view:', msg.viewIdx)
+          streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
+        }
+        break
+      case 'set-stream-censored':
+        if (streamdelayClient) {
+          console.debug('Setting stream censored:', msg.isCensored)
+          streamdelayClient.setCensored(msg.isCensored)
+        }
+        break
+      case 'set-stream-running':
+        if (streamdelayClient) {
+          console.debug('Setting stream running:', msg.isStreamRunning)
+          streamdelayClient.setStreamRunning(msg.isStreamRunning)
+        }
+        break
+      case 'refresh-all-views':
+        console.debug('Refreshing all views sequentially...')
+        streamWindow.refreshAllViewsSequentially()
+        break
+      case 'refresh-errored-views':
+        console.debug('Refreshing errored views sequentially...')
+        streamWindow.refreshErroredViewsSequentially()
+        break
+      case 'save-layout': {
+        console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
+        const currentState = Y.encodeStateAsUpdate(stateDoc)
+        const slotKey = `slot${msg.slot}`
+        db.update((data) => {
+          if (!data.savedLayouts) {
+            data.savedLayouts = {}
+          }
+          data.savedLayouts[slotKey] = {
+            name: msg.name,
+            stateDoc: Buffer.from(currentState).toString('base64'),
+            timestamp: Date.now()
+          }
+        })
+        // Update client state
+        const newSavedLayouts = {
+          ...clientState.savedLayouts,
+          [slotKey]: {
+            name: msg.name,
+            timestamp: Date.now()
+          }
+        }
+        console.debug('Updating savedLayouts in client state:', newSavedLayouts)
+        updateState({
+          savedLayouts: newSavedLayouts
+        })
+        console.debug('Layout saved successfully')
+        break
       }
-      if (msg.type === 'browse') {
-        console.debug('Attempting to browse URL:', msg.url)
-        try {
-          ensureValidURL(msg.url)
-          browseWindow.loadURL(msg.url)
-        } catch (error) {
-          console.error('Invalid URL:', msg.url)
-          console.error('Error:', error)
-        }
-      } else if (msg.type === 'dev-tools') {
-        console.debug('Opening DevTools for view:', msg.viewIdx)
-        streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
-      }
-    } else if (msg.type === 'set-stream-censored' && streamdelayClient) {
-      console.debug('Setting stream censored:', msg.isCensored)
-      streamdelayClient.setCensored(msg.isCensored)
-    } else if (msg.type === 'set-stream-running' && streamdelayClient) {
-      console.debug('Setting stream running:', msg.isStreamRunning)
-      streamdelayClient.setStreamRunning(msg.isStreamRunning)
-    } else if (msg.type === 'refresh-all-views') {
-      console.debug('Refreshing all views sequentially...')
-      streamWindow.refreshAllViewsSequentially()
-    } else if (msg.type === 'refresh-errored-views') {
-      console.debug('Refreshing errored views sequentially...')
-      streamWindow.refreshErroredViewsSequentially()
-    } else if (msg.type === 'save-layout') {
-      console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
-      const currentState = Y.encodeStateAsUpdate(stateDoc)
-      const slotKey = `slot${msg.slot}`
-      db.update((data) => {
-        if (!data.savedLayouts) {
-          data.savedLayouts = {}
-        }
-        data.savedLayouts[slotKey] = {
-          name: msg.name,
-          stateDoc: Buffer.from(currentState).toString('base64'),
-          timestamp: Date.now()
-        }
-      })
-      // Update client state
-      const newSavedLayouts = {
-        ...clientState.savedLayouts,
-        [slotKey]: {
-          name: msg.name,
-          timestamp: Date.now()
-        }
-      }
-      console.debug('Updating savedLayouts in client state:', newSavedLayouts)
-      updateState({
-        savedLayouts: newSavedLayouts
-      })
-      console.debug('Layout saved successfully')
-    } else if (msg.type === 'load-layout') {
-      console.debug('Loading layout from slot:', msg.slot)
-      const slotKey = `slot${msg.slot}`
-      const savedLayout = db.data.savedLayouts?.[slotKey]
-      if (savedLayout) {
-        try {
-          const savedState = Buffer.from(savedLayout.stateDoc, 'base64')
-          
-          // Create a new document to extract the saved views
-          const tempDoc = new Y.Doc()
-          Y.applyUpdate(tempDoc, savedState)
-          const tempViewsState = tempDoc.getMap<Y.Map<string | undefined>>('views')
-          
-          // Clear current state and apply saved views
-          stateDoc.transact(() => {
-            // Clear all current streams
-            for (const [key, viewData] of viewsState) {
-              viewData.set('streamId', undefined)
-            }
+      case 'load-layout': {
+        console.debug('Loading layout from slot:', msg.slot)
+        const slotKey = `slot${msg.slot}`
+        const savedLayout = db.data.savedLayouts?.[slotKey]
+        if (savedLayout) {
+          try {
+            const savedState = Buffer.from(savedLayout.stateDoc, 'base64')
             
-            // Apply saved streams
-            for (const [key, savedViewData] of tempViewsState) {
-              if (viewsState.has(key)) {
-                const currentViewData = viewsState.get(key)
-                if (currentViewData) {
-                  currentViewData.set('streamId', savedViewData?.get('streamId'))
+            // Create a new document to extract the saved views
+            const tempDoc = new Y.Doc()
+            Y.applyUpdate(tempDoc, savedState)
+            const tempViewsState = tempDoc.getMap<Y.Map<string | undefined>>('views')
+            
+            // Clear current state and apply saved views
+            stateDoc.transact(() => {
+              // Clear all current streams
+              for (const [key, viewData] of viewsState) {
+                viewData.set('streamId', undefined)
+              }
+              
+              // Apply saved streams
+              for (const [key, savedViewData] of tempViewsState) {
+                if (viewsState.has(key)) {
+                  const currentViewData = viewsState.get(key)
+                  if (currentViewData) {
+                    currentViewData.set('streamId', savedViewData?.get('streamId'))
+                  }
                 }
               }
-            }
-          })
-          console.debug('Layout loaded successfully:', savedLayout.name)
-        } catch (err) {
-          console.warn('Failed to load saved layout:', err)
+            })
+            console.debug('Layout loaded successfully:', savedLayout.name)
+          } catch (err) {
+            console.warn('Failed to load saved layout:', err)
+          }
+        } else {
+          console.debug('No layout found in slot:', msg.slot)
         }
-      } else {
-        console.debug('No layout found in slot:', msg.slot)
+        break
       }
-    } else if (msg.type === 'clear-layout') {
-      console.debug('Clearing layout from slot:', msg.slot)
-      const slotKey = `slot${msg.slot}`
-      db.update((data) => {
-        if (data.savedLayouts) {
-          delete data.savedLayouts[slotKey]
-        }
-      })
-      // Update client state - remove the slot and rebuild savedLayouts without undefined values
-      const newSavedLayouts = { ...clientState.savedLayouts }
-      delete newSavedLayouts[slotKey]
-      console.debug('Clearing savedLayouts in client state:', newSavedLayouts)
-      updateState({
-        savedLayouts: newSavedLayouts
-      })
-      console.debug('Layout cleared successfully')
+      case 'clear-layout': {
+        console.debug('Clearing layout from slot:', msg.slot)
+        const slotKey = `slot${msg.slot}`
+        db.update((data) => {
+          if (data.savedLayouts) {
+            delete data.savedLayouts[slotKey]
+          }
+        })
+        // Update client state - remove the slot and rebuild savedLayouts without undefined values
+        const newSavedLayouts = { ...clientState.savedLayouts }
+        delete newSavedLayouts[slotKey]
+        console.debug('Clearing savedLayouts in client state:', newSavedLayouts)
+        updateState({
+          savedLayouts: newSavedLayouts
+        })
+        console.debug('Layout cleared successfully')
+        break
+      }
+      case 'spotlight':
+        console.debug('Spotlighting stream:', msg.url)
+        console.debug('Calling streamWindow.spotlight with URL:', msg.url)
+        streamWindow.spotlight(msg.url)
+        break
+      default:
+        console.warn('Unknown command type received:', msg.type)
     }
   }
 
@@ -594,9 +632,15 @@ async function main(argv: ReturnType<typeof parseArgs>) {
           console.debug('Received WebSocket message:', msg)
         } catch (err) {
           console.warn('Failed to parse control WebSocket message:', err)
+          return
         }
 
-        onCommand(msg)
+        if (!msg || typeof msg !== 'object') {
+          console.warn('Invalid message format, skipping')
+          return
+        }
+
+        onCommand(msg as ControlCommand)
       }
     })
     stateEmitter.on('state', () => {

@@ -140,6 +140,7 @@ export type ControlCommand =
   | { type: 'save-layout'; slot: number; name: string }
   | { type: 'load-layout'; slot: number }
   | { type: 'clear-layout'; slot: number }
+  | { type: 'spotlight'; url: string }
 
 export type ControlUpdate = {
   type: 'state'
