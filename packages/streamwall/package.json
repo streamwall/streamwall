@@ -1,7 +1,7 @@
 {
   "name": "streamwall",
   "productName": "Streamwall",
-  "version": "2.1-BS",
+  "version": "2.1.0-bs",
   "description": "Watch streams in a grid layout",
   "main": ".vite/build/index.js",
   "repository": "github:streamwall/streamwall",
