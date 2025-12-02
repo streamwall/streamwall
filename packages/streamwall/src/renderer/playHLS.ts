@@ -10,9 +10,12 @@ console.debug('PlayHLS loading with src:', src)
 const videoEl = document.createElement('video')
 videoEl.autoplay = true
 videoEl.muted = true
+videoEl.style.position = 'absolute'
+videoEl.style.top = '0'
+videoEl.style.left = '0'
 videoEl.style.width = '100%'
 videoEl.style.height = '100%'
-videoEl.style.objectFit = 'cover'
+videoEl.style.objectFit = 'fill'
 videoEl.style.display = 'block'
 videoEl.style.margin = '0'
 videoEl.style.padding = '0'

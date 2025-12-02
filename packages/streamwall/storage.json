@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "salt": "16CQgsJHRzwIgRgMRXysHkeX8ET4zhABa",
+    "tokens": [
+      {
+        "tokenId": "v0H9WDzrSa",
+        "tokenHash": "1Jre9JBbdhyqWPwuZjwIR8m9SYgba36LW",
+        "kind": "streamwall",
+        "role": "admin",
+        "name": "Streamwall"
+      },
+      {
+        "tokenId": "l1hX7efRIg7",
+        "tokenHash": "53429NoDLeWG45pYT6ZasK2Ad7w3dYf6",
+        "kind": "invite",
+        "role": "admin",
+        "name": "Server admin"
+      }
+    ]
+  },
+  "streamwallToken": {
+    "tokenId": "v0H9WDzrSa",
+    "secret": "1y9gccMajrC5FSBzCj4Up2aHb4Nj9hYyW"
+  }
+}

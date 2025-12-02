@@ -57,6 +57,14 @@ export interface StreamwallConfig {
   }
   control: {
     endpoint: string
+    'auto-start-server': boolean
+    enabled: boolean
+    address: string
+    token: string
+    hostname: string
+    port: number
+    username: string
+    password: string
   }
   twitch: {
     channel: string | null
@@ -176,9 +184,44 @@ function parseArgs(): StreamwallConfig {
         default: null,
       })
       .group(['control'], 'Remote Control')
+      .option('control.enabled', {
+        describe: 'Enable control server',
+        boolean: true,
+        default: true,
+      })
+      .option('control.auto-start-server', {
+        describe: 'Automatically start the control server when the app launches',
+        boolean: true,
+        default: true,
+      })
       .option('control.endpoint', {
         describe: 'URL of control server endpoint',
         default: null,
+      })
+      .option('control.address', {
+        describe: 'Control server base URL',
+        default: 'http://localhost:3000',
+      })
+      .option('control.hostname', {
+        describe: 'Hostname to bind control server to',
+        default: '0.0.0.0',
+      })
+      .option('control.port', {
+        describe: 'Port for control server',
+        number: true,
+        default: 3000,
+      })
+      .option('control.username', {
+        describe: 'Control server admin username',
+        default: 'streamwall',
+      })
+      .option('control.password', {
+        describe: 'Control server admin password',
+        default: 'please-change-this',
+      })
+      .option('control.token', {
+        describe: 'Control server access token',
+        default: 'streamwall-token',
       })
       .group(
         [
@@ -254,6 +297,26 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     .setPermissionRequestHandler((webContents, permission, callback) => {
       callback(false)
     })
+
+  // Start control server if auto-start is enabled
+  if (argv.control.enabled && argv.control['auto-start-server']) {
+    console.log('Auto-starting control server...')
+    try {
+      // In dev we can use the workspace dist; in prod use extraResource path
+      const clientStaticPath = (typeof MAIN_WINDOW_VITE_DEV_SERVER_URL !== 'undefined' && MAIN_WINDOW_VITE_DEV_SERVER_URL)
+        ? join(__dirname, '../../streamwall-control-client/dist')
+        : join(process.resourcesPath, 'control-client')
+      await runControlServer({
+        hostname: argv.control.hostname,
+        port: String(argv.control.port),
+        baseURL: argv.control.address,
+        clientStaticPath,
+      })
+      console.log(`Control server started at ${argv.control.address}`)
+    } catch (error) {
+      console.error('Failed to start control server:', error)
+    }
+  }
 
   const db = await loadStorage(
     join(app.getPath('userData'), 'streamwall-storage.json'),

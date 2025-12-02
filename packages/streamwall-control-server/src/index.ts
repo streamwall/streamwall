@@ -7,7 +7,7 @@ import WebSocket from 'ws'
 import * as Y from 'yjs'
 
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   type AuthTokenInfo,
   type ControlCommandMessage,
@@ -552,11 +552,19 @@ export default async function runServer({
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-runServer({
-  hostname: process.env.STREAMWALL_CONTROL_HOSTNAME,
-  port: process.env.STREAMWALL_CONTROL_PORT,
-  baseURL: process.env.STREAMWALL_CONTROL_URL ?? 'http://localhost:3000',
-  clientStaticPath:
-    process.env.STREAMWALL_CONTROL_STATIC ??
-    path.join(__dirname, '../../streamwall-control-client/dist'),
-})
+// Only auto-start the server when this module is run directly (not when imported)
+try {
+  const invokedAsScript = import.meta.url === pathToFileURL(process.argv[1]).href
+  if (invokedAsScript) {
+    runServer({
+      hostname: process.env.STREAMWALL_CONTROL_HOSTNAME,
+      port: process.env.STREAMWALL_CONTROL_PORT,
+      baseURL: process.env.STREAMWALL_CONTROL_URL ?? 'http://localhost:3000',
+      clientStaticPath:
+        process.env.STREAMWALL_CONTROL_STATIC ??
+        path.join(__dirname, '../../streamwall-control-client/dist'),
+    })
+  }
+} catch {
+  // Ignore errors resolving argv mapping in unusual runtimes
+}

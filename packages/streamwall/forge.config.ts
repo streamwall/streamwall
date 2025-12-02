@@ -11,6 +11,10 @@ const config: ForgeConfig = {
   packagerConfig: {
     executableName: 'streamwall',
     asar: true,
+    extraResource: [
+      // Bundle the control client static files so the built app can serve them
+      '../streamwall-control-client/dist',
+    ],
   },
   rebuildConfig: {},
   makers: [

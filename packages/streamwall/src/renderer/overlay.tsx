@@ -156,13 +156,23 @@ function Overlay({
                 </span>
               </StreamTitle>
             )}
-            <ExpandedVideoFrame
-              key={expandedUrl}
-              src={`./playHLS.html?src=${encodeURIComponent(expandedUrl)}`}
-              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-              allow="autoplay accelerometer camera geolocation gyroscope magnetometer microphone midi payment usb vr xr-spatial-tracking"
-              scrolling="no"
-            />
+            {/\.m3u8(\?.*)?$/.test(expandedUrl) ? (
+              <ExpandedVideoFrame
+                key={expandedUrl}
+                src={`./playHLS.html?src=${encodeURIComponent(expandedUrl)}`}
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                allow="autoplay accelerometer camera geolocation gyroscope magnetometer microphone midi payment usb vr xr-spatial-tracking"
+                scrolling="no"
+              />
+            ) : (
+              <ExpandedVideoFrame
+                key={expandedUrl}
+                src={expandedUrl}
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                allow="autoplay accelerometer camera geolocation gyroscope magnetometer microphone midi payment usb vr xr-spatial-tracking"
+                scrolling="no"
+              />
+            )}
           </ExpandedContent>
         </ExpandedOverlay>
       )}
@@ -261,10 +271,15 @@ const ExpandedOverlay = styled.div`
 
 const ExpandedContent = styled.div`
   position: relative;
-  width: 66.666vw;
-  height: 66.666vh;
+  width: 80vw;
+  height: 80vh;
+  max-width: 90vw;
+  max-height: 90vh;
   overflow: hidden;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `
 
 const ExpandedVideoFrame = styled.iframe`
@@ -276,6 +291,7 @@ const ExpandedVideoFrame = styled.iframe`
   border: none;
   pointer-events: none;
   cursor: pointer;
+  object-fit: contain;
 `
 
 const CloseButton = styled.button`

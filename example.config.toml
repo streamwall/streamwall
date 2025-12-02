@@ -18,6 +18,12 @@
 #count = 3
 
 [control]
+# Enable the control server
+enabled = true
+
+# Automatically start the control server when the app launches
+auto-start-server = true
+
 # Address to serve control server from
 address = "http://localhost:80"
 
