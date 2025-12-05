@@ -15,6 +15,8 @@ import {
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
   FaExchangeAlt,
+  FaFolder,
+  FaCog,
   FaRedoAlt,
   FaRegLifeRing,
   FaRegWindowMaximize,
@@ -201,6 +203,7 @@ export interface StreamwallConnection {
   isConnected: boolean
   role: StreamwallRole | null
   send: (msg: ControlCommand, cb?: (msg: unknown) => void) => void
+  openConfigFolder?: () => void
   sharedState: CollabData | undefined
   stateDoc: Y.Doc
   config: StreamWindowConfig | undefined
@@ -620,6 +623,7 @@ export function ControlUI({
   const {
     isConnected,
     send,
+    openConfigFolder,
     sharedState,
     stateDoc,
     config,
@@ -1459,6 +1463,35 @@ export function ControlUI({
                       </>
                     )}
                   </div>
+                  {role === 'local' && openConfigFolder && (
+                    <button 
+                      onClick={openConfigFolder}
+                      style={{ 
+                        padding: '4px',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '28px',
+                        height: '28px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#45a049'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#4CAF50'
+                      }}
+                      title="Open config folder"
+                    >
+                      <FaCog />
+                    </button>
+                  )}
                   <button 
                     onClick={handleChangeShowDebug} 
                     style={{ 
@@ -2668,6 +2701,33 @@ const StyledHeader = styled.header`
 
   * {
     margin-right: 2rem;
+  }
+`
+
+const StyledConfigButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #1976D2;
+  }
+
+  &:active {
+    background: #1565C0;
+  }
+
+  svg {
+    font-size: 16px;
   }
 `
 

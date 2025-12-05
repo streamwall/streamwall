@@ -44,6 +44,10 @@ function useStreamwallIPCConnection(): StreamwallConnection {
     [],
   )
 
+  const openConfigFolder = useCallback(() => {
+    window.streamwallControl.openConfigFolder()
+  }, [])
+
   useEffect(() => {
     function sendUpdate(update: Uint8Array, origin: string) {
       if (origin === 'app') {
@@ -72,6 +76,7 @@ function useStreamwallIPCConnection(): StreamwallConnection {
     ...appState,
     isConnected: true,
     send,
+    openConfigFolder,
     sharedState,
     stateDoc,
   }

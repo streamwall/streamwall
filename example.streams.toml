@@ -1,11 +1,69 @@
+#
 [[streams]]
-city   = "Varied"
-label  = "yo"
-link   = "https://twitch.tv/woke"
-notes  = "Live protest streams from around the world."
-source = "woke.net"
+label  = "Sample HLS"
+link   = "https://example.com/stream/playlist.m3u8"
+source = "Example Network"
+city   = "Sample City"
+state  = "IA"
+latitude  = 41.5868
+longitude = -93.6250
 
 [[streams]]
-kind  = "web"
-label = "zombocom"
-link  = "https://html5zombo.com"
+label  = "CBS MOC"
+link   = "http://10.215.238.4:80/hls/cbs.m3u8"
+source = "CBS"
+city   = "Mystery City"
+state  = "IA"
+latitude  = 41.6000
+longitude = -93.6200
+
+[[streams]]
+label  = "FOX MOC"
+link   = "http://10.215.238.5:80/hls/fox.m3u8"
+source = "FOX"
+city   = "Mystery City"
+state  = "IA"
+latitude  = 41.6100
+longitude = -93.6300
+
+[[streams]]
+kind   = "web"
+label  = "Wetmet Tower"
+link   = "https://api.wetmet.net/widgets/stream/frame.php?uid=ae6be16dde05002ff2eb2c4bb3109a57"
+source = "wetmet"
+city   = "Tower"
+state  = "IA"
+latitude  = 41.6200
+longitude = -93.6400
+
+[[streams]]
+kind   = "web"
+label  = "ZomboCom"
+link   = "https://html5zombo.com"
+
+[[streams]]
+label = "DM - I-235 @ 35th St (12)"
+link  = "https://iowadotsfs2.us-east-1.skyvdn.com:443/rtplive/dmtv012lb/playlist.m3u8"
+source = "Iowa DOT"
+city   = "Des Moines"
+state  = "IA"
+latitude  = 41.5934
+longitude = -93.6657
+
+[[streams]]
+label = "I-80 @ MM 115"
+link  = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/80tv115lb/playlist.m3u8"
+source = "Iowa DOT"
+city   = "I-80"
+state  = "IA"
+latitude  = 41.5561
+longitude = -93.9125
+
+[[streams]]
+label = "CB - I-29 @ 25th Street (22)"
+link  = "https://iowadotsfs1.us-east-1.skyvdn.com:443/rtplive/cbtv22lb/playlist.m3u8"
+source = "Iowa DOT"
+city   = "Council Bluffs"
+state  = "IA"
+latitude  = 41.274991
+longitude = -95.878115

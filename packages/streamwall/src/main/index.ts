@@ -1,11 +1,12 @@
 import TOML from '@iarna/toml'
 import * as Sentry from '@sentry/electron/main'
-import { BrowserWindow, app, session } from 'electron'
+import { BrowserWindow, app, session, shell } from 'electron'
+import runControlServer from 'streamwall-control-server'
 import started from 'electron-squirrel-startup'
 import fs from 'fs'
 import { throttle } from 'lodash-es'
 import EventEmitter from 'node:events'
-import { join } from 'node:path'
+import { join, isAbsolute } from 'node:path'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import 'source-map-support/register'
 import { ControlCommand, StreamwallState } from 'streamwall-shared'
@@ -749,12 +750,20 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     twitchBot.connect()
   }
 
+  // Use default streams.toml from userData if no explicit data sources configured
+  const tomlFilesRaw = argv.data['toml-file']
+  const tomlFiles = (tomlFilesRaw.length > 0
+    ? tomlFilesRaw
+    : [join(app.getPath('userData'), 'streams.toml')]
+  ).map((p) => (isAbsolute(p) ? p : join(app.getPath('userData'), p)))
+  console.debug('Resolved TOML data files:', tomlFiles)
+
   const dataSources = [
     ...argv.data['json-url'].map((url) => {
       console.debug('Setting data source from json-url:', url)
       return markDataSource(pollDataURL(url, argv.data.interval), 'json-url')
     }),
-    ...argv.data['toml-file'].map((path) => {
+    ...tomlFiles.map((path) => {
       console.debug('Setting data source from toml-file:', path)
       return markDataSource(watchDataFile(path), 'toml-file')
     }),
@@ -785,6 +794,8 @@ function init() {
   console.debug('Setting up Electron...')
   app.commandLine.appendSwitch('high-dpi-support', '1')
   app.commandLine.appendSwitch('force-device-scale-factor', '1')
+  // Allow media to autoplay without user gesture (packaged builds on new machines)
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
   console.debug('Enabling Electron sandbox...')
   app.enableSandbox()

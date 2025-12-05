@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, app, ipcMain, shell } from 'electron'
 import EventEmitter from 'events'
 import path from 'path'
 import { ControlCommand, StreamwallState } from 'streamwall-shared'
@@ -91,6 +91,11 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
         return
       }
       this.emit('ydoc', update)
+    })
+
+    ipcMain.handle('control:open-config-folder', () => {
+      const configPath = app.getPath('userData')
+      shell.openPath(configPath)
     })
   }
 
