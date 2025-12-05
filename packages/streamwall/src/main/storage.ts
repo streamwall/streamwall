@@ -5,7 +5,16 @@ import { StreamDataContent } from 'streamwall-shared'
 export interface StreamwallStoredData {
   stateDoc: string
   localStreamData: StreamDataContent[]
-  savedLayouts: Record<string, { name: string; stateDoc: string; timestamp: number }>
+  savedLayouts: Record<
+    string,
+    {
+      name: string
+      stateDoc: string
+      timestamp: number
+      gridSize?: { cols: number; rows: number }
+      gridId?: string
+    }
+  >
 }
 
 const defaultData: StreamwallStoredData = {

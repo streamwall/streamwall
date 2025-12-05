@@ -1,41 +1,108 @@
 [window]
-# Window dimensions
-#width = 1920
-#height = 1080
-
-# Position a frameless window (useful for capturing w/ fixed screen positions)
-#x = 0
-#y = 0
-#frameless = false
-
-# Set the background color (useful for chroma-keying)
+# Base window defaults (used when no per-grid override)
+width = 1920
+height = 1080
+x = 0
+y = 0
+frameless = false
 #background-color = "#0f0"
-
-# Set the active (highlight) color
 #active-color = "#fff"
 
 [grid]
-#count = 3
+# Default grid dimensions (fallback for instances)
+cols = 3
+rows = 3
+count = 2
 
-[control]
-# Enable the control server
-enabled = true
+# Define each grid with size and position (ids default to grid-1, grid-2, ...)
+[[grid.instances]]
+id = "grid-1"
+cols = 3
+rows = 3
+x = 0
+y = 0
 
-# Automatically start the control server when the app launches
-auto-start-server = true
+[[grid.instances]]
+id = "grid-2"
+cols = 3
+rows = 3
+x = 1920
+y = 0
 
-# Address to serve control server from
-address = "http://localhost:80"
+# [[grid.instances]]
+# id = "grid-3"
+# cols = 3
+# rows = 3
+# x = 0
+# y = 1080
 
-# Override hostname and port
-#hostname = "localhost"
-#port = 80
+# [[grid.instances]]
+# id = "grid-4"
+# cols = 3
+# rows = 3
+# x = 1920
+# y = 1080
 
-# Username and password
-username = "streamwall"
-password = "please-change-this"
+# [[grid.instances]]
+# id = "grid-5"
+# cols = 3
+# rows = 3
+# x = 0
+# y = 2160
 
-[data]
+# [[grid.instances]]
+# id = "grid-6"
+# cols = 3
+# rows = 3
+# x = 1920
+# y = 2160
+# id = "grid-3"
+# x = 0
+# y = 1080
+
+# [[window.grids]]
+# id = "grid-4"
+# x = 1920
+# y = 1080
+
+# [[window.grids]]
+# id = "grid-5"
+# x = 0
+# y = 2160
+
+# [[window.grids]]
+# id = "grid-6"
+# x = 1920
+# y = 2160
+
+# Alternatively, you can pin positions under the window section keyed by grid id or index
+[window]
+width = 1920
+height = 1080
+# x/y apply when no per-grid override is provided
+x = 0
+y = 0
+
+# Explicit grid positions (id or index). Ids default to grid-1, grid-2, etc.
+[[window.grids]]
+id = "grid-1"
+x = 0
+y = 0
+
+[[window.grids]]
+index = 2  # grid 2
+x = 1920
+y = 0
+
+# [[window.grids]]
+# id = "grid-3"
+# x = 0
+# y = 1080
+
+# [[window.grids]]
+# id = "grid-4"
+# x = 1920
+# y = 1080
 # Interval to refresh polled datasources
 #interval = 30
 

@@ -77,6 +77,13 @@ export interface ViewState {
   }
 }
 
+export interface GridState {
+  id: string
+  config: StreamWindowConfig
+  views: ViewState[]
+  cellOffset: number
+}
+
 export interface StreamDelayStatus {
   isConnected: boolean
   delaySeconds: number
@@ -109,7 +116,16 @@ export interface StreamwallState {
   customStreams: StreamList
   views: ViewState[]
   streamdelay: StreamDelayStatus | null
-  savedLayouts?: Record<string, { name: string; timestamp: number }>
+  grids?: GridState[]
+  savedLayouts?: Record<
+    string,
+    {
+      name: string
+      timestamp: number
+      gridSize?: { cols: number; rows: number }
+      gridId?: string
+    }
+  >
 }
 
 type MessageMeta = {
@@ -118,29 +134,30 @@ type MessageMeta = {
 }
 
 export type ControlCommand =
-  | { type: 'set-listening-view'; viewIdx: number | null }
+  | { type: 'set-listening-view'; viewIdx: number | null; gridId?: string }
   | {
       type: 'set-view-background-listening'
       viewIdx: number
       listening: boolean
+      gridId?: string
     }
-  | { type: 'set-view-blurred'; viewIdx: number; blurred: boolean }
+  | { type: 'set-view-blurred'; viewIdx: number; blurred: boolean; gridId?: string }
   | { type: 'rotate-stream'; url: string; rotation: number }
   | { type: 'update-custom-stream'; url: string; data: LocalStreamData }
   | { type: 'delete-custom-stream'; url: string }
-  | { type: 'reload-view'; viewIdx: number }
+  | { type: 'reload-view'; viewIdx: number; gridId?: string }
   | { type: 'browse'; url: string }
-  | { type: 'dev-tools'; viewIdx: number }
+  | { type: 'dev-tools'; viewIdx: number; gridId?: string }
   | { type: 'set-stream-censored'; isCensored: boolean }
   | { type: 'set-stream-running'; isStreamRunning: boolean }
   | { type: 'create-invite'; role: string; name: string }
   | { type: 'delete-token'; tokenId: string }
-  | { type: 'refresh-all-views' }
-  | { type: 'refresh-errored-views' }
-  | { type: 'save-layout'; slot: number; name: string }
-  | { type: 'load-layout'; slot: number }
-  | { type: 'clear-layout'; slot: number }
-  | { type: 'spotlight'; url: string }
+  | { type: 'refresh-all-views'; gridId?: string }
+  | { type: 'refresh-errored-views'; gridId?: string }
+  | { type: 'save-layout'; slot: number; name: string; gridId?: string }
+  | { type: 'load-layout'; slot: number; gridId?: string }
+  | { type: 'clear-layout'; slot: number; gridId?: string }
+  | { type: 'spotlight'; url: string; gridId?: string }
 
 export type ControlUpdate = {
   type: 'state'

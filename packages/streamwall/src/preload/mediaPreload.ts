@@ -211,18 +211,23 @@ async function findVideo(kind: 'video' | 'audio') {
     document.body.appendChild(video)
   }
 
-  video.play()
+  try {
+    await video.play()
+  } catch (err) {
+    console.warn('Video play() was blocked; continuing muted', err)
+  }
 
   if (video instanceof HTMLVideoElement && !video.videoWidth) {
     console.log(`video isn't playing yet. waiting for it to start...`)
     const videoReady = new Promise((resolve) =>
       video.addEventListener('playing', resolve, { once: true }),
     )
-    await Promise.race([videoReady, sleep(10 * 1000)])
+    await Promise.race([videoReady, sleep(30 * 1000)])
     if (!video.videoWidth) {
-      throw new Error('timeout waiting for video to start')
+      console.warn('Timeout waiting for video to start; continuing anyway')
+    } else {
+      console.log('video started')
     }
-    console.log('video started')
   }
 
   video.muted = false

@@ -40,11 +40,15 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
   backgroundView: WebContentsView
   overlayView: WebContentsView
   views: Map<number, ViewActor>
+  static ipcRegistered = false
+  static senderToWindow = new Map<number, StreamWindow>()
 
   constructor(config: StreamWindowConfig) {
     super()
     this.config = config
     this.views = new Map()
+
+    StreamWindow.ensureIPCHandlers()
 
     const { width, height, x, y, frameless, backgroundColor } = this.config
     const win = new BrowserWindow({
@@ -103,51 +107,75 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     loadHTML(overlayView.webContents, 'overlay')
     this.overlayView = overlayView
 
+    StreamWindow.registerSender(this.backgroundView.webContents.id, this)
+    StreamWindow.registerSender(this.overlayView.webContents.id, this)
+  }
+
+  static ensureIPCHandlers() {
+    if (StreamWindow.ipcRegistered) return
+    StreamWindow.ipcRegistered = true
+
     ipcMain.handle('layer:load', (ev) => {
+      const inst = StreamWindow.senderToWindow.get(ev.sender.id)
+      if (!inst) return
       if (
-        ev.sender !== this.backgroundView.webContents &&
-        ev.sender !== this.overlayView.webContents
+        ev.sender !== inst.backgroundView.webContents &&
+        ev.sender !== inst.overlayView.webContents
       ) {
         return
       }
-      this.emit('load')
+      inst.emit('load')
     })
 
     ipcMain.handle('view-init', async (ev) => {
-      const view = this.views.get(ev.sender.id)
+      const inst = StreamWindow.senderToWindow.get(ev.sender.id)
+      if (!inst) return
+      const view = inst.views.get(ev.sender.id)
       if (view) {
         view.send({ type: 'VIEW_INIT' })
         const { content, options } = view.getSnapshot().context
-        return {
-          content,
-          options,
-        }
+        return { content, options }
       }
     })
+
     ipcMain.on('view-loaded', (ev) => {
-      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_LOADED' })
+      StreamWindow.senderToWindow
+        .get(ev.sender.id)
+        ?.views.get(ev.sender.id)
+        ?.send?.({ type: 'VIEW_LOADED' })
     })
+
     ipcMain.on('view-info', (ev, { info }) => {
-      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_INFO', info })
+      StreamWindow.senderToWindow
+        .get(ev.sender.id)
+        ?.views.get(ev.sender.id)
+        ?.send?.({ type: 'VIEW_INFO', info })
     })
+
     ipcMain.on('view-error', (ev, { error }) => {
-      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_ERROR', error })
+      StreamWindow.senderToWindow
+        .get(ev.sender.id)
+        ?.views.get(ev.sender.id)
+        ?.send?.({ type: 'VIEW_ERROR', error })
     })
-    ipcMain.on('devtools-overlay', () => {
-      overlayView.webContents.openDevTools()
+
+    ipcMain.on('devtools-overlay', (ev) => {
+      StreamWindow.senderToWindow
+        .get(ev.sender.id)
+        ?.overlayView.webContents.openDevTools()
     })
 
     ipcMain.on('view-expand', (ev, { url }) => {
-      if (ev.sender !== this.overlayView.webContents) {
+      const inst = StreamWindow.senderToWindow.get(ev.sender.id)
+      if (!inst || ev.sender !== inst.overlayView.webContents) {
         return
       }
 
-      const { width, height } = this.config
-      // Find the view by URL
+      const { width, height } = inst.config
       let targetView: ViewActor | undefined
       let originalPos: ViewPos | null = null
 
-      for (const view of this.views.values()) {
+      for (const view of inst.views.values()) {
         const snapshot = view.getSnapshot()
         if (snapshot.context.content?.url === url) {
           targetView = view
@@ -165,9 +193,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         return
       }
 
-      // If url is provided, expand; if not, it's a collapse
       if (url) {
-        // Calculate expanded position: centered, 66.666% of window
         const expandedPos = {
           x: Math.floor(width * 0.16666),
           y: Math.floor(height * 0.16666),
@@ -177,10 +203,13 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         }
         targetView.send({ type: 'DISPLAY', pos: expandedPos, content })
       } else {
-        // Collapse: restore original position
         targetView.send({ type: 'DISPLAY', pos: originalPos, content })
       }
     })
+  }
+
+  static registerSender(id: number, inst: StreamWindow) {
+    StreamWindow.senderToWindow.set(id, inst)
   }
 
   createView() {
@@ -199,6 +228,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     view.setBackgroundColor(backgroundColor)
 
     const viewId = view.webContents.id
+    StreamWindow.registerSender(viewId, this)
 
     // Prevent view pages from navigating away from the specified URL.
     view.webContents.on('will-navigate', (ev) => {
@@ -326,6 +356,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       const contentView = view.getSnapshot().context.view
       win.contentView.removeChildView(contentView)
       contentView.webContents.close()
+      StreamWindow.senderToWindow.delete(contentView.webContents.id)
     }
     this.views = newViews
     this.emitState()
@@ -382,7 +413,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
 
   async refreshAllViewsSequentially(delayMs: number = 1000) {
     const viewsArray = Array.from(this.views.values())
-    console.log(`Starting sequential refresh of ${viewsArray.length} views with ${delayMs}ms delay...`)
+    console.debug(`Starting sequential refresh of ${viewsArray.length} views with ${delayMs}ms delay...`)
     
     for (let i = 0; i < viewsArray.length; i++) {
       const view = viewsArray[i]
@@ -390,7 +421,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       
       if (snapshot.matches('displaying')) {
         const { content } = snapshot.context
-        console.log(`Refreshing view ${i + 1}/${viewsArray.length}: ${content?.url || 'unknown'}`)
+        console.debug(`Refreshing view ${i + 1}/${viewsArray.length}: ${content?.url || 'unknown'}`)
         view.send({ type: 'RELOAD' })
         
         // Wait before refreshing the next view (except for the last one)
@@ -400,7 +431,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       }
     }
     
-    console.log('Finished sequential refresh of all views')
+    console.debug('Finished sequential refresh of all views')
   }
 
   async refreshErroredViewsSequentially(delayMs: number = 1000) {
@@ -411,18 +442,18 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     })
     
     if (erroredViews.length === 0) {
-      console.log('No errored views found to refresh')
+      console.debug('No errored views found to refresh')
       return
     }
     
-    console.log(`Starting sequential refresh of ${erroredViews.length} errored views with ${delayMs}ms delay...`)
+    console.debug(`Starting sequential refresh of ${erroredViews.length} errored views with ${delayMs}ms delay...`)
     
     for (let i = 0; i < erroredViews.length; i++) {
       const view = erroredViews[i]
       const snapshot = view.getSnapshot()
       const { content } = snapshot.context
       
-      console.log(`Refreshing errored view ${i + 1}/${erroredViews.length}: ${content?.url || 'unknown'}`)
+      console.debug(`Refreshing errored view ${i + 1}/${erroredViews.length}: ${content?.url || 'unknown'}`)
       view.send({ type: 'RELOAD' })
       
       // Wait before refreshing the next view (except for the last one)
@@ -431,7 +462,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       }
     }
     
-    console.log('Finished sequential refresh of errored views')
+    console.debug('Finished sequential refresh of errored views')
   }
 
   onState(state: StreamwallState) {

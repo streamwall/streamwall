@@ -90,6 +90,9 @@ const hotkeyTriggers = [
   'p',
 ]
 
+// Soft palette for grids; index-based lookup
+const GRID_PALETTE = ['#4c7df0', '#f27f7f', '#4dbd82', '#f2c14f', '#a76de2']
+
 export const GlobalStyle = createGlobalStyle`
   html {
     height: 100%;
@@ -214,6 +217,14 @@ export interface StreamwallConnection {
   delayState: StreamDelayStatus | null | undefined
   authState?: StreamwallState['auth']
   savedLayouts?: StreamwallState['savedLayouts']
+  grids?: Array<{
+    id: string
+    config: StreamWindowConfig
+    views: ViewInfo[]
+    stateIdxMap: Map<number, ViewInfo>
+    cellOffset: number
+  }>
+  defaultGridId?: string | null
 }
 
 export function useStreamwallState(state: StreamwallState | undefined) {
@@ -229,6 +240,8 @@ export function useStreamwallState(state: StreamwallState | undefined) {
         delayState: undefined,
         authState: undefined,
         savedLayouts: undefined,
+        grids: [],
+        defaultGridId: null,
       }
     }
 
@@ -237,56 +250,69 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       auth,
       config,
       streams: stateStreams,
+      customStreams: stateCustomStreams,
       views: stateViews,
       streamdelay,
       savedLayouts,
+      grids,
     } = state
-    const stateIdxMap = new Map()
-    const views = []
-    for (const viewState of stateViews) {
-      const { pos } = viewState.context
-      const isListening = matchesState(
-        'displaying.running.audio.listening',
-        viewState.state,
-      )
-      const isBackgroundListening = matchesState(
-        'displaying.running.audio.background',
-        viewState.state,
-      )
-      const isBlurred = matchesState(
-        'displaying.running.video.blurred',
-        viewState.state,
-      )
-      const spaces = pos?.spaces ?? []
-      const viewInfo = {
-        state: viewState,
-        isListening,
-        isBackgroundListening,
-        isBlurred,
-        spaces,
-      }
-      views.push(viewInfo)
-      for (const space of spaces) {
-        if (!stateIdxMap.has(space)) {
-          stateIdxMap.set(space, {})
+
+    const buildViewInfo = (viewStates: ViewState[]) => {
+      const stateIdxMap = new Map<number, ViewInfo>()
+      const viewInfos: ViewInfo[] = []
+      for (const viewState of viewStates) {
+        const { pos } = viewState.context
+        const isListening = matchesState(
+          'displaying.running.audio.listening',
+          viewState.state,
+        )
+        const isBackgroundListening = matchesState(
+          'displaying.running.audio.background',
+          viewState.state,
+        )
+        const isBlurred = matchesState(
+          'displaying.running.video.blurred',
+          viewState.state,
+        )
+        const spaces = pos?.spaces ?? []
+        const info: ViewInfo = {
+          state: viewState,
+          isListening,
+          isBackgroundListening,
+          isBlurred,
+          spaces,
         }
-        Object.assign(stateIdxMap.get(space), viewInfo)
+        viewInfos.push(info)
+        for (const space of spaces) {
+          stateIdxMap.set(space, info)
+        }
       }
+      return { viewInfos, stateIdxMap }
     }
 
-    const streams = sortBy(stateStreams, ['_id'])
-    const customStreams = stateStreams.filter((s) => s._dataSource === 'custom')
+    const gridStatesSource = grids?.length
+      ? grids
+      : [{ id: 'grid-1', config, views: stateViews, cellOffset: 0 }]
+
+    const enhancedGrids = gridStatesSource.map((grid) => {
+      const { viewInfos, stateIdxMap } = buildViewInfo(grid.views)
+      return { ...grid, views: viewInfos, stateIdxMap }
+    })
+
+    const primaryGrid = enhancedGrids[0]
 
     return {
       role,
-      authState: auth,
+      config: primaryGrid?.config,
+      streams: stateStreams,
+      customStreams: stateCustomStreams ?? [],
+      views: primaryGrid?.views ?? [],
+      stateIdxMap: primaryGrid?.stateIdxMap ?? new Map(),
       delayState: streamdelay,
-      views,
-      config,
-      streams,
-      customStreams,
-      stateIdxMap,
+      authState: auth,
       savedLayouts,
+      grids: enhancedGrids,
+      defaultGridId: state.grids?.[0]?.id ?? enhancedGrids[0]?.id ?? null,
     }
   }, [state])
 }
@@ -626,16 +652,54 @@ export function ControlUI({
     openConfigFolder,
     sharedState,
     stateDoc,
-    config,
+    config: primaryConfig,
     streams,
     customStreams,
-    views,
-    stateIdxMap,
+    views: primaryViews,
+    stateIdxMap: primaryStateIdxMap,
     delayState,
     authState,
     savedLayouts,
     role,
+    grids,
+    defaultGridId,
   } = connection
+  const [activeGridId, setActiveGridId] = useState<string | null>(
+    defaultGridId ?? (grids && grids[0]?.id) ?? null,
+  )
+
+  useEffect(() => {
+    if (!grids || grids.length === 0) {
+      return
+    }
+    setActiveGridId((prev) => {
+      if (prev && grids.some((g) => g.id === prev)) {
+        return prev
+      }
+      return grids[0]?.id ?? null
+    })
+  }, [grids])
+
+  const activeGrid =
+    grids?.find((g) => g.id === activeGridId) ?? grids?.[0] ?? undefined
+
+  const activeGridColor = useMemo(() => {
+    if (!grids || grids.length === 0) return undefined
+    const idx = grids.findIndex((g) => g.id === (activeGridId ?? grids[0]?.id))
+    if (idx < 0) return undefined
+    return GRID_PALETTE[idx % GRID_PALETTE.length]
+  }, [grids, activeGridId])
+
+  const shadedBackground = useMemo(() => {
+    if (!activeGridColor) return undefined
+    return Color(activeGridColor).saturate(0.55).lighten(0.25).alpha(0.22).string()
+  }, [activeGridColor])
+
+  const config = activeGrid?.config ?? primaryConfig
+  const views = activeGrid?.views ?? primaryViews
+  const stateIdxMap = activeGrid?.stateIdxMap ?? primaryStateIdxMap
+  const cellOffset = activeGrid?.cellOffset ?? 0
+
   const {
     cols,
     rows,
@@ -651,12 +715,12 @@ export function ControlUI({
   const [spotlightedStreamId, setSpotlightedStreamId] = useState<string | undefined>()
 
   const handleRefreshAllViews = useCallback(() => {
-    send({ type: 'refresh-all-views' })
-  }, [send])
+    send({ type: 'refresh-all-views', gridId: activeGridId ?? undefined })
+  }, [send, activeGridId])
 
   const handleRefreshErroredViews = useCallback(() => {
-    send({ type: 'refresh-errored-views' })
-  }, [send])
+    send({ type: 'refresh-errored-views', gridId: activeGridId ?? undefined })
+  }, [send, activeGridId])
 
   const loopRefreshErrored = sharedState?.uiState?.loopRefreshErrored ?? false
   const toggleLoopRefreshErrored = useCallback(() => {
@@ -677,6 +741,28 @@ export function ControlUI({
 
     return () => clearInterval(interval)
   }, [loopRefreshErrored, send])
+
+  const toGlobalIdx = useCallback(
+    (localIdx: number) => cellOffset + localIdx,
+    [cellOffset],
+  )
+
+  const getViewsMap = useCallback(
+    () => stateDoc.getMap<Y.Map<string | undefined>>('views'),
+    [stateDoc],
+  )
+
+  const getSharedStreamId = useCallback(
+    (globalIdx: number) => {
+      if (!sharedState?.views) {
+        return undefined
+      }
+      const asString = (sharedState.views as any)[String(globalIdx)]?.streamId
+      const asNumber = (sharedState.views as any)[globalIdx]?.streamId
+      return asString ?? asNumber
+    },
+    [sharedState],
+  )
 
   const [swapStartIdx, setSwapStartIdx] = useState<number | undefined>()
   const handleSwapView = useCallback(
@@ -699,23 +785,29 @@ export function ControlUI({
         return
       }
       stateDoc.transact(() => {
-        const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
+        const viewsState = getViewsMap()
         const startStreamId = viewsState
-          ?.get(String(swapStartIdx))
+          ?.get(String(toGlobalIdx(swapStartIdx)))
           ?.get('streamId')
-        const toStreamId = viewsState.get(String(toIdx))?.get('streamId')
+        const toStreamId = viewsState
+          .get(String(toGlobalIdx(toIdx)))
+          ?.get('streamId')
         const startSpaces = stateIdxMap.get(swapStartIdx)?.spaces ?? []
         const toSpaces = stateIdxMap.get(toIdx)?.spaces ?? []
         for (const startSpaceIdx of startSpaces) {
-          viewsState.get(String(startSpaceIdx))?.set('streamId', toStreamId)
+          viewsState
+            .get(String(toGlobalIdx(startSpaceIdx)))
+            ?.set('streamId', toStreamId)
         }
         for (const toSpaceIdx of toSpaces) {
-          viewsState.get(String(toSpaceIdx))?.set('streamId', startStreamId)
+          viewsState
+            .get(String(toGlobalIdx(toSpaceIdx)))
+            ?.set('streamId', startStreamId)
         }
       })
       setSwapStartIdx(undefined)
     },
-    [stateDoc, stateIdxMap, swapStartIdx],
+    [getViewsMap, stateIdxMap, swapStartIdx, toGlobalIdx, stateDoc],
   )
 
   const [hoveringIdx, setHoveringIdx] = useState<number>()
@@ -771,11 +863,15 @@ export function ControlUI({
         return
       }
       stateDoc.transact(() => {
-        const viewsState = stateDoc.getMap<Y.Map<string | undefined>>('views')
-        const streamId = viewsState.get(String(dragStart))?.get('streamId')
+        const viewsState = getViewsMap()
+        const streamId = viewsState
+          .get(String(toGlobalIdx(dragStart)))
+          ?.get('streamId')
         for (let idx = 0; idx < cols * rows; idx++) {
           if (idxInBox(cols, dragStart, hoveringIdx, idx)) {
-            viewsState.get(String(idx))?.set('streamId', streamId)
+            viewsState
+              .get(String(toGlobalIdx(idx)))
+              ?.set('streamId', streamId)
           }
         }
       })
@@ -783,7 +879,7 @@ export function ControlUI({
     }
     window.addEventListener('mouseup', endDrag)
     return () => window.removeEventListener('mouseup', endDrag)
-  }, [stateDoc, dragStart, hoveringIdx])
+  }, [stateDoc, dragStart, hoveringIdx, getViewsMap, toGlobalIdx, cols, rows])
 
   const [focusedInputIdx, setFocusedInputIdx] = useState<number | undefined>()
   const handleBlurInput = useCallback(() => setFocusedInputIdx(undefined), [])
@@ -794,10 +890,10 @@ export function ControlUI({
       // Even if they're not in the streams array, we still add them to the grid
       stateDoc
         .getMap<Y.Map<string | undefined>>('views')
-        .get(String(idx))
+        .get(String(toGlobalIdx(idx)))
         ?.set('streamId', streamId)
     },
-    [stateDoc],
+    [stateDoc, toGlobalIdx],
   )
 
   const handleSetListening = useCallback(
@@ -805,9 +901,10 @@ export function ControlUI({
       send({
         type: 'set-listening-view',
         viewIdx: listening ? idx : null,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleSetBackgroundListening = useCallback(
@@ -816,9 +913,10 @@ export function ControlUI({
         type: 'set-view-background-listening',
         viewIdx,
         listening,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleSetBlurred = useCallback(
@@ -827,9 +925,10 @@ export function ControlUI({
         type: 'set-view-blurred',
         viewIdx,
         blurred,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleReloadView = useCallback(
@@ -837,9 +936,10 @@ export function ControlUI({
       send({
         type: 'reload-view',
         viewIdx,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleRotateStream = useCallback(
@@ -896,9 +996,10 @@ export function ControlUI({
       send({
         type: 'spotlight',
         url: stream.link,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [streams, send],
+    [streams, send, activeGridId],
   )
 
   const handleSaveLayout = useCallback(
@@ -907,9 +1008,10 @@ export function ControlUI({
         type: 'save-layout',
         slot,
         name,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleLoadLayout = useCallback(
@@ -917,9 +1019,10 @@ export function ControlUI({
       send({
         type: 'load-layout',
         slot,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleClearLayout = useCallback(
@@ -927,9 +1030,10 @@ export function ControlUI({
       send({
         type: 'clear-layout',
         slot,
+        gridId: activeGridId ?? undefined,
       })
     },
-    [send],
+    [send, activeGridId],
   )
 
   const handleClickId = useCallback(
@@ -949,15 +1053,17 @@ export function ControlUI({
         return
       }
 
-      const availableIdx = range(cols * rows).find(
-        (i) => !sharedState.views[i].streamId,
-      )
+      const availableIdx = range(cols * rows).find((i) => {
+        const globalIdx = toGlobalIdx(i)
+        const streamIdAtIdx = getSharedStreamId(globalIdx)
+        return !streamIdAtIdx
+      })
       if (availableIdx === undefined) {
         return
       }
       handleSetView(availableIdx, streamId)
     },
-    [cols, rows, sharedState, focusedInputIdx],
+    [cols, rows, sharedState, focusedInputIdx, toGlobalIdx, getSharedStreamId, handleSetView],
   )
 
   const handleSwapWithSpot = useCallback(
@@ -966,13 +1072,13 @@ export function ControlUI({
         return
       }
 
-      const viewsMap = stateDoc.getMap<Y.Map<string | undefined>>('views')
+      const viewsMap = getViewsMap()
       const spotId = `spot-${spotNum}`
       
       // Find ALL spot placeholder positions
       const spotIndices: number[] = []
       for (let i = 0; i < cols * rows; i++) {
-        const viewData = viewsMap.get(String(i))
+        const viewData = viewsMap.get(String(toGlobalIdx(i)))
         if (viewData?.get('streamId') === spotId) {
           spotIndices.push(i)
         }
@@ -985,14 +1091,14 @@ export function ControlUI({
       // Replace all spots with the stream ID - that's it, no automatic replacement
       stateDoc.transact(() => {
         spotIndices.forEach((spotIdx) => {
-          const spotView = viewsMap.get(String(spotIdx))
+          const spotView = viewsMap.get(String(toGlobalIdx(spotIdx)))
           if (spotView) {
             spotView.set('streamId', streamIdToSwap)
           }
         })
       })
     },
-    [cols, rows],
+    [cols, rows, getViewsMap, toGlobalIdx],
   )
 
   const handleChangeCustomStream = useCallback(
@@ -1227,7 +1333,42 @@ export function ControlUI({
             setStreamRunning={setStreamRunning}
           />
         )}
-        <StyledDataContainer isConnected={isConnected}>
+        {grids && grids.length > 1 && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            {grids.map((grid, idx) => {
+              const paletteColor = GRID_PALETTE[idx % GRID_PALETTE.length]
+              const isActive = activeGridId === grid.id
+              const buttonBg = isActive
+                ? Color(paletteColor).lighten(0.15).desaturate(0.05).hex()
+                : Color(paletteColor).lighten(0.45).desaturate(0.2).hex()
+              const borderColor = Color(paletteColor).darken(isActive ? 0.15 : 0.05).hex()
+
+              return (
+                <button
+                  key={grid.id}
+                  onClick={() => setActiveGridId(grid.id)}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: `${isActive ? 2 : 1}px solid ${borderColor}`,
+                    background: buttonBg,
+                    color: '#0f172a',
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    minWidth: '110px',
+                    boxShadow: isActive
+                      ? `0 0 0 3px ${Color(paletteColor).alpha(0.12).string()}`
+                      : 'none',
+                    transition: 'background 120ms ease, box-shadow 120ms ease, border-color 120ms ease',
+                  }}
+                >
+                  {grid.id.replace('grid-', 'Grid ')} ({grid.config.cols}x{grid.config.rows})
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <StyledDataContainer isConnected={isConnected} bgColor={shadedBackground}>
           {cols != null && rows != null && (
             <StyledGridContainer
               className="grid"
@@ -1239,7 +1380,7 @@ export function ControlUI({
                 {range(0, rows).map((y) =>
                   range(0, cols).map((x) => {
                     const idx = cols * y + x
-                    const { streamId } = sharedState?.views?.[idx] ?? {}
+                    const streamId = getSharedStreamId(toGlobalIdx(idx))
                     const isDragHighlighted =
                       dragStart != null &&
                       hoveringIdx != null &&
@@ -1273,7 +1414,8 @@ export function ControlUI({
                   }
 
                   const gridIdx = pos.spaces[0]
-                  const { streamId } = sharedState?.views[gridIdx] ?? {}
+                  const globalIdx = toGlobalIdx(gridIdx)
+                  const { streamId } = sharedState?.views[globalIdx] ?? {}
                   // Allow spots (spot-1, spot-2, etc.) to be displayed even without stream data
                   // Regular streams must have actual data
                   if (streamId == null) {
@@ -1287,7 +1429,7 @@ export function ControlUI({
 
                   return (
                     <StyledGridPreviewBox
-                      key={`preview-${gridIdx}`}
+                      key={`preview-${globalIdx}`}
                       color={idColor(streamId)}
                       isSpot={isSpot}
                       pos={pos}
@@ -1319,7 +1461,8 @@ export function ControlUI({
                 let hasSpots = false
                 if (sharedState) {
                   for (let i = 0; i < (cols ?? 0) * (rows ?? 0); i++) {
-                    if (sharedState.views[i]?.streamId?.startsWith('spot-')) {
+                    const streamIdAtIdx = getSharedStreamId(toGlobalIdx(i))
+                    if (streamIdAtIdx?.startsWith?.('spot-')) {
                       hasSpots = true
                       break
                     }
@@ -1333,7 +1476,9 @@ export function ControlUI({
                         if (!pos) {
                           return null
                         }
-                        const { streamId } = sharedState?.views[pos.spaces[0]] ?? {}
+                        const streamId = getSharedStreamId(
+                          toGlobalIdx(pos.spaces[0]),
+                        )
                         if (!streamId) {
                           return null
                         }
@@ -1660,7 +1805,7 @@ export function ControlUI({
         </StyledDataContainer>
       </Stack>
       <Stack className="stream-list" flex="1" scroll={true} minHeight={200}>
-        <StyledDataContainer isConnected={isConnected}>
+        <StyledDataContainer isConnected={isConnected} bgColor={shadedBackground}>
           {isConnected ? (
             <div>
               <input
@@ -2500,11 +2645,31 @@ function LayoutPresetCard({
             <>
               <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('M/d/yy')}</div>
               <div>{DateTime.fromMillis(savedLayout.timestamp).toFormat('HH:mm')}</div>
-              {savedLayout.gridSize && (
-                <div>{savedLayout.gridSize.cols}×{savedLayout.gridSize.rows}</div>
-              )}
-              {savedLayout.gridId && (
-                <div>{savedLayout.gridId}</div>
+              {(savedLayout.gridId || savedLayout.gridSize) && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {savedLayout.gridId && (
+                    <span style={{
+                      padding: '2px 6px',
+                      borderRadius: '10px',
+                      background: '#eef2ff',
+                      border: '1px solid #d0d7ff',
+                      fontSize: '11px',
+                    }}>
+                      {savedLayout.gridId.replace('grid-', 'Grid ')}
+                    </span>
+                  )}
+                  {savedLayout.gridSize && (
+                    <span style={{
+                      padding: '2px 6px',
+                      borderRadius: '10px',
+                      background: '#f5f5f5',
+                      border: '1px solid #ddd',
+                      fontSize: '11px',
+                    }}>
+                      {savedLayout.gridSize.cols}×{savedLayout.gridSize.rows}
+                    </span>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -2742,8 +2907,12 @@ const StyledStreamDelayBox = styled.div`
   }
 `
 
-const StyledDataContainer = styled.div`
+const StyledDataContainer = styled.div<{ isConnected: boolean; bgColor?: string }>`
   opacity: ${({ isConnected }) => (isConnected ? 1 : 0.5)};
+  background: ${({ bgColor }) => bgColor ?? 'transparent'};
+  transition: background 160ms ease;
+  border-radius: 10px;
+  padding: 8px;
 `
 
 const StyledLayoutSlot = styled.div`

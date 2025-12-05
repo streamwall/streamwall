@@ -9,7 +9,7 @@ import EventEmitter from 'node:events'
 import { join, isAbsolute } from 'node:path'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import 'source-map-support/register'
-import { ControlCommand, StreamwallState } from 'streamwall-shared'
+import { ControlCommand, StreamwallState, ViewState } from 'streamwall-shared'
 import { updateElectronApp } from 'update-electron-app'
 import WebSocket from 'ws'
 import yargs from 'yargs'
@@ -32,11 +32,21 @@ import TwitchBot from './TwitchBot'
 const SENTRY_DSN =
   'https://e630a21dcf854d1a9eb2a7a8584cbd0b@o459879.ingest.sentry.io/5459505'
 
+// Reduce noisy logs unless explicitly enabled
+const VERBOSE_LOG = process.env.STREAMWALL_VERBOSE === '1'
+if (!VERBOSE_LOG) {
+  console.debug = () => {}
+}
+
 export interface StreamwallConfig {
   help: boolean
   grid: {
     cols: number
     rows: number
+    count: number
+    positions?: Array<{ x?: number; y?: number }>
+    window?: Array<{ x?: number; y?: number }>
+    instances?: Array<{ id?: string; index?: number; cols?: number; rows?: number; x?: number; y?: number; width?: number; height?: number }>
   }
   window: {
     x?: number
@@ -46,6 +56,7 @@ export interface StreamwallConfig {
     frameless: boolean
     'background-color': string
     'active-color': string
+    grids?: Array<{ id?: string; index?: number; x?: number; y?: number }>
   }
   data: {
     interval: number
@@ -108,6 +119,11 @@ function parseArgs(): StreamwallConfig {
         return TOML.parse(fs.readFileSync(configPath, 'utf-8'))
       })
       .group(['grid.cols', 'grid.rows'], 'Grid dimensions')
+      .option('grid.count', {
+        describe: 'Number of independent output grids/windows',
+        number: true,
+        default: 2,
+      })
       .option('grid.cols', {
         number: true,
         default: 3,
@@ -299,29 +315,58 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       callback(false)
     })
 
+  // Prefer bundled storage (tokens) when available; fall back to userData for dev/runtime state
+  const bundledStoragePath = join(app.getAppPath(), 'storage.json')
+  const storagePath = fs.existsSync(bundledStoragePath)
+    ? bundledStoragePath
+    : join(app.getPath('userData'), 'streamwall-storage.json')
+
+  const db = await loadStorage(storagePath)
+
   // Start control server if auto-start is enabled
   if (argv.control.enabled && argv.control['auto-start-server']) {
     console.log('Auto-starting control server...')
     try {
-      // In dev we can use the workspace dist; in prod use extraResource path
-      const clientStaticPath = (typeof MAIN_WINDOW_VITE_DEV_SERVER_URL !== 'undefined' && MAIN_WINDOW_VITE_DEV_SERVER_URL)
-        ? join(__dirname, '../../streamwall-control-client/dist')
-        : join(process.resourcesPath, 'control-client')
+      // Ensure control server shares the same storage (tokens) as the app
+      process.env.DB_PATH = storagePath
+
+      // Resolve control UI static assets with fallbacks for dev and packaged builds
+      const staticCandidates = [
+        process.env.STREAMWALL_CONTROL_STATIC,
+        typeof MAIN_WINDOW_VITE_DEV_SERVER_URL !== 'undefined' && MAIN_WINDOW_VITE_DEV_SERVER_URL
+          ? join(process.cwd(), 'packages/streamwall-control-client/dist')
+          : null,
+        join(app.getAppPath(), '../streamwall-control-client/dist'),
+        join(process.resourcesPath, 'control-client'),
+      ].filter(Boolean) as string[]
+
+      const clientStaticPath = staticCandidates.find((p) => fs.existsSync(p))
+
+      if (!clientStaticPath) {
+        throw new Error('Unable to locate control client static assets')
+      }
+
+      console.log('Serving control UI from:', clientStaticPath)
       await runControlServer({
         hostname: argv.control.hostname,
         port: String(argv.control.port),
         baseURL: argv.control.address,
         clientStaticPath,
       })
+
+      // If no explicit endpoint was provided, derive it from the shared token
+      if (!argv.control.endpoint && db.data.streamwallToken) {
+        const { tokenId, secret } = db.data.streamwallToken
+        const wsBase = argv.control.address.replace(/^http/, 'ws')
+        argv.control.endpoint = `${wsBase}/streamwall/${tokenId}/ws?token=${secret}`
+        console.log('Auto-configured control endpoint:', argv.control.endpoint)
+      }
+
       console.log(`Control server started at ${argv.control.address}`)
     } catch (error) {
       console.error('Failed to start control server:', error)
     }
   }
-
-  const db = await loadStorage(
-    join(app.getPath('userData'), 'streamwall-storage.json'),
-  )
 
   console.debug('Creating StreamWindow...')
   const idGen = new StreamIDGenerator()
@@ -346,17 +391,68 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     activeColor: argv.window['active-color'],
     backgroundColor: argv.window['background-color'],
   }
-  const streamWindow = new StreamWindow(streamWindowConfig)
+  const gridBaseCount = Math.max(1, argv.grid.count ?? 1)
+  const windowPositions = argv.grid.positions ?? argv.grid.window
+  const windowGridPositions = argv.window.grids
+  const gridConfigs =
+    argv.grid.instances && argv.grid.instances.length > 0
+      ? argv.grid.instances
+      : Array.from({ length: gridBaseCount }, (_, idx) => ({ id: `grid-${idx + 1}`, index: idx + 1 }))
+
+  let nextCellOffset = 0
+  const gridRuntimes = gridConfigs.map((instance, idx) => {
+    const gridId = instance.id ?? `grid-${idx + 1}`
+    const configuredPos =
+      windowGridPositions?.find((p) => p?.id === gridId || p?.index === (instance.index ?? idx + 1)) ??
+      windowPositions?.[idx]
+
+    const cols = instance.cols ?? argv.grid.cols
+    const rows = instance.rows ?? argv.grid.rows
+    const width = instance.width ?? argv.window.width
+    const height = instance.height ?? argv.window.height
+
+    const x =
+      configuredPos?.x ?? instance.x ?? (argv.window.x != null ? argv.window.x + idx * 40 : undefined)
+    const y =
+      configuredPos?.y ?? instance.y ?? (argv.window.y != null ? argv.window.y + idx * 40 : undefined)
+
+    const positionedConfig = {
+      ...streamWindowConfig,
+      cols,
+      rows,
+      width,
+      height,
+      x,
+      y,
+    }
+
+    const runtime = {
+      id: gridId,
+      cellOffset: nextCellOffset,
+      config: positionedConfig,
+      window: new StreamWindow({ ...positionedConfig }),
+    }
+    nextCellOffset += cols * rows
+    return runtime
+  })
+  const gridCount = gridRuntimes.length
+  const gridRuntimeMap = new Map(gridRuntimes.map((grid) => [grid.id, grid]))
   const controlWindow = new ControlWindow()
 
   let browseWindow: BrowserWindow | null = null
   let streamdelayClient: StreamdelayClient | null = null
+  const gridViewState = new Map<string, ViewState[]>()
 
   console.debug('Creating initial state...')
   const initialSavedLayouts = db.data.savedLayouts ? Object.fromEntries(
     Object.entries(db.data.savedLayouts).map(([key, value]) => [
       key,
-      { name: value.name, timestamp: value.timestamp }
+      {
+        name: value.name,
+        timestamp: value.timestamp,
+        gridSize: value.gridSize,
+        gridId: value.gridId,
+      }
     ])
   ) : undefined
   console.debug('Initial savedLayouts loaded from DB:', initialSavedLayouts)
@@ -365,32 +461,18 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     identity: {
       role: 'local',
     },
-    config: streamWindowConfig,
+    config: gridRuntimes[0]?.config ?? streamWindowConfig,
+    grids: gridRuntimes.map((grid) => ({
+      id: grid.id,
+      config: grid.config,
+      views: [],
+      cellOffset: grid.cellOffset,
+    })),
     streams: [],
     customStreams: [],
     views: [],
     streamdelay: null,
     savedLayouts: initialSavedLayouts
-  }
-
-  function updateViewsFromStateDoc() {
-    try {
-      const viewContentMap = new Map()
-      for (const [key, viewData] of viewsState) {
-        const streamId = viewData.get('streamId')
-        const stream = clientState.streams.find((s) => s._id === streamId)
-        if (!stream) {
-          continue
-        }
-        viewContentMap.set(key, {
-          url: stream.link,
-          kind: stream.kind || 'video',
-        })
-      }
-      streamWindow.setViews(viewContentMap, clientState.streams)
-    } catch (err) {
-      console.error('Error updating views', err)
-    }
   }
 
   const stateDoc = new Y.Doc()
@@ -416,7 +498,11 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   )
 
   stateDoc.transact(() => {
-    for (let i = 0; i < argv.grid.cols * argv.grid.rows; i++) {
+    const totalCells = gridRuntimes.reduce(
+      (sum, grid) => sum + grid.config.cols * grid.config.rows,
+      0,
+    )
+    for (let i = 0; i < totalCells; i++) {
       if (viewsState.has(String(i))) {
         continue
       }
@@ -426,10 +512,73 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     }
   })
 
-  updateViewsFromStateDoc()
-  viewsState.observeDeep(updateViewsFromStateDoc)
+  const ensureViewEntry = (globalIdx: number) => {
+    let entry = viewsState.get(String(globalIdx))
+    if (!entry) {
+      entry = new Y.Map<string | undefined>()
+      entry.set('streamId', undefined)
+      viewsState.set(String(globalIdx), entry)
+    }
+    return entry
+  }
+
+  const defaultGridId = gridRuntimes[0]?.id ?? 'grid-1'
+  const resolveGridId = (gridId?: string) =>
+    (gridId && gridRuntimeMap.has(gridId)) ? gridId : defaultGridId
+
+  const getGridRuntime = (gridId?: string) => {
+    const resolvedId = resolveGridId(gridId)
+    const runtime = gridRuntimeMap.get(resolvedId)
+    if (!runtime) {
+      throw new Error(`Unknown grid id: ${gridId}`)
+    }
+    return runtime
+  }
+
+  function updateViewsFromStateDocForGrid(gridId: string) {
+    const grid = gridRuntimeMap.get(gridId)
+    if (!grid) {
+      return
+    }
+
+    try {
+      const viewContentMap = new Map()
+      const cellCount = grid.config.cols * grid.config.rows
+      for (let localIdx = 0; localIdx < cellCount; localIdx++) {
+        const globalIdx = grid.cellOffset + localIdx
+        const viewData = ensureViewEntry(globalIdx)
+        const streamId = viewData.get('streamId')
+        const stream = clientState.streams.find((s) => s._id === streamId)
+        if (!stream) {
+          continue
+        }
+        viewContentMap.set(String(localIdx), {
+          url: stream.link,
+          kind: stream.kind || 'video',
+        })
+      }
+      grid.window.setViews(viewContentMap, clientState.streams)
+    } catch (err) {
+      console.error(`Error updating views for ${gridId}`, err)
+    }
+  }
+
+  for (const grid of gridRuntimes) {
+    updateViewsFromStateDocForGrid(grid.id)
+  }
+
+  viewsState.observeDeep(() => {
+    for (const grid of gridRuntimes) {
+      updateViewsFromStateDocForGrid(grid.id)
+    }
+  })
 
   const onCommand = async (msg: ControlCommand) => {
+    if (!msg || typeof msg !== 'object' || typeof (msg as any).type !== 'string') {
+      console.warn('Ignoring command with missing type', msg)
+      return
+    }
+
     console.debug('Received message:', msg)
     console.debug('Message type check:', {
       msgType: msg.type,
@@ -441,7 +590,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     switch (msg.type) {
       case 'set-listening-view':
         console.debug('Setting listening view:', msg.viewIdx)
-        streamWindow.setListeningView(msg.viewIdx)
+        getGridRuntime(msg.gridId).window.setListeningView(msg.viewIdx)
         break
       case 'set-view-background-listening':
         console.debug(
@@ -449,11 +598,17 @@ async function main(argv: ReturnType<typeof parseArgs>) {
           msg.viewIdx,
           msg.listening,
         )
-        streamWindow.setViewBackgroundListening(msg.viewIdx, msg.listening)
+        getGridRuntime(msg.gridId).window.setViewBackgroundListening(
+          msg.viewIdx,
+          msg.listening,
+        )
         break
       case 'set-view-blurred':
         console.debug('Setting view blurred:', msg.viewIdx, msg.blurred)
-        streamWindow.setViewBlurred(msg.viewIdx, msg.blurred)
+        getGridRuntime(msg.gridId).window.setViewBlurred(
+          msg.viewIdx,
+          msg.blurred,
+        )
         break
       case 'rotate-stream':
         console.debug('Rotating stream:', msg.url, msg.rotation)
@@ -471,7 +626,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         break
       case 'reload-view':
         console.debug('Reloading view:', msg.viewIdx)
-        streamWindow.reloadView(msg.viewIdx)
+        getGridRuntime(msg.gridId).window.reloadView(msg.viewIdx)
         break
       case 'browse':
       case 'dev-tools':
@@ -501,7 +656,10 @@ async function main(argv: ReturnType<typeof parseArgs>) {
           }
         } else if (msg.type === 'dev-tools') {
           console.debug('Opening DevTools for view:', msg.viewIdx)
-          streamWindow.openDevTools(msg.viewIdx, browseWindow.webContents)
+          getGridRuntime(msg.gridId).window.openDevTools(
+            msg.viewIdx,
+            browseWindow.webContents,
+          )
         }
         break
       case 'set-stream-censored':
@@ -518,15 +676,29 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         break
       case 'refresh-all-views':
         console.debug('Refreshing all views sequentially...')
-        streamWindow.refreshAllViewsSequentially()
+        getGridRuntime(msg.gridId).window.refreshAllViewsSequentially()
         break
       case 'refresh-errored-views':
         console.debug('Refreshing errored views sequentially...')
-        streamWindow.refreshErroredViewsSequentially()
+        getGridRuntime(msg.gridId).window.refreshErroredViewsSequentially()
         break
       case 'save-layout': {
         console.debug('Saving layout to slot:', msg.slot, 'with name:', msg.name)
-        const currentState = Y.encodeStateAsUpdate(stateDoc)
+        const targetGrid = getGridRuntime(msg.gridId)
+
+        const layoutDoc = new Y.Doc()
+        const layoutViews = layoutDoc.getMap<Y.Map<string | undefined>>('views')
+
+        const cellCount = targetGrid.config.cols * targetGrid.config.rows
+        for (let localIdx = 0; localIdx < cellCount; localIdx++) {
+          const globalIdx = targetGrid.cellOffset + localIdx
+          const sourceView = ensureViewEntry(globalIdx)
+          const savedView = new Y.Map<string | undefined>()
+          savedView.set('streamId', sourceView.get('streamId'))
+          layoutViews.set(String(localIdx), savedView)
+        }
+
+        const currentState = Y.encodeStateAsUpdate(layoutDoc)
         const slotKey = `slot${msg.slot}`
         db.update((data) => {
           if (!data.savedLayouts) {
@@ -535,7 +707,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
           data.savedLayouts[slotKey] = {
             name: msg.name,
             stateDoc: Buffer.from(currentState).toString('base64'),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            gridSize: { cols: targetGrid.config.cols, rows: targetGrid.config.rows },
+            gridId: targetGrid.id,
           }
         })
         // Update client state
@@ -543,7 +717,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
           ...clientState.savedLayouts,
           [slotKey]: {
             name: msg.name,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            gridSize: { cols: targetGrid.config.cols, rows: targetGrid.config.rows },
+            gridId: targetGrid.id,
           }
         }
         console.debug('Updating savedLayouts in client state:', newSavedLayouts)
@@ -559,28 +735,21 @@ async function main(argv: ReturnType<typeof parseArgs>) {
         const savedLayout = db.data.savedLayouts?.[slotKey]
         if (savedLayout) {
           try {
+            const targetGrid = getGridRuntime(msg.gridId)
             const savedState = Buffer.from(savedLayout.stateDoc, 'base64')
-            
-            // Create a new document to extract the saved views
+
             const tempDoc = new Y.Doc()
             Y.applyUpdate(tempDoc, savedState)
             const tempViewsState = tempDoc.getMap<Y.Map<string | undefined>>('views')
-            
-            // Clear current state and apply saved views
+
+            const cellCount = targetGrid.config.cols * targetGrid.config.rows
+
             stateDoc.transact(() => {
-              // Clear all current streams
-              for (const [key, viewData] of viewsState) {
-                viewData.set('streamId', undefined)
-              }
-              
-              // Apply saved streams
-              for (const [key, savedViewData] of tempViewsState) {
-                if (viewsState.has(key)) {
-                  const currentViewData = viewsState.get(key)
-                  if (currentViewData) {
-                    currentViewData.set('streamId', savedViewData?.get('streamId'))
-                  }
-                }
+              for (let localIdx = 0; localIdx < cellCount; localIdx++) {
+                const globalIdx = targetGrid.cellOffset + localIdx
+                const currentViewData = ensureViewEntry(globalIdx)
+                const savedViewData = tempViewsState.get(String(localIdx))
+                currentViewData.set('streamId', savedViewData?.get('streamId'))
               }
             })
             console.debug('Layout loaded successfully:', savedLayout.name)
@@ -612,8 +781,8 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       }
       case 'spotlight':
         console.debug('Spotlighting stream:', msg.url)
-        console.debug('Calling streamWindow.spotlight with URL:', msg.url)
-        streamWindow.spotlight(msg.url)
+        console.debug('Calling grid spotlight with URL:', msg.url)
+        getGridRuntime(msg.gridId).window.spotlight(msg.url)
         break
       default:
         console.warn('Unknown command type received:', msg.type)
@@ -623,12 +792,37 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   const stateEmitter = new EventEmitter<{ state: [StreamwallState] }>()
 
   function updateState(newState: Partial<StreamwallState>) {
-    clientState = { ...clientState, ...newState }
+    const grids = gridRuntimes.map((grid) => ({
+      id: grid.id,
+      config: grid.config,
+      cellOffset: grid.cellOffset,
+      views: gridViewState.get(grid.id) ?? [],
+    }))
+
+    const primaryGrid = grids[0]
+
+    clientState = {
+      ...clientState,
+      ...newState,
+      grids,
+      config: primaryGrid?.config ?? clientState.config,
+      views: primaryGrid?.views ?? clientState.views,
+    }
+
     if (newState.savedLayouts) {
       console.debug('updateState called with savedLayouts:', newState.savedLayouts)
       console.debug('New clientState savedLayouts:', clientState.savedLayouts)
     }
-    streamWindow.onState(clientState)
+
+    for (const grid of gridRuntimes) {
+      const scopedState = {
+        ...clientState,
+        config: grid.config,
+        views: gridViewState.get(grid.id) ?? [],
+      }
+      grid.window.onState(scopedState)
+    }
+
     controlWindow.onState(clientState)
     stateEmitter.emit('state', clientState)
   }
@@ -636,14 +830,22 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   // Wire up IPC:
 
   // StreamWindow view updates -> main
-  streamWindow.on('state', (viewStates) => {
-    updateState({ views: viewStates })
-  })
+  for (const grid of gridRuntimes) {
+    grid.window.on('state', (viewStates) => {
+      gridViewState.set(grid.id, viewStates)
+      updateState({})
+    })
 
-  // StreamWindow <- main init state
-  streamWindow.on('load', () => {
-    streamWindow.onState(clientState)
-  })
+    // StreamWindow <- main init state
+    grid.window.on('load', () => {
+      const scopedState = {
+        ...clientState,
+        config: grid.config,
+        views: gridViewState.get(grid.id) ?? [],
+      }
+      grid.window.onState(scopedState)
+    })
+  }
 
   // Control <- main collab updates
   stateDoc.on('update', (update) => {
@@ -658,12 +860,20 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
   // Control -> main
   controlWindow.on('ydoc', (update) => Y.applyUpdate(stateDoc, update))
-  controlWindow.on('command', (command) => onCommand(command))
+  controlWindow.on('command', (command) => {
+    if ((command as any)?.error) {
+      console.warn('Control window reported error:', (command as any).error)
+      return
+    }
+    onCommand(command)
+  })
 
   // TODO: Hide on macOS, allow reopening from dock
-  streamWindow.on('close', () => {
-    process.exit(0)
-  })
+  for (const grid of gridRuntimes) {
+    grid.window.on('close', () => {
+      process.exit(0)
+    })
+  }
 
   if (argv.control.endpoint) {
     console.debug('Connecting to control server...')
@@ -701,6 +911,11 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
         if (!msg || typeof msg !== 'object') {
           console.warn('Invalid message format, skipping')
+          return
+        }
+
+        if ((msg as any).error) {
+          console.warn('Control WebSocket reported error:', (msg as any).error)
           return
         }
 
@@ -744,7 +959,7 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       channel: twitchChannel,
     })
     twitchBot.on('setListeningView', (idx) => {
-      streamWindow.setListeningView(idx)
+      gridRuntimes[0]?.window.setListeningView(idx)
     })
     stateEmitter.on('state', () => twitchBot.onState(clientState))
     twitchBot.connect()
@@ -773,7 +988,9 @@ async function main(argv: ReturnType<typeof parseArgs>) {
 
   for await (const streams of combineDataSources(dataSources, idGen)) {
     updateState({ streams })
-    updateViewsFromStateDoc()
+    for (const grid of gridRuntimes) {
+      updateViewsFromStateDocForGrid(grid.id)
+    }
   }
 }
 
