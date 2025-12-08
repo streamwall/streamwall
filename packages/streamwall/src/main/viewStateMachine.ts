@@ -84,9 +84,17 @@ const viewStateMachine = setup({
 
     offscreenView: ({ context }) => {
       const { view, win } = context
-      win.contentView.addChildView(view, 0) // Insert below background (so hidden by background)
-      const { width, height } = win.getBounds()
-      view.setBounds({ x: 0, y: 0, width, height })
+      const wc = view.webContents
+      if (!win || win.isDestroyed() || !wc || wc.isDestroyed()) {
+        return
+      }
+      try {
+        win.contentView.addChildView(view, 0) // Insert below background (so hidden by background)
+        const { width, height } = win.getBounds()
+        view.setBounds({ x: 0, y: 0, width, height })
+      } catch (err) {
+        console.warn('[view] offscreenView failed; view/window destroyed?', err)
+      }
     },
 
     positionView: ({ context }) => {
@@ -96,8 +104,17 @@ const viewStateMachine = setup({
         return
       }
 
-      win.contentView.addChildView(view, win.contentView.children.length - 2) // Insert below overlay but above background
-      view.setBounds(pos)
+      const wc = view.webContents
+      if (!win || win.isDestroyed() || !wc || wc.isDestroyed()) {
+        return
+      }
+
+      try {
+        win.contentView.addChildView(view, win.contentView.children.length - 2) // Insert below overlay but above background
+        view.setBounds(pos)
+      } catch (err) {
+        console.warn('[view] positionView failed; view/window destroyed?', err)
+      }
     },
   },
 

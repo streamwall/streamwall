@@ -3,6 +3,7 @@ import EventEmitter from 'events'
 import path from 'path'
 import { ControlCommand, StreamwallState } from 'streamwall-shared'
 import { loadHTML } from './loadHTML'
+import type { WebContents } from 'electron'
 
 export interface ControlWindowEventMap {
   load: []
@@ -14,6 +15,22 @@ export interface ControlWindowEventMap {
 export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
   win: BrowserWindow
 
+  private getWebContentsSafe(): WebContents | null {
+    try {
+      if (!this.win || this.win.isDestroyed()) {
+        return null
+      }
+      const wc = this.win.webContents
+      // webContents itself can be destroyed independently
+      if (!wc || wc.isDestroyed()) {
+        return null
+      }
+      return wc
+    } catch {
+      return null
+    }
+  }
+
   constructor() {
     super()
 
@@ -21,7 +38,7 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
       title: 'Streamwall Control',
       width: 1280,
       height: 1024,
-      closable: false,
+      closable: true,
       webPreferences: {
         preload: path.join(__dirname, 'controlPreload.js'),
         webSecurity: false, // Allow external resources
@@ -63,8 +80,22 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
     })
     
     this.win.removeMenu()
+    console.log('[control] window created')
 
+    this.win.on('ready-to-show', () => console.log('[control] ready-to-show'))
+    this.win.on('show', () => console.log('[control] show'))
+    this.win.on('closed', () => console.log('[control] closed'))
     this.win.on('close', () => this.emit('close'))
+    this.win.on('unresponsive', () => console.warn('[control] unresponsive'))
+    this.win.webContents.on('render-process-gone', (_e, details) => {
+      console.warn('[control] render-process-gone', details)
+    })
+    this.win.webContents.on('did-fail-load', (_e, errCode, errDesc, validatedURL) => {
+      console.warn('[control] did-fail-load', { errCode, errDesc, validatedURL })
+    })
+    this.win.webContents.on('did-finish-load', () => {
+      console.log('[control] did-finish-load')
+    })
 
     loadHTML(this.win.webContents, 'control')
 
@@ -100,27 +131,27 @@ export default class ControlWindow extends EventEmitter<ControlWindowEventMap> {
   }
 
   onState(state: StreamwallState) {
-    if (this.win && this.win.webContents && !this.win.isDestroyed()) {
-      try {
-        this.win.webContents.send('state', state)
-      } catch (err) {
-        // Silently ignore errors when window is being disposed
-        if (!(err instanceof Error) || !err.message.includes('disposed')) {
-          console.error('Error sending state to control window:', err)
-        }
+    const wc = this.getWebContentsSafe()
+    if (!wc) return
+    try {
+      wc.send('state', state)
+    } catch (err) {
+      // Silently ignore errors when window is being disposed
+      if (!(err instanceof Error) || !err.message.includes('disposed')) {
+        console.error('Error sending state to control window:', err)
       }
     }
   }
 
   onYDocUpdate(update: Uint8Array) {
-    if (this.win && this.win.webContents && !this.win.isDestroyed()) {
-      try {
-        this.win.webContents.send('ydoc', update)
-      } catch (err) {
-        // Silently ignore errors when window is being disposed
-        if (!(err instanceof Error) || !err.message.includes('disposed')) {
-          console.error('Error sending YDoc update to control window:', err)
-        }
+    const wc = this.getWebContentsSafe()
+    if (!wc) return
+    try {
+      wc.send('ydoc', update)
+    } catch (err) {
+      // Silently ignore errors when window is being disposed
+      if (!(err instanceof Error) || !err.message.includes('disposed')) {
+        console.error('Error sending YDoc update to control window:', err)
       }
     }
   }

@@ -1,6 +1,6 @@
 import TOML from '@iarna/toml'
 import * as Sentry from '@sentry/electron/main'
-import { BrowserWindow, app, session, shell } from 'electron'
+import { BrowserWindow, app, ipcMain, session, shell } from 'electron'
 import runControlServer from 'streamwall-control-server'
 import started from 'electron-squirrel-startup'
 import fs from 'fs'
@@ -307,7 +307,315 @@ function parseArgs(): StreamwallConfig {
   )
 }
 
+type GridInstanceConfig = {
+  id?: string
+  index?: number
+  cols?: number
+  rows?: number
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+}
+
+function deriveGridInstances(cfg: StreamwallConfig): GridInstanceConfig[] {
+  if (cfg.grid.instances && cfg.grid.instances.length > 0) {
+    return cfg.grid.instances
+  }
+
+  const defaultCols = cfg.grid.cols
+  const defaultRows = cfg.grid.rows
+  const fallbackPositions = [
+    { x: 0, y: 0 },
+    { x: 1920, y: 0 },
+    { x: 0, y: 1080 },
+    { x: 1920, y: 1080 },
+    { x: 0, y: 2160 },
+    { x: 1920, y: 2160 },
+  ]
+
+  const fromWindowGrids = cfg.window.grids?.map((g, idx) => ({
+    id: g.id ?? `grid-${g.index ?? idx + 1}`,
+    index: g.index ?? idx + 1,
+    cols: defaultCols,
+    rows: defaultRows,
+    x: g.x,
+    y: g.y,
+  }))
+
+  const fromGridWindow = cfg.grid.window?.map((pos, idx) => ({
+    id: `grid-${idx + 1}`,
+    index: idx + 1,
+    cols: defaultCols,
+    rows: defaultRows,
+    x: pos.x,
+    y: pos.y,
+  }))
+
+  const candidates = fromWindowGrids?.length ? fromWindowGrids : fromGridWindow ?? []
+  const count = Math.max(cfg.grid.count ?? candidates.length, candidates.length)
+
+  const instances: GridInstanceConfig[] = []
+  for (let i = 0; i < Math.max(count, fallbackPositions.length); i++) {
+    const candidate = candidates[i]
+    const pos = candidate?.x !== undefined || candidate?.y !== undefined ? candidate : { x: fallbackPositions[i]?.x, y: fallbackPositions[i]?.y }
+    instances.push({
+      id: candidate?.id ?? `grid-${i + 1}`,
+      index: candidate?.index ?? i + 1,
+      cols: candidate?.cols ?? defaultCols,
+      rows: candidate?.rows ?? defaultRows,
+      x: pos?.x,
+      y: pos?.y,
+      width: cfg.window.width,
+      height: cfg.window.height,
+    })
+  }
+
+  return instances
+}
+
+function pruneUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => pruneUndefined(item)) as unknown as T
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      const cleaned = pruneUndefined(val)
+      if (cleaned !== undefined) {
+        result[key] = cleaned
+      }
+    }
+    return result as unknown as T
+  }
+  return value
+}
+
+async function openConfigWizard(currentConfig: StreamwallConfig) {
+  const configPath = join(app.getPath('userData'), 'config.toml')
+
+  const url = (() => {
+    try {
+      return new URL(currentConfig.control.address)
+    } catch {
+      return new URL('http://0.0.0.0:3000')
+    }
+  })()
+
+  const initialHost = url.hostname || '0.0.0.0'
+  const initialPort = Number(url.port || currentConfig.control.port || 3000)
+  const instances = deriveGridInstances(currentConfig).slice(0, 6)
+  const initialGridCount = Math.min(Math.max(currentConfig.grid.count ?? instances.length ?? 1, 1), 6)
+
+  const initialData = {
+    host: initialHost,
+    port: initialPort,
+    gridCount: initialGridCount,
+    grids: instances.map((g, idx) => ({
+      id: g.id ?? `grid-${idx + 1}`,
+      cols: g.cols ?? currentConfig.grid.cols,
+      rows: g.rows ?? currentConfig.grid.rows,
+      x: g.x ?? 0,
+      y: g.y ?? 0,
+    })),
+  }
+
+  return await new Promise<{ launch: boolean } | null>((resolve) => {
+    const win = new BrowserWindow({
+      width: 640,
+      height: 900,
+      resizable: true,
+      title: 'Streamwall Setup',
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+        sandbox: false,
+      },
+    })
+
+    const channel = 'config-wizard:save'
+
+    ipcMain.handle(channel, (_event, payload) => {
+      console.log('[wizard] Received save request', payload)
+      try {
+        const gridDefaults = { cols: currentConfig.grid.cols, rows: currentConfig.grid.rows }
+        const nextConfig: StreamwallConfig = {
+          ...currentConfig,
+          control: {
+            ...currentConfig.control,
+            hostname: payload.host || initialHost,
+            port: Number(payload.port) || initialPort,
+            address: `http://${payload.host || initialHost}:${Number(payload.port) || initialPort}`,
+          },
+          grid: {
+            ...currentConfig.grid,
+            positions: undefined,
+            window: undefined,
+            instances: payload.grids.slice(0, 6).map((g: any, idx: number) => ({
+              id: g.id || `grid-${idx + 1}`,
+              index: idx + 1,
+              cols: Number(g.cols) || gridDefaults.cols,
+              rows: Number(g.rows) || gridDefaults.rows,
+              x: g.x === '' || g.x === undefined ? undefined : Number(g.x),
+              y: g.y === '' || g.y === undefined ? undefined : Number(g.y),
+              width: currentConfig.window.width,
+              height: currentConfig.window.height,
+            })),
+            cols: Number(payload.grids?.[0]?.cols) || currentConfig.grid.cols,
+            rows: Number(payload.grids?.[0]?.rows) || currentConfig.grid.rows,
+            count: Number(payload.gridCount) || initialGridCount,
+          },
+          window: {
+            ...currentConfig.window,
+            grids: undefined,
+          },
+        }
+
+        const cleanedConfig: StreamwallConfig = {
+          ...nextConfig,
+          grid: { ...nextConfig.grid },
+          window: { ...nextConfig.window },
+        }
+        delete (cleanedConfig.grid as any).window
+        delete (cleanedConfig.grid as any).positions
+        delete (cleanedConfig.window as any).grids
+
+        const serializableConfig = pruneUndefined(cleanedConfig)
+        fs.writeFileSync(configPath, TOML.stringify(serializableConfig))
+        console.log('[wizard] Saved config to', configPath)
+        resolve({ launch: !!payload.launch })
+      } catch (err) {
+        console.error('Failed to save config:', err)
+        resolve(null)
+      } finally {
+        ipcMain.removeHandler(channel)
+        win.close()
+      }
+    })
+
+    win.on('closed', () => {
+      ipcMain.removeHandler(channel)
+      resolve(null)
+    })
+
+    const formRows = Array.from({ length: 6 }, (_, idx) => {
+      const g = initialData.grids[idx] ?? {
+        id: `grid-${idx + 1}`,
+        cols: currentConfig.grid.cols,
+        rows: currentConfig.grid.rows,
+        x: 0,
+        y: 0,
+      }
+      const hiddenClass = idx >= 2 ? 'class="grid-row hidden"' : 'class="grid-row"'
+      return `
+        <fieldset ${hiddenClass} data-idx="${idx}" style="margin-bottom:12px; border:1px solid #ccc; padding:10px;">
+          <legend style="padding:0 6px;">Grid ${idx + 1}</legend>
+          <label>ID <input name="id-${idx}" value="${g.id}" /></label>
+          <label>Cols <input type="number" min="1" name="cols-${idx}" value="${g.cols}" /></label>
+          <label>Rows <input type="number" min="1" name="rows-${idx}" value="${g.rows}" /></label>
+          <label>X <input type="number" name="x-${idx}" value="${g.x}" /></label>
+          <label>Y <input type="number" name="y-${idx}" value="${g.y}" /></label>
+        </fieldset>
+      `
+    }).join('')
+
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Streamwall Setup</title>
+          <style>
+            body { font-family: sans-serif; margin: 16px; }
+            label { display: block; margin: 4px 0; }
+            input { margin-left: 6px; }
+            .row { display: flex; gap: 12px; flex-wrap: wrap; }
+            fieldset label { display: flex; gap: 6px; align-items: center; }
+            .actions { margin-top: 12px; display: flex; gap: 8px; }
+            .hidden { display: none; }
+            #toggleGrids { margin: 8px 0; }
+            .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; color: #fff; }
+            .btn svg { width: 16px; height: 16px; }
+            .btn.start { background: #2ecc71; box-shadow: 0 2px 0 #27ae60; }
+            .btn.start:hover { background: #27ae60; }
+            .btn.save { background: #3498db; box-shadow: 0 2px 0 #2c80b8; }
+            .btn.save:hover { background: #2c80b8; }
+            .btn.cancel { background: #666; box-shadow: 0 2px 0 #444; }
+            .btn.cancel:hover { background: #555; }
+          </style>
+        </head>
+        <body>
+          <h2>Streamwall Setup</h2>
+          <div class="row">
+            <label>Control host <input id="host" value="${initialData.host}" /></label>
+            <label>Control port <input id="port" type="number" min="1" max="65535" value="${initialData.port}" /></label>
+            <label>Grid count <input id="gridCount" type="number" min="1" max="6" value="${initialData.gridCount}" /></label>
+          </div>
+          <div id="grids">${formRows}</div>
+          <button id="toggleGrids">Show all grids</button>
+          <div class="actions">
+            <button id="saveLaunch" class="btn start" title="Save and launch">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+              <span>Save & Launch</span>
+            </button>
+            <button id="save" class="btn save" title="Save only">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6 2h11l3 3v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h13V7h-4a1 1 0 0 1-1-1V4H6zm9 0v2h2.586L15 4.414V4zM8 12h8v2H8v-2zm0 4h8v2H8v-2z"/></svg>
+              <span>Save Only</span>
+            </button>
+            <button id="cancel" class="btn cancel" title="Cancel and exit">Cancel</button>
+          </div>
+          <script>
+            const { ipcRenderer } = require('electron')
+            const channel = '${channel}'
+            function collectPayload(launch) {
+              const grids = []
+              for (let i = 0; i < 6; i++) {
+                const id = document.querySelector('[name="id-' + i + '"]').value || ('grid-' + (i+1))
+                const cols = document.querySelector('[name="cols-' + i + '"]').value
+                const rows = document.querySelector('[name="rows-' + i + '"]').value
+                const x = document.querySelector('[name="x-' + i + '"]').value
+                const y = document.querySelector('[name="y-' + i + '"]').value
+                grids.push({ id, cols, rows, x, y })
+              }
+              return {
+                host: document.getElementById('host').value || '0.0.0.0',
+                port: Number(document.getElementById('port').value) || ${initialPort},
+                gridCount: Number(document.getElementById('gridCount').value) || ${initialGridCount},
+                grids,
+                launch,
+              }
+            }
+            const handleSave = (launch) => {
+              ipcRenderer.invoke(channel, collectPayload(launch)).catch((err) => {
+                console.error('Failed to save config:', err)
+                alert('Failed to save config. Check the console for details.')
+              })
+            }
+            document.getElementById('saveLaunch').onclick = () => handleSave(true)
+            document.getElementById('save').onclick = () => handleSave(false)
+            document.getElementById('cancel').onclick = () => window.close()
+
+            const toggleBtn = document.getElementById('toggleGrids')
+            let expanded = false
+            toggleBtn.onclick = () => {
+              expanded = !expanded
+              document.querySelectorAll('.grid-row').forEach((el, idx) => {
+                if (idx < 2) return
+                el.classList.toggle('hidden', !expanded)
+              })
+              toggleBtn.textContent = expanded ? 'Hide extra grids' : 'Show all grids'
+            }
+          </script>
+        </body>
+      </html>
+    `
+
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+  })
+}
+
 async function main(argv: ReturnType<typeof parseArgs>) {
+  console.log('[main] starting with grid.count', argv.grid.count, 'instances', argv.grid.instances?.length)
   // Reject all permission requests from web content.
   session
     .fromPartition('persist:session')
@@ -355,8 +663,11 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       })
 
       // If no explicit endpoint was provided, derive it from the shared token
-      if (!argv.control.endpoint && db.data.streamwallToken) {
-        const { tokenId, secret } = db.data.streamwallToken
+      const storedToken = (db.data as any).streamwallToken as
+        | { tokenId: string; secret: string }
+        | undefined
+      if (!argv.control.endpoint && storedToken) {
+        const { tokenId, secret } = storedToken
         const wsBase = argv.control.address.replace(/^http/, 'ws')
         argv.control.endpoint = `${wsBase}/streamwall/${tokenId}/ws?token=${secret}`
         console.log('Auto-configured control endpoint:', argv.control.endpoint)
@@ -391,16 +702,41 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     activeColor: argv.window['active-color'],
     backgroundColor: argv.window['background-color'],
   }
-  const gridBaseCount = Math.max(1, argv.grid.count ?? 1)
+  const gridBaseCount = Math.max(1, Math.min(argv.grid.count ?? 1, 6))
   const windowPositions = argv.grid.positions ?? argv.grid.window
   const windowGridPositions = argv.window.grids
   const gridConfigs =
     argv.grid.instances && argv.grid.instances.length > 0
       ? argv.grid.instances
-      : Array.from({ length: gridBaseCount }, (_, idx) => ({ id: `grid-${idx + 1}`, index: idx + 1 }))
+      : Array.from({ length: gridBaseCount }, (_, idx) => ({
+          id: `grid-${idx + 1}`,
+          index: idx + 1,
+        }))
+
+  const desiredCount = Math.max(1, gridBaseCount)
+  const fallbackPositions = [
+    { x: 0, y: 0 },
+    { x: 1920, y: 0 },
+    { x: 0, y: 1080 },
+    { x: 1920, y: 1080 },
+    { x: 0, y: 2160 },
+    { x: 1920, y: 2160 },
+  ]
+
+  const filledGridConfigs = [...gridConfigs.slice(0, desiredCount)]
+  for (let i = filledGridConfigs.length; i < desiredCount; i++) {
+    filledGridConfigs.push({
+      id: `grid-${i + 1}`,
+      index: i + 1,
+      cols: argv.grid.cols,
+      rows: argv.grid.rows,
+      x: fallbackPositions[i]?.x,
+      y: fallbackPositions[i]?.y,
+    })
+  }
 
   let nextCellOffset = 0
-  const gridRuntimes = gridConfigs.map((instance, idx) => {
+  const gridRuntimes = filledGridConfigs.map((instance, idx) => {
     const gridId = instance.id ?? `grid-${idx + 1}`
     const configuredPos =
       windowGridPositions?.find((p) => p?.id === gridId || p?.index === (instance.index ?? idx + 1)) ??
@@ -432,12 +768,17 @@ async function main(argv: ReturnType<typeof parseArgs>) {
       config: positionedConfig,
       window: new StreamWindow({ ...positionedConfig }),
     }
+    console.log('[main] created grid runtime', runtime.id, 'pos', { x, y }, 'size', { width, height }, 'cells', cols * rows)
     nextCellOffset += cols * rows
     return runtime
   })
   const gridCount = gridRuntimes.length
   const gridRuntimeMap = new Map(gridRuntimes.map((grid) => [grid.id, grid]))
   const controlWindow = new ControlWindow()
+  controlWindow.on('close', () => {
+    console.warn('Control window closed; quitting app.')
+    app.quit()
+  })
 
   let browseWindow: BrowserWindow | null = null
   let streamdelayClient: StreamdelayClient | null = null
@@ -871,7 +1212,8 @@ async function main(argv: ReturnType<typeof parseArgs>) {
   // TODO: Hide on macOS, allow reopening from dock
   for (const grid of gridRuntimes) {
     grid.window.on('close', () => {
-      process.exit(0)
+      console.warn('Stream window closed; quitting app.')
+      app.quit()
     })
   }
 
@@ -986,17 +1328,33 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     markDataSource(overlayStreamData.gen(), 'overlay'),
   ]
 
+  console.log('[main] entering data loop')
   for await (const streams of combineDataSources(dataSources, idGen)) {
     updateState({ streams })
     for (const grid of gridRuntimes) {
       updateViewsFromStateDocForGrid(grid.id)
     }
   }
+  console.log('[main] data loop completed (should not happen)')
 }
 
 function init() {
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err)
+  })
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason)
+  })
+  process.on('exit', (code) => {
+    console.log('Process exiting with code', code)
+  })
+
+  app.on('before-quit', () => console.warn('[app] before-quit'))
+  app.on('will-quit', () => console.warn('[app] will-quit'))
+  app.on('window-all-closed', () => console.warn('[app] window-all-closed'))
+
   console.debug('Parsing command line arguments...')
-  const argv = parseArgs()
+  let argv = parseArgs()
   if (argv.help) {
     return
   }
@@ -1014,12 +1372,30 @@ function init() {
   // Allow media to autoplay without user gesture (packaged builds on new machines)
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
-  console.debug('Enabling Electron sandbox...')
-  app.enableSandbox()
-
   app
     .whenReady()
-    .then(() => main(argv))
+    .then(async () => {
+      // Show config wizard before launching main windows
+      const result = await openConfigWizard(argv)
+      console.log('[init] Wizard result:', result)
+      if (!result) {
+        app.quit()
+        return
+      }
+
+      // Reload args from saved config to ensure consistency
+      argv = parseArgs()
+
+      console.log('[init] Parsed config after wizard. Launch?', result.launch)
+
+      if (result.launch) {
+        console.log('[init] Launching main app...')
+        await main(argv)
+      } else {
+        console.log('Configuration saved without launching.')
+        app.quit()
+      }
+    })
     .catch((err) => {
       console.error(err)
       process.exit(1)

@@ -62,9 +62,23 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       useContentSize: true,
       show: false,
     })
+    console.log('[grid] window created', { width, height, x, y, frameless })
     win.removeMenu()
     win.loadURL('about:blank')
+    win.on('ready-to-show', () => console.log('[grid] ready-to-show', { x: win.getBounds().x, y: win.getBounds().y }))
+    win.on('show', () => console.log('[grid] show'))
+    win.on('closed', () => console.log('[grid] closed'))
     win.on('close', () => this.emit('close'))
+    win.on('unresponsive', () => console.warn('[grid] unresponsive'))
+    win.webContents.on('render-process-gone', (_e, details) => {
+      console.warn('[grid] render-process-gone', details)
+    })
+    win.webContents.on('did-fail-load', (_e, errCode, errDesc, validatedURL) => {
+      console.warn('[grid] did-fail-load', { errCode, errDesc, validatedURL })
+    })
+    win.webContents.on('did-finish-load', () => {
+      console.log('[grid] did-finish-load')
+    })
 
     // Work around https://github.com/electron/electron/issues/14308
     // via https://github.com/lutzroeder/netron/commit/910ce67395130690ad76382c094999a4f5b51e92
