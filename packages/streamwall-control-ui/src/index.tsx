@@ -742,6 +742,11 @@ export function ControlUI({
                       <StyledGridInfo>
                         <StyledGridLabel>{streamId}</StyledGridLabel>
                         <div>{data?.source}</div>
+                        {data?.city && (
+                          <StyledGridLocation>
+                            {data?.city} {data?.state}
+                          </StyledGridLocation>
+                        )}
                       </StyledGridInfo>
                     </StyledGridPreviewBox>
                   )
@@ -1478,6 +1483,11 @@ const StyledGridInfo = styled.div`
 
 const StyledGridLabel = styled.div`
   font-size: 30px;
+`
+
+const StyledGridLocation = styled.div`
+  font-size: 13px;
+  opacity: 0.75;
 `
 
 const StyledGridInputs = styled.div`
