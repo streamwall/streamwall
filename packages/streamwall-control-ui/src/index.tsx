@@ -21,6 +21,10 @@ import {
   FaVolumeUp,
 } from 'react-icons/fa'
 import {
+  MdOutlineStayCurrentLandscape,
+  MdOutlineStayCurrentPortrait,
+} from 'react-icons/md'
+import {
   ContentKind,
   ControlCommand,
   idColor,
@@ -980,7 +984,7 @@ function StreamDelayBox({
 
 function StreamLine({
   id,
-  row: { label, source, link, notes, city, state },
+  row: { label, source, link, notes, city, state, orientation },
   disabled,
   onClickId,
 }: {
@@ -1007,7 +1011,15 @@ function StreamLine({
           label
         ) : (
           <>
-            <strong>{source}</strong> {city ? `(${city} ${state}) ` : ''}
+            <strong>{source}</strong>{' '}
+            {orientation === 'V' ? (
+              <MdOutlineStayCurrentPortrait />
+            ) : orientation === 'H' ? (
+              <MdOutlineStayCurrentLandscape />
+            ) : (
+              ''
+            )}{' '}
+            {city ? `(${city} ${state}) ` : ''}
             <a href={link} target="_blank">
               {truncate(link, { length: 55 })}
             </a>{' '}
@@ -1556,6 +1568,10 @@ const StyledStreamLine = styled.div`
   display: flex;
   align-items: center;
   margin: 0.5em 0;
+
+  svg {
+    height: 100%;
+  }
 `
 
 function CreateInviteInput({
