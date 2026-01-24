@@ -35,6 +35,7 @@ export interface StreamDataContent extends ContentDisplayOptions {
   city?: string
   state?: string
   orientation?: 'V' | 'H'
+  addedDate?: string
   _id?: string
   _dataSource?: string
 }

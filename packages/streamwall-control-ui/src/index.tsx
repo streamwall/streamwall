@@ -224,7 +224,7 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       }
     }
 
-    const streams = sortBy(stateStreams, ['_id'])
+    const streams = sortBy(stateStreams, ['addedDate', '_id'])
     const customStreams = stateStreams.filter((s) => s._dataSource === 'custom')
 
     return {
