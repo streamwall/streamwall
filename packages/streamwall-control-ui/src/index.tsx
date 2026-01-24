@@ -980,7 +980,7 @@ function StreamDelayBox({
 
 function StreamLine({
   id,
-  row: { label, source, link, notes },
+  row: { label, source, link, notes, city, state },
   disabled,
   onClickId,
 }: {
@@ -1007,7 +1007,7 @@ function StreamLine({
           label
         ) : (
           <>
-            <strong>{source}</strong>{' '}
+            <strong>{source}</strong> {city ? `(${city} ${state}) ` : ''}
             <a href={link} target="_blank">
               {truncate(link, { length: 55 })}
             </a>{' '}
