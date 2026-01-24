@@ -1,6 +1,6 @@
 import '@fontsource/noto-sans'
 import Color from 'color'
-import { range, sortBy, truncate } from 'lodash-es'
+import { orderBy, range, truncate } from 'lodash-es'
 import { DateTime } from 'luxon'
 import { JSX } from 'preact'
 import {
@@ -224,7 +224,7 @@ export function useStreamwallState(state: StreamwallState | undefined) {
       }
     }
 
-    const streams = sortBy(stateStreams, ['addedDate', '_id'])
+    const streams = orderBy(stateStreams, ['addedDate', '_id'], ['desc', 'asc'])
     const customStreams = stateStreams.filter((s) => s._dataSource === 'custom')
 
     return {
