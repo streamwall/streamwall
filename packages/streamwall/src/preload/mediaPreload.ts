@@ -186,7 +186,7 @@ const igHacks = {
   },
 }
 
-async function findVideo(kind: 'video' | 'audio') {
+async function findMedia(kind: 'video' | 'audio') {
   if (igHacks.isMatch()) {
     await igHacks.onLoad()
   }
@@ -227,10 +227,7 @@ async function findVideo(kind: 'video' | 'audio') {
 
   video.muted = false
 
-  const info = {
-    title: document.title,
-  }
-  return { info, video }
+  return video
 }
 
 async function main() {
@@ -243,13 +240,31 @@ async function main() {
   ])
 
   let rotationController: RotationController | undefined
+  async function acquireMedia() {
+    const media = await findMedia(content.kind)
+    console.log('media acquired', media)
+    if (content.kind === 'video' && media instanceof HTMLVideoElement) {
+      rotationController = new RotationController(media)
+    }
+    media.addEventListener(
+      'emptied',
+      () => {
+        console.warn('media emptied, re-acquiring', media)
+        media.remove()
+        acquireMedia()
+      },
+      { once: true },
+    )
+  }
+
   if (content.kind === 'video' || content.kind === 'audio') {
     webFrame.insertCSS(VIDEO_OVERRIDE_STYLE, { cssOrigin: 'user' })
-    const { info, video } = await findVideo(content.kind)
-    if (content.kind === 'video' && video instanceof HTMLVideoElement) {
-      rotationController = new RotationController(video)
-    }
-    ipcRenderer.send('view-info', { info })
+    acquireMedia()
+    ipcRenderer.send('view-info', {
+      info: {
+        title: document.title,
+      },
+    })
   } else if (content.kind === 'web') {
     webFrame.insertCSS(NO_SCROLL_STYLE, { cssOrigin: 'user' })
   }
