@@ -5,6 +5,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import {
   FaFacebook,
   FaInstagram,
+  FaMapMarkerAlt,
   FaTiktok,
   FaTwitch,
   FaVolumeUp,
@@ -80,17 +81,17 @@ function Overlay({
                 isListening={isListening}
               >
                 <StreamIcon url={content.url} />
-                <span>
-                  {data.label ? (
-                    data.label
-                  ) : (
-                    <>
-                      {data.source} &ndash; {data.city} {data.state}
-                    </>
-                  )}
-                </span>
+                <span>{data.label ? data.label : <>{data.source}</>}</span>
                 {(isListening || isBackgroundListening) && <FaVolumeUp />}
               </StreamTitle>
+            )}
+            {data?.city && (
+              <StreamLocation>
+                <FaMapMarkerAlt />
+                <span>
+                  {data.city} {data.state}
+                </span>
+              </StreamLocation>
             )}
             {isLoading && <LoadingSpinner />}
           </SpaceBorder>
@@ -273,6 +274,34 @@ const StreamTitle = styled.div`
     path {
       fill: white;
     }
+  }
+`
+
+const StreamLocation = styled.div`
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  max-width: calc(100% - 18px);
+
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 5px 9px;
+  font-weight: 800;
+  font-size: 14px;
+  color: white;
+  letter-spacing: -0.025em;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 4px black);
+
+  span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  svg {
+    flex-shrink: 0;
   }
 `
 
