@@ -248,13 +248,16 @@ async function main() {
     }
     media.addEventListener(
       'emptied',
-      () => {
+      async () => {
         console.warn('media emptied, re-acquiring', media)
-        media.remove()
-        acquireMedia()
+        const newMedia = await acquireMedia()
+        if (newMedia !== media) {
+          media.remove()
+        }
       },
       { once: true },
     )
+    return media
   }
 
   if (content.kind === 'video' || content.kind === 'audio') {
