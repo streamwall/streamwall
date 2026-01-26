@@ -44,6 +44,7 @@ const viewStateMachine = setup({
         }
       | { type: 'VIEW_INIT' }
       | { type: 'VIEW_LOADED' }
+      | { type: 'VIEW_STALLED' }
       | { type: 'VIEW_INFO'; info: ContentViewInfo }
       | { type: 'VIEW_ERROR'; error: unknown }
       | { type: 'MUTE' }
@@ -290,6 +291,17 @@ const viewStateMachine = setup({
             ],
           },
           states: {
+            playback: {
+              initial: 'playing',
+              on: {
+                VIEW_STALLED: '.stalled',
+                VIEW_LOADED: '.playing',
+              },
+              states: {
+                playing: {},
+                stalled: {},
+              },
+            },
             audio: {
               initial: 'muted',
               on: {

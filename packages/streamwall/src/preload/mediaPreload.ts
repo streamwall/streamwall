@@ -300,6 +300,8 @@ async function main() {
     const media = await findMedia(content.kind, elementTimeout)
     console.log('media acquired', media)
 
+    ipcRenderer.send('view-loaded')
+
     if (content.kind === 'video' && media instanceof HTMLVideoElement) {
       rotationController = new RotationController(media)
       snapshotInterval = window.setInterval(() => {
@@ -311,7 +313,10 @@ async function main() {
       'emptied',
       async () => {
         console.warn('media emptied, re-acquiring', media)
+
+        ipcRenderer.send('view-stalled')
         clearInterval(snapshotInterval)
+
         const newMedia = await acquireMedia(REACQUIRE_ELEMENT_TIMEOUT)
         if (newMedia !== media) {
           media.remove()
@@ -332,9 +337,8 @@ async function main() {
     })
   } else if (content.kind === 'web') {
     webFrame.insertCSS(NO_SCROLL_STYLE, { cssOrigin: 'user' })
+    ipcRenderer.send('view-loaded')
   }
-
-  ipcRenderer.send('view-loaded')
 
   function updateOptions(options: ContentDisplayOptions) {
     if (rotationController) {

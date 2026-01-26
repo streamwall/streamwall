@@ -126,6 +126,9 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
     ipcMain.on('view-loaded', (ev) => {
       this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_LOADED' })
     })
+    ipcMain.on('view-stalled', (ev) => {
+      this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_STALLED' })
+    })
     ipcMain.on('view-info', (ev, { info }) => {
       this.views.get(ev.sender.id)?.send?.({ type: 'VIEW_INFO', info })
     })

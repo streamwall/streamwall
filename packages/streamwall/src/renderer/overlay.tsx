@@ -62,7 +62,9 @@ function Overlay({
           'displaying.running.video.blurred',
           state,
         )
-        const isLoading = matchesState('displaying.loading', state)
+        const isLoading =
+          matchesState('displaying.loading', state) ||
+          matchesState('displaying.running.playback.stalled', state)
         const hasTitle = data && (data.label || data.source)
         const position = data?.labelPosition ?? 'top-left'
         return (
