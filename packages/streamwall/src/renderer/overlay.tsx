@@ -75,7 +75,7 @@ function Overlay({
             activeColor={activeColor}
             isListening={isListening}
           >
-            <BlurCover isBlurred={isBlurred} />
+            <FilterCover isBlurred={isBlurred} isDesaturated={isLoading} />
             {hasTitle && (
               <StreamTitle
                 position={position}
@@ -322,13 +322,16 @@ const LoadingSpinner = styled(TailSpin)<{ isVisible: boolean }>`
   visibility: ${({ isVisible }) => (isVisible ? 'visible' : 'hidden')};
 `
 
-const BlurCover = styled.div`
+const FilterCover = styled.div`
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
   bottom: 0;
-  backdrop-filter: ${({ isBlurred }) => (isBlurred ? 'blur(30px)' : 'blur(0)')};
+  backdrop-filter: ${({ isBlurred, isDesaturated }) =>
+    [isBlurred ? 'blur(30px)' : '', isDesaturated ? 'grayscale(75%)' : ''].join(
+      ' ',
+    )};
 `
 
 const VersionText = styled.div`
