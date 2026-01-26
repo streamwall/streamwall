@@ -3,6 +3,8 @@ import throttle from 'lodash/throttle'
 import { ContentDisplayOptions } from 'streamwall-shared'
 
 const SCAN_THROTTLE = 500
+const INITIAL_TIMEOUT = 10 * 1000
+const REACQUIRE_ELEMENT_TIMEOUT = 60 * 1000
 
 const VIDEO_OVERRIDE_STYLE = `
   * {
@@ -142,7 +144,10 @@ async function waitForQuery(query: string): Promise<Element> {
   })
 }
 
-async function waitForVideo(kind: 'video' | 'audio'): Promise<{
+async function waitForVideo(
+  kind: 'video' | 'audio',
+  timeoutMs = INITIAL_TIMEOUT,
+): Promise<{
   video?: HTMLMediaElement
   iframe?: HTMLIFrameElement
 }> {
@@ -150,7 +155,7 @@ async function waitForVideo(kind: 'video' | 'audio'): Promise<{
 
   let video: Element | null | void = await Promise.race([
     waitForQuery(kind),
-    sleep(10 * 1000),
+    sleep(timeoutMs),
   ])
   if (video instanceof HTMLMediaElement) {
     return { video }
@@ -186,12 +191,15 @@ const igHacks = {
   },
 }
 
-async function findMedia(kind: 'video' | 'audio') {
+async function findMedia(
+  kind: 'video' | 'audio',
+  elementTimeout = INITIAL_TIMEOUT,
+) {
   if (igHacks.isMatch()) {
     await igHacks.onLoad()
   }
 
-  const { video, iframe } = await waitForVideo(kind)
+  const { video, iframe } = await waitForVideo(kind, elementTimeout)
   if (!video) {
     throw new Error('could not find video')
   }
@@ -218,7 +226,7 @@ async function findMedia(kind: 'video' | 'audio') {
     const videoReady = new Promise((resolve) =>
       video.addEventListener('playing', resolve, { once: true }),
     )
-    await Promise.race([videoReady, sleep(10 * 1000)])
+    await Promise.race([videoReady, sleep(INITIAL_TIMEOUT)])
     if (!video.videoWidth) {
       throw new Error('timeout waiting for video to start')
     }
@@ -240,8 +248,8 @@ async function main() {
   ])
 
   let rotationController: RotationController | undefined
-  async function acquireMedia() {
-    const media = await findMedia(content.kind)
+  async function acquireMedia(elementTimeout: number) {
+    const media = await findMedia(content.kind, elementTimeout)
     console.log('media acquired', media)
     if (content.kind === 'video' && media instanceof HTMLVideoElement) {
       rotationController = new RotationController(media)
@@ -250,7 +258,7 @@ async function main() {
       'emptied',
       async () => {
         console.warn('media emptied, re-acquiring', media)
-        const newMedia = await acquireMedia()
+        const newMedia = await acquireMedia(REACQUIRE_ELEMENT_TIMEOUT)
         if (newMedia !== media) {
           media.remove()
         }
@@ -262,7 +270,7 @@ async function main() {
 
   if (content.kind === 'video' || content.kind === 'audio') {
     webFrame.insertCSS(VIDEO_OVERRIDE_STYLE, { cssOrigin: 'user' })
-    acquireMedia()
+    acquireMedia(INITIAL_TIMEOUT)
     ipcRenderer.send('view-info', {
       info: {
         title: document.title,
