@@ -104,6 +104,50 @@ class RotationController {
   }
 }
 
+class SnapshotController {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  latestSnapshotURL: string | null = null
+
+  constructor() {
+    this.canvas = document.createElement('canvas')
+  }
+
+  async snapshotVideo(videoEl: HTMLVideoElement) {
+    if (!('requestVideoFrameCallback' in videoEl)) {
+      console.warn('requestVideoFrameCallback not supported')
+      return
+    }
+
+    videoEl.requestVideoFrameCallback(() => {
+      const { canvas } = this
+      canvas.width = videoEl.videoWidth
+      canvas.height = videoEl.videoHeight
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        console.warn('could not get canvas context')
+        return
+      }
+
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          console.warn('could not create blob from canvas')
+          return
+        }
+
+        if (this.latestSnapshotURL) {
+          URL.revokeObjectURL(this.latestSnapshotURL)
+        }
+
+        const url = URL.createObjectURL(blob)
+        videoEl.poster = url
+      }, 'image/png')
+    })
+  }
+}
+
 // Watch for media tags and mute them as soon as possible.
 async function lockdownMediaTags() {
   const lockdown = throttle(() => {
@@ -247,17 +291,27 @@ async function main() {
     pageReady,
   ])
 
+  const snapshotController = new SnapshotController()
+
   let rotationController: RotationController | undefined
   async function acquireMedia(elementTimeout: number) {
+    let snapshotInterval: number | undefined
+
     const media = await findMedia(content.kind, elementTimeout)
     console.log('media acquired', media)
+
     if (content.kind === 'video' && media instanceof HTMLVideoElement) {
       rotationController = new RotationController(media)
+      snapshotInterval = window.setInterval(() => {
+        snapshotController.snapshotVideo(media)
+      }, 1000)
     }
+
     media.addEventListener(
       'emptied',
       async () => {
         console.warn('media emptied, re-acquiring', media)
+        clearInterval(snapshotInterval)
         const newMedia = await acquireMedia(REACQUIRE_ELEMENT_TIMEOUT)
         if (newMedia !== media) {
           media.remove()
