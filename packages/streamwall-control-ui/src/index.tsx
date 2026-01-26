@@ -1468,6 +1468,7 @@ const StyledGridInfo = styled.div`
   text-align: center;
   padding: 8px;
   border-radius: 16px;
+  pointer-events: none;
   z-index: 1000; /* Keep above grid inputs */
 `
 
