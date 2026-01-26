@@ -11,6 +11,7 @@ import {
   useState,
 } from 'preact/hooks'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { IconType } from 'react-icons'
 import {
   FaExchangeAlt,
   FaRedoAlt,
@@ -740,7 +741,13 @@ export function ControlUI({
                       isError={matchesState('displaying.error', state.state)}
                     >
                       <StyledGridInfo>
-                        <StyledGridLabel>{streamId}</StyledGridLabel>
+                        <StyledGridLabel>
+                          {streamId}
+                          <OrientationIndicator
+                            orientation={data?.orientation ?? null}
+                            className={`orientation-${(data?.orientation ?? 'unknown').toLowerCase()}`}
+                          />
+                        </StyledGridLabel>
                         <div>{data?.source}</div>
                         {data?.city && (
                           <StyledGridLocation>
@@ -987,6 +994,19 @@ function StreamDelayBox({
   )
 }
 
+function OrientationIndicator({
+  orientation,
+  ...props
+}: { orientation: 'V' | 'H' | null } & React.ComponentProps<IconType>) {
+  if (orientation === 'V') {
+    return <MdOutlineStayCurrentPortrait {...props} />
+  } else if (orientation === 'H') {
+    return <MdOutlineStayCurrentLandscape {...props} />
+  } else {
+    return null
+  }
+}
+
 function StreamLine({
   id,
   row: { label, source, link, notes, city, state, orientation },
@@ -1017,13 +1037,7 @@ function StreamLine({
         ) : (
           <>
             <strong>{source}</strong>{' '}
-            {orientation === 'V' ? (
-              <MdOutlineStayCurrentPortrait />
-            ) : orientation === 'H' ? (
-              <MdOutlineStayCurrentLandscape />
-            ) : (
-              ''
-            )}{' '}
+            <OrientationIndicator orientation={orientation} />{' '}
             {city ? `(${city} ${state}) ` : ''}
             <a href={link} target="_blank">
               {truncate(link, { length: 55 })}
@@ -1482,7 +1496,15 @@ const StyledGridInfo = styled.div`
 `
 
 const StyledGridLabel = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 30px;
+
+  .orientation-v {
+    margin-left: -4px;
+  }
 `
 
 const StyledGridLocation = styled.div`
