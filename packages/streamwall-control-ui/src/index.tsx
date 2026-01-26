@@ -1464,6 +1464,13 @@ const StyledGridPreview = styled.div`
   height: 100%;
 `
 
+const StyledGridInfo = styled.div`
+  text-align: center;
+  padding: 8px;
+  border-radius: 16px;
+  z-index: 1000; /* Keep above grid inputs */
+`
+
 const StyledGridPreviewBox = styled.div.attrs(() => ({
   borderWidth: 2,
 }))`
@@ -1489,10 +1496,11 @@ const StyledGridPreviewBox = styled.div.attrs(() => ({
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
-`
 
-const StyledGridInfo = styled.div`
-  text-align: center;
+  ${StyledGridInfo} {
+    background: ${({ color }) =>
+      Color(color).lightness(50).hsl().string() || '#333'};
+  }
 `
 
 const StyledGridLabel = styled.div`
@@ -1543,7 +1551,7 @@ const StyledGridButtons = styled.div`
 const StyledGridInput = styled(LazyChangeInput)`
   width: 100%;
   height: 100%;
-  outline: 1px solid black;
+  outline: 1px solid rgba(0, 0, 0, 0.5);
   border: none;
   padding: 0;
   background: ${({ color, isHighlighted }) =>
