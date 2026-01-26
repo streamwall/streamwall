@@ -95,7 +95,7 @@ function Overlay({
                 </span>
               </StreamLocation>
             )}
-            {isLoading && <LoadingSpinner />}
+            <LoadingSpinner isVisible={isLoading} />
           </SpaceBorder>
         )
       })}
@@ -307,14 +307,19 @@ const StreamLocation = styled.div`
   }
 `
 
-const LoadingSpinner = styled(TailSpin)`
+const LoadingSpinner = styled(TailSpin)<{ isVisible: boolean }>`
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   width: 100px;
   height: 100px;
-  opacity: 0.5;
+  opacity: ${({ isVisible }) => (isVisible ? 0.5 : 0)};
+
+  transition:
+    opacity 0.5s ease-in-out,
+    visibility 0s ${({ isVisible }) => (isVisible ? '0s' : '0.5s')};
+  visibility: ${({ isVisible }) => (isVisible ? 'visible' : 'hidden')};
 `
 
 const BlurCover = styled.div`
