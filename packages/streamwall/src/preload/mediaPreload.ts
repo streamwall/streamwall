@@ -4,7 +4,6 @@ import { ContentDisplayOptions } from 'streamwall-shared'
 
 const SCAN_THROTTLE = 500
 const INITIAL_TIMEOUT = 10 * 1000
-const REACQUIRE_ELEMENT_TIMEOUT = 60 * 1000
 
 const VIDEO_OVERRIDE_STYLE = `
   * {
@@ -197,10 +196,11 @@ async function waitForVideo(
 }> {
   lockdownMediaTags()
 
-  let video: Element | null | void = await Promise.race([
-    waitForQuery(kind),
-    sleep(timeoutMs),
-  ])
+  let queryPromise: Promise<Element | void> = waitForQuery(kind)
+  if (timeoutMs !== Infinity) {
+    queryPromise = Promise.race([waitForQuery(kind), sleep(timeoutMs)])
+  }
+  let video: Element | null | void = await queryPromise
   if (video instanceof HTMLMediaElement) {
     return { video }
   }
@@ -317,7 +317,7 @@ async function main() {
         ipcRenderer.send('view-stalled')
         clearInterval(snapshotInterval)
 
-        const newMedia = await acquireMedia(REACQUIRE_ELEMENT_TIMEOUT)
+        const newMedia = await acquireMedia(Infinity)
         if (newMedia !== media) {
           media.remove()
         }
