@@ -20,6 +20,7 @@ import { Auth, StateWrapper, uniqueRand62 } from './auth.ts'
 import { loadStorage, type StorageDB } from './storage.ts'
 
 export const SESSION_COOKIE_NAME = 's'
+const STREAMWALL_PING_TIMEOUT_MS = 5 * 1000
 
 interface Client {
   clientId: string
@@ -171,7 +172,18 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
 
       const pingInterval = setInterval(() => {
         ws.ping()
-      }, 5 * 1000)
+        const pongTimeout = setTimeout(() => {
+          if (ws.readyState === ws.OPEN) {
+            console.warn(
+              `Streamwall timeout: no pong within ${STREAMWALL_PING_TIMEOUT_MS}ms. Closing connection.`,
+            )
+            ws.close()
+          }
+        }, STREAMWALL_PING_TIMEOUT_MS)
+        ws.once('pong', () => {
+          clearTimeout(pongTimeout)
+        })
+      }, STREAMWALL_PING_TIMEOUT_MS)
 
       ws.on('close', () => {
         console.log('Streamwall disconnected')

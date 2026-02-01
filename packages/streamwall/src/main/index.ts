@@ -469,8 +469,8 @@ async function main(argv: ReturnType<typeof parseArgs>) {
     const ws = new ReconnectingWebSocket(argv.control.endpoint, [], {
       WebSocket,
       maxReconnectionDelay: 5000,
-      minReconnectionDelay: 1000 + Math.random() * 500,
-      reconnectionDelayGrowFactor: 1.1,
+      minReconnectionDelay: 100 + Math.random() * 500,
+      reconnectionDelayGrowFactor: 1.25,
     })
     ws.binaryType = 'arraybuffer'
     ws.addEventListener('open', () => {
