@@ -80,21 +80,15 @@ class RotationController {
 
   constructor(video: HTMLVideoElement) {
     this.video = video
-    this.siteRotation = 0
     this.customRotation = 0
   }
 
   _update() {
-    const rotation = (this.siteRotation + this.customRotation) % 360
+    const rotation = this.customRotation % 360
     if (![0, 90, 180, 270].includes(rotation)) {
       console.warn('ignoring invalid rotation', rotation)
     }
     this.video.className = `__rot${rotation}__`
-  }
-
-  setSite(rotation = 0) {
-    this.siteRotation = rotation
-    this._update()
   }
 
   setCustom(rotation = 0) {
