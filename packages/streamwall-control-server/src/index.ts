@@ -177,7 +177,7 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
             console.warn(
               `Streamwall timeout: no pong within ${STREAMWALL_PING_TIMEOUT_MS}ms. Closing connection.`,
             )
-            ws.close()
+            ws.terminate()
           }
         }, STREAMWALL_PING_TIMEOUT_MS)
         ws.once('pong', () => {
