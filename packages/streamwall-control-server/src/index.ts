@@ -163,6 +163,11 @@ async function initApp({ baseURL, clientStaticPath }: AppOptions) {
       }
 
       if (currentStreamwallWs != null) {
+        console.warn(
+          'Rejecting Streamwall connection (already connected) from',
+          request.ip,
+          tokenInfo,
+        )
         ws.send(JSON.stringify({ error: 'streamwall already connected' }))
         ws.close()
         return
