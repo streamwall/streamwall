@@ -725,6 +725,7 @@ export function ControlUI({
                     return null
                   }
 
+                  const isSmall = pos.height < 200
                   return (
                     <StyledGridPreviewBox
                       color={idColor(streamId)}
@@ -740,7 +741,7 @@ export function ControlUI({
                       isListening={isListening}
                       isError={matchesState('displaying.error', state.state)}
                     >
-                      <StyledGridInfo>
+                      <StyledGridInfo className={isSmall ? 'small' : undefined}>
                         <StyledGridLabel>
                           {streamId}
                           <OrientationIndicator
@@ -748,7 +749,7 @@ export function ControlUI({
                             className={`orientation-${(data?.orientation ?? 'unknown').toLowerCase()}`}
                           />
                         </StyledGridLabel>
-                        <div>{data?.source}</div>
+                        {!isSmall && <div>{data?.source}</div>}
                         {data?.city && (
                           <StyledGridLocation>
                             {data?.city} {data?.state}
@@ -1514,6 +1515,10 @@ const StyledGridLabel = styled.div`
   .orientation-v {
     margin-left: -4px;
   }
+
+  ${StyledGridInfo}.small & {
+    font-size: 20px;
+  }
 `
 
 const StyledGridLocation = styled.div`
@@ -1574,7 +1579,7 @@ const StyledGridControlsContainer = styled.div`
   user-select: none;
 
   & > * {
-    z-index: 200;
+    z-index: 1001; // Above StyledGridInfo
   }
 `
 
