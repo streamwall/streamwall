@@ -91,11 +91,11 @@ export async function* combineDataSources(
 }
 
 interface LocalStreamDataEvents {
-  update: [StreamDataContent[]]
+  update: [Partial<StreamDataContent>[]]
 }
 
 export class LocalStreamData extends EventEmitter<LocalStreamDataEvents> {
-  dataByURL: Map<string, StreamDataContent>
+  dataByURL: Map<string, Partial<StreamDataContent>>
 
   constructor(entries: StreamDataContent[] = []) {
     super()
@@ -110,8 +110,11 @@ export class LocalStreamData extends EventEmitter<LocalStreamDataEvents> {
 
   update(url: string, data: Partial<StreamDataContent>) {
     const existing = this.dataByURL.get(url)
-    const kind = data.kind ?? existing?.kind ?? 'video'
-    const updated: StreamDataContent = { ...existing, ...data, kind, link: url }
+    const updated: Partial<StreamDataContent> = {
+      ...existing,
+      ...data,
+      link: url,
+    }
     this.dataByURL.set(data.link ?? url, updated)
     if (data.link != null && url !== data.link) {
       this.dataByURL.delete(url)
@@ -128,7 +131,7 @@ export class LocalStreamData extends EventEmitter<LocalStreamDataEvents> {
     this.emit('update', [...this.dataByURL.values()])
   }
 
-  gen(): AsyncGenerator<StreamDataContent[]> {
+  gen(): AsyncGenerator<Partial<StreamDataContent>[]> {
     return new Repeater(async (push, stop) => {
       await push([...this.dataByURL.values()])
       this.on('update', push)
