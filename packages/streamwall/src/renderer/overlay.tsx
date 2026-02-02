@@ -12,7 +12,7 @@ import {
   FaYoutube,
 } from 'react-icons/fa'
 import { RiKickFill, RiTwitterXFill } from 'react-icons/ri'
-import { StreamwallState } from 'streamwall-shared'
+import { StreamwallState, ViewState } from 'streamwall-shared'
 import { styled } from 'styled-components'
 import { TailSpin } from 'svg-loaders-react'
 import { matchesState } from 'xstate'
@@ -33,12 +33,13 @@ function Overlay({
   views,
   streams,
 }: Pick<StreamwallState, 'config' | 'views' | 'streams'>) {
-  const { width, height, activeColor } = config
+  const { activeColor } = config
   const activeViews = views.filter(
     ({ state }) =>
       matchesState('displaying', state) &&
       !matchesState('displaying.error', state),
   )
+  activeViews.sort((a: ViewState, b: ViewState) => a.context.id - b.context.id)
   const overlays = streams.filter((s) => s.kind === 'overlay')
   return (
     <OverlayContainer>
@@ -62,20 +63,20 @@ function Overlay({
           'displaying.running.video.blurred',
           state,
         )
-        const isLoading =
-          matchesState('displaying.loading', state) ||
-          matchesState('displaying.running.playback.stalled', state)
+        const isLoading = matchesState('displaying.loading', state)
+        const isStalled = matchesState(
+          'displaying.running.playback.stalled',
+          state,
+        )
         const hasTitle = data && (data.label || data.source)
         const position = data?.labelPosition ?? 'top-left'
         return (
           <SpaceBorder
+            key={`view-${context.id}`}
             pos={pos}
-            windowWidth={width}
-            windowHeight={height}
-            activeColor={activeColor}
-            isListening={isListening}
+            isLoading={isLoading}
           >
-            <FilterCover isBlurred={isBlurred} isDesaturated={isLoading} />
+            <FilterCover isBlurred={isBlurred} isDesaturated={isStalled} />
             {hasTitle && (
               <StreamTitle
                 position={position}
@@ -95,7 +96,7 @@ function Overlay({
                 </span>
               </StreamLocation>
             )}
-            <LoadingSpinner isVisible={isLoading} />
+            <LoadingSpinner isVisible={isLoading || isStalled} />
           </SpaceBorder>
         )
       })}
@@ -197,20 +198,17 @@ const SpaceBorder = styled.div.attrs(() => ({
   top: ${({ pos }) => pos.y}px;
   width: ${({ pos }) => pos.width}px;
   height: ${({ pos }) => pos.height}px;
-  border: 0 solid black;
-  border-left-width: ${({ pos, borderWidth }) =>
-    pos.x === 0 ? 0 : borderWidth}px;
-  border-right-width: ${({ pos, borderWidth, windowWidth }) =>
-    pos.x + pos.width === windowWidth ? 0 : borderWidth}px;
-  border-top-width: ${({ pos, borderWidth }) =>
-    pos.y === 0 ? 0 : borderWidth}px;
-  border-bottom-width: ${({ pos, borderWidth, windowHeight }) =>
-    pos.y + pos.height === windowHeight ? 0 : borderWidth}px;
-  box-shadow: ${({ isListening, activeColor }) =>
-    isListening ? `0 0 10px ${activeColor} inset` : 'none'};
   box-sizing: border-box;
   pointer-events: none;
   user-select: none;
+  background-color: ${({ isLoading }) =>
+    isLoading ? 'rgba(0, 0, 0, .8)' : ''};
+  transition:
+    top 250ms ease,
+    left 250ms ease,
+    width 250ms ease,
+    height 250ms ease,
+    background-color 250ms ease;
 `
 
 const StreamTitle = styled.div`

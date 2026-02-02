@@ -19,14 +19,6 @@ import { createActor, EventFrom, SnapshotFrom } from 'xstate'
 import { loadHTML } from './loadHTML'
 import viewStateMachine, { ViewActor } from './viewStateMachine'
 
-function getDisplayOptions(stream: StreamData): ContentDisplayOptions {
-  if (!stream) {
-    return {}
-  }
-  const { rotation } = stream
-  return { rotation }
-}
-
 export interface StreamWindowEventMap {
   load: []
   close: []
@@ -116,9 +108,10 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       const view = this.views.get(ev.sender.id)
       if (view) {
         view.send({ type: 'VIEW_INIT' })
-        const { content, options } = view.getSnapshot().context
+        const { content, pos, options } = view.getSnapshot().context
         return {
           content,
+          pos,
           options,
         }
       }
@@ -146,7 +139,6 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       config: { width, height },
     } = this
     assert(win != null, 'Window must be initialized')
-    const { backgroundColor } = this.config
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'mediaPreload.js'),
@@ -156,7 +148,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
         partition: 'persist:session',
       },
     })
-    view.setBackgroundColor(backgroundColor)
+    view.setBackgroundColor('#00000000') // Transparent
 
     const viewId = view.webContents.id
 
@@ -213,6 +205,22 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       } satisfies ViewState
     })
     this.emit('state', states)
+  }
+
+  getDisplayOptions(
+    view: ViewActor,
+    stream: StreamData,
+  ): ContentDisplayOptions {
+    const { config } = this
+    const { rotation } = stream
+    return {
+      rotation,
+      glowColor: view
+        .getSnapshot()
+        .matches({ displaying: { running: { audio: 'listening' } } })
+        ? config.activeColor
+        : undefined,
+    }
   }
 
   setViews(viewContentMap: ViewContentMap, streams: StreamList) {
@@ -291,7 +299,10 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       }
 
       view.send({ type: 'DISPLAY', pos, content })
-      view.send({ type: 'OPTIONS', options: getDisplayOptions(stream) })
+      view.send({
+        type: 'OPTIONS',
+        options: this.getDisplayOptions(view, stream),
+      })
       newViews.set(view.getSnapshot().context.id, view)
     }
     for (const view of unusedViews) {
@@ -370,7 +381,7 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
       if (stream) {
         view.send({
           type: 'OPTIONS',
-          options: getDisplayOptions(stream),
+          options: this.getDisplayOptions(view, stream),
         })
       }
     }

@@ -15,6 +15,7 @@ export interface StreamWindowConfig {
 
 export interface ContentDisplayOptions {
   rotation?: number
+  glowColor?: string
 }
 
 /** Metadata scraped from a loaded view */

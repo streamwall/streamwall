@@ -1,6 +1,6 @@
 import { ipcRenderer, webFrame } from 'electron'
 import throttle from 'lodash/throttle'
-import { ContentDisplayOptions } from 'streamwall-shared'
+import { ContentDisplayOptions, ViewPos } from 'streamwall-shared'
 
 const SCAN_THROTTLE = 500
 const INITIAL_TIMEOUT = 10 * 1000
@@ -9,60 +9,45 @@ const VIDEO_OVERRIDE_STYLE = `
   * {
     pointer-events: none;
     display: none !important;
-    position: static !important;
     z-index: 0 !important;
   }
-  html, body, video, audio {
+  html, body, video, audio, body:after {
     display: block !important;
-    background: black !important;
+    background: transparent !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
   }
   html, body {
     overflow: hidden !important;
-    background: black !important;
+    background: transparent !important;
   }
-  video, iframe.__video__, audio {
+  video, iframe.__video__, audio, body:after {
     display: block !important;
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
+    position: absolute !important;
     top: 0 !important;
     bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     object-fit: cover !important;
-    transition: none !important;
     z-index: 999999 !important;
   }
   audio {
     z-index: 999998 !important;
   }
+  /* deprecate? */
   .__video_parent__ {
     display: block !important;
   }
-  video.__rot180__ {
-    transform: rotate(180deg) !important;
-  }
-  /* For 90 degree rotations, we position the video with swapped width and height and rotate it into place.
-     It's helpful to offset the video so the transformation is centered in the viewport center.
-     We move the video top left corner to center of the page and then translate half the video dimensions up and left.
-     Note that the width and height are swapped in the translate because the video starts with the side dimensions swapped. */
-  video.__rot90__ {
-    transform: translate(-50vh, -50vw) rotate(90deg) !important;
-  }
-  video.__rot270__ {
-    transform: translate(-50vh, -50vw) rotate(270deg) !important;
-  }
-  video.__rot90__, video.__rot270__ {
-    left: 50vw !important;
-    top: 50vh !important;
-    width: 100vh !important;
-    height: 100vw !important;
-  }
 `
 
-const NO_SCROLL_STYLE = `
+const WEB_OVERRIDE_STYLE = `
   html, body {
     overflow: hidden !important;
+  }
+  body {
+    background: white;
   }
 `
 
@@ -73,27 +58,98 @@ const pageReady = new Promise((resolve) =>
   document.addEventListener('DOMContentLoaded', resolve, { once: true }),
 )
 
-class RotationController {
-  video: HTMLVideoElement
-  siteRotation: number
-  customRotation: number
+class BodyStyleController {
+  cssKey: string | undefined
+  pos: ViewPos
+  options: ContentDisplayOptions
 
-  constructor(video: HTMLVideoElement) {
-    this.video = video
-    this.customRotation = 0
+  constructor(pos: ViewPos, options: ContentDisplayOptions) {
+    this.pos = pos
+    this.options = options
   }
 
-  _update() {
-    const rotation = this.customRotation % 360
-    if (![0, 90, 180, 270].includes(rotation)) {
-      console.warn('ignoring invalid rotation', rotation)
+  updatePosition(pos: ViewPos) {
+    this.pos = pos
+    this.update()
+  }
+
+  updateOptions(options: ContentDisplayOptions) {
+    this.options = options
+    this.update()
+  }
+
+  update() {
+    const { pos, options } = this
+    const { x, y, width, height } = pos
+    const { rotation, glowColor } = options
+    const borderWidth = 2
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+
+    const styleParts = []
+    styleParts.push(`
+      body {
+        position: fixed !important;
+        contain: strict;
+        left: ${x}px !important;
+        top: ${y}px !important;
+        width: ${width}px !important;
+        height: ${height}px !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        max-width: none !important;
+        max-height: none !important;
+        border: 0 solid black !important;
+        border-left-width: ${x === 0 ? 0 : borderWidth}px !important;
+        border-right-width: ${x + width === windowWidth ? 0 : borderWidth}px !important;
+        border-top-width: ${y === 0 ? 0 : borderWidth}px !important;
+        border-bottom-width: ${y + height === windowHeight ? 0 : borderWidth}px !important;
+        box-sizing: border-box !important;
+        transition: top 250ms ease, left 250ms ease, width 250ms ease, height 250ms ease, transform 250ms ease !important;
+        transform: rotate(0deg);
+      }
+    `)
+
+    if (rotation === 180) {
+      styleParts.push(`
+        body {
+          transform: rotate(180deg) !important;
+        }
+      `)
     }
-    this.video.className = `__rot${rotation}__`
-  }
 
-  setCustom(rotation = 0) {
-    this.customRotation = rotation
-    this._update()
+    if (rotation === 90 || rotation === 270) {
+      // For 90 degree rotations, we position with swapped width and height and rotate it into place.
+      // It's helpful to offset the position so the centered transform origin is in the center of the intended destination.
+      // Then we use translate to center on the position and rotate around the center.
+      // Note that the width and height are swapped in the translate because the video starts with the side dimensions swapped.
+      const halfWidth = width / 2
+      const halfHeight = height / 2
+      styleParts.push(`
+        body {
+          left: ${x + halfWidth}px !important;
+          top: ${y + halfHeight}px !important;
+          width: ${height}px !important;
+          height: ${width}px !important;
+          transform: translate(-${halfHeight}px, -${halfWidth}px) rotate(${rotation}deg) !important;
+        }
+      `)
+    }
+
+    if (glowColor) {
+      styleParts.push(`
+        body:after {
+          content: '';
+          box-shadow: 0 0 10px ${glowColor} inset !important;
+        }
+      `)
+    }
+
+    if (this.cssKey !== undefined) {
+      webFrame.removeInsertedCSS(this.cssKey)
+    }
+    // Note: we can't use 'user' origin here because it can't be removed (https://github.com/electron/electron/issues/27792)
+    this.cssKey = webFrame.insertCSS(styleParts.join('\n'))
   }
 }
 
@@ -141,7 +197,7 @@ class SnapshotController {
   }
 }
 
-// Watch for media tags and mute them as soon as possible.
+/** Watch for media tags and mute them as soon as possible. */
 async function lockdownMediaTags() {
   const lockdown = throttle(() => {
     webFrame.executeJavaScript(`
@@ -242,7 +298,6 @@ async function findMedia(
     throw new Error('could not find video')
   }
   if (iframe && iframe.contentDocument) {
-    // TODO: verify iframe still works
     const style = iframe.contentDocument.createElement('style')
     style.innerHTML = VIDEO_OVERRIDE_STYLE
     iframe.contentDocument.head.appendChild(style)
@@ -280,14 +335,14 @@ async function main() {
   const viewInit = ipcRenderer.invoke('view-init')
   const pageReady = new Promise((resolve) => process.once('loaded', resolve))
 
-  const [{ content, options: initialOptions }] = await Promise.all([
-    viewInit,
-    pageReady,
-  ])
+  const [{ content, pos: initialPos, options: initialOptions }] =
+    await Promise.all([viewInit, pageReady])
+
+  const styleController = new BodyStyleController(initialPos, initialOptions)
+  styleController.update()
 
   const snapshotController = new SnapshotController()
 
-  let rotationController: RotationController | undefined
   async function acquireMedia(elementTimeout: number) {
     let snapshotInterval: number | undefined
 
@@ -297,7 +352,6 @@ async function main() {
     ipcRenderer.send('view-loaded')
 
     if (content.kind === 'video' && media instanceof HTMLVideoElement) {
-      rotationController = new RotationController(media)
       snapshotInterval = window.setInterval(() => {
         snapshotController.snapshotVideo(media)
       }, 1000)
@@ -330,17 +384,14 @@ async function main() {
       },
     })
   } else if (content.kind === 'web') {
-    webFrame.insertCSS(NO_SCROLL_STYLE, { cssOrigin: 'user' })
+    webFrame.insertCSS(WEB_OVERRIDE_STYLE, { cssOrigin: 'user' })
     ipcRenderer.send('view-loaded')
   }
 
-  function updateOptions(options: ContentDisplayOptions) {
-    if (rotationController) {
-      rotationController.setCustom(options.rotation)
-    }
-  }
-  ipcRenderer.on('options', (ev, options) => updateOptions(options))
-  updateOptions(initialOptions)
+  ipcRenderer.on('position', (_ev, pos) => styleController.updatePosition(pos))
+  ipcRenderer.on('options', (_ev, options) =>
+    styleController.updateOptions(options),
+  )
 }
 
 main().catch((error) => {

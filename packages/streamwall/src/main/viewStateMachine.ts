@@ -31,7 +31,7 @@ const viewStateMachine = setup({
       view: WebContentsView
       pos: ViewPos | null
       content: ViewContent | null
-      options: ContentDisplayOptions | null
+      options: ContentDisplayOptions
       info: ContentViewInfo | null
     },
 
@@ -102,16 +102,19 @@ const viewStateMachine = setup({
 
       offscreenWin.contentView.removeChildView(view)
 
+      // Insert below the overlay (before the last view).
+      // This is a little tricky because if the view is already in the child array, re-inserting it will momentarily remove it from the array, so the length of the array is 1 shorter. We need to offset the insertion index to account for this.
+      // Note: We intentionally raise recently positioned views above the others, so they layer on top during transitions.
       const existingIdx = win.contentView.children.indexOf(view)
+      const insertIdxOffset = existingIdx !== -1 ? -2 : -1
       win.contentView.addChildView(
         view,
-        existingIdx !== -1
-          ? existingIdx
-          : // Insert below the overlay (end of the current list because once added, the overlay's index will increase by 1)
-            win.contentView.children.length - 1,
+        win.contentView.children.length + insertIdxOffset,
       )
 
-      view.setBounds(pos)
+      const { width, height } = win.getBounds()
+      view.setBounds({ x: 0, y: 0, width: width, height })
+      view.webContents.send('position', pos)
     },
   },
 
@@ -180,7 +183,7 @@ const viewStateMachine = setup({
     offscreenWin,
     pos: null,
     content: null,
-    options: null,
+    options: {},
     info: null,
   }),
   on: {
