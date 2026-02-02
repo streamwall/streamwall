@@ -162,6 +162,10 @@ export default class StreamWindow extends EventEmitter<StreamWindowEventMap> {
 
     // Prevent view pages from navigating away from the specified URL.
     view.webContents.on('will-navigate', (ev) => {
+      if (ev.url === view.webContents.getURL()) {
+        console.log('Allowing page to reload:', ev.url)
+        return
+      }
       ev.preventDefault()
     })
 
