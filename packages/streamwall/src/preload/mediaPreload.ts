@@ -192,7 +192,7 @@ async function waitForVideo(
 
   let queryPromise: Promise<Element | void> = waitForQuery(kind)
   if (timeoutMs !== Infinity) {
-    queryPromise = Promise.race([waitForQuery(kind), sleep(timeoutMs)])
+    queryPromise = Promise.race([queryPromise, sleep(timeoutMs)])
   }
   let video: Element | null | void = await queryPromise
   if (video instanceof HTMLMediaElement) {
