@@ -21,7 +21,7 @@ const VIDEO_OVERRIDE_STYLE = `
     overflow: hidden !important;
     background: transparent !important;
   }
-  video, iframe.__video__, audio, body:after {
+  video, audio, body:after {
     display: block !important;
     position: absolute !important;
     top: 0 !important;
@@ -35,10 +35,6 @@ const VIDEO_OVERRIDE_STYLE = `
   }
   audio {
     z-index: 999998 !important;
-  }
-  /* deprecate? */
-  .__video_parent__ {
-    display: block !important;
   }
 `
 
@@ -242,7 +238,6 @@ async function waitForVideo(
   timeoutMs = INITIAL_TIMEOUT,
 ): Promise<{
   video?: HTMLMediaElement
-  iframe?: HTMLIFrameElement
 }> {
   lockdownMediaTags()
 
@@ -250,67 +245,23 @@ async function waitForVideo(
   if (timeoutMs !== Infinity) {
     queryPromise = Promise.race([queryPromise, sleep(timeoutMs)])
   }
-  let video: Element | null | void = await queryPromise
+  const video: Element | null | void = await queryPromise
   if (video instanceof HTMLMediaElement) {
     return { video }
   }
 
-  let iframe
-  for (iframe of document.querySelectorAll('iframe')) {
-    video = iframe.contentDocument?.querySelector?.(kind)
-    if (video instanceof HTMLVideoElement) {
-      return { video, iframe }
-    }
-  }
   return {}
-}
-
-const igHacks = {
-  isMatch() {
-    return location.host === 'www.instagram.com'
-  },
-  async onLoad() {
-    const playButton = await Promise.race([
-      waitForQuery('button'),
-      waitForQuery('video'),
-      sleep(1000),
-    ])
-    if (
-      playButton instanceof HTMLButtonElement &&
-      playButton.tagName === 'BUTTON' &&
-      playButton.textContent === 'Tap to play'
-    ) {
-      playButton.click()
-    }
-  },
 }
 
 async function findMedia(
   kind: 'video' | 'audio',
   elementTimeout = INITIAL_TIMEOUT,
 ) {
-  if (igHacks.isMatch()) {
-    await igHacks.onLoad()
-  }
-
-  const { video, iframe } = await waitForVideo(kind, elementTimeout)
+  const { video } = await waitForVideo(kind, elementTimeout)
   if (!video) {
     throw new Error('could not find video')
   }
-  if (iframe && iframe.contentDocument) {
-    const style = iframe.contentDocument.createElement('style')
-    style.innerHTML = VIDEO_OVERRIDE_STYLE
-    iframe.contentDocument.head.appendChild(style)
-    iframe.className = '__video__'
-    let parentEl = iframe.parentElement
-    while (parentEl) {
-      parentEl.className = '__video_parent__'
-      parentEl = parentEl.parentElement
-    }
-    iframe.contentDocument.body.appendChild(video)
-  } else {
-    document.body.appendChild(video)
-  }
+  document.body.appendChild(video)
 
   video.play()
 
